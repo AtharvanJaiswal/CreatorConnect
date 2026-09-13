@@ -1,0 +1,136 @@
+# ==============================================================================
+# CreatorConnect — Production-Grade .gitignore
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Dependencies & Package Managers
+# ------------------------------------------------------------------------------
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# ------------------------------------------------------------------------------
+# Environment Variables & Secrets (CRITICAL: NEVER COMMIT REAL CREDENTIALS)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+!.env.template
+
+# Certificates, Private Keys & Tokens
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+*.jks
+*.keystore
+secrets/
+secret/
+credentials/
+*.id_rsa
+*.id_ed25519
+
+# ------------------------------------------------------------------------------
+# Build Outputs & Caches
+# ------------------------------------------------------------------------------
+dist/
+build/
+.next/
+out/
+.turbo/
+.cache/
+.tmp/
+temp/
+tmp/
+*.tsbuildinfo
+.eslintcache
+.parcel-cache
+
+# ------------------------------------------------------------------------------
+# Testing & Code Coverage
+# ------------------------------------------------------------------------------
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+# ------------------------------------------------------------------------------
+# Logs & Diagnostic Dumps
+# ------------------------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# ------------------------------------------------------------------------------
+# Operating System Artifacts
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ------------------------------------------------------------------------------
+# IDE & Editor Configurations
+# ------------------------------------------------------------------------------
+.idea/
+*.iml
+*.sublime-workspace
+*.sublime-project
+
+# VS Code (preserve team workspace configurations)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# ------------------------------------------------------------------------------
+# Docker & Local Infrastructure
+# ------------------------------------------------------------------------------
+docker-compose.override.yml
+*.docker-data/
+postgres-data/
+redis-data/
+minio-data/
+
+# ------------------------------------------------------------------------------
+# Database Local Files (DO NOT IGNORE prisma/migrations/)
+# ------------------------------------------------------------------------------
+*.sqlite
+*.sqlite-journal
+*.sqlite3
+*.db
+*.db-journal
+local_dump.sql
+*.sql.gz
+*.sql.dump
+
+# ------------------------------------------------------------------------------
+# AI Tooling & Local Agent State
+# ------------------------------------------------------------------------------
+.agents/
+.gemini/
+scratch/
