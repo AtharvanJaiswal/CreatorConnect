@@ -10,6 +10,7 @@
 ## 1. Overview
 
 The CreatorConnect backend powers a production-grade, multi-sided creator economy platform orchestrating five ecosystem participants:
+
 1. **Creators / Influencers**
 2. **Production Professionals** (Videographers, Editors, Audio Engineers, Thumbnail Artists)
 3. **Brands & Companies**
@@ -17,6 +18,7 @@ The CreatorConnect backend powers a production-grade, multi-sided creator econom
 5. **Platform Administrators** (Operations, Trust & Safety, Financial Auditors)
 
 ### Core Technologies & Runtimes:
+
 - **Language / Runtime**: Node.js (v20 LTS) + TypeScript (v5.5+)
 - **HTTP Framework**: Fastify v4.x (High throughput, native JSON Schema compilation)
 - **Database**: PostgreSQL 16 managed with Prisma ORM
@@ -79,32 +81,35 @@ f:\CreatorConnect/
 
 ## 3. Service Directory
 
-| Service | Repository Location | Primary Responsibility | Port | Status |
-| :--- | :--- | :--- | :--- | :--- |
-| **Core Modular API** | `apps/api/` | Stateless REST APIs, OpenAPI 3.1, RBAC, domain business rules, ACID transactions | `3000` | **PLANNED** (Phase 1 Scaffold) |
-| **Realtime Gateway** | `apps/realtime/` | Stateful WebSockets, presence, typing indicators, direct chat routing via Redis | `3001` | **PLANNED** (Phase 9) |
-| **Background Worker Tier** | `apps/worker/` | Outbox event polling, Sharp/FFmpeg media processing, FCM/Email dispatch, payouts | N/A | **PLANNED** (Phase 10) |
+| Service                    | Repository Location | Primary Responsibility                                                           | Port   | Status                         |
+| :------------------------- | :------------------ | :------------------------------------------------------------------------------- | :----- | :----------------------------- |
+| **Core Modular API**       | `apps/api/`         | Stateless REST APIs, OpenAPI 3.1, RBAC, domain business rules, ACID transactions | `3000` | **PLANNED** (Phase 1 Scaffold) |
+| **Realtime Gateway**       | `apps/realtime/`    | Stateful WebSockets, presence, typing indicators, direct chat routing via Redis  | `3001` | **PLANNED** (Phase 9)          |
+| **Background Worker Tier** | `apps/worker/`      | Outbox event polling, Sharp/FFmpeg media processing, FCM/Email dispatch, payouts | N/A    | **PLANNED** (Phase 10)         |
 
 ---
 
 ## 4. API Base URLs
 
-| Environment | Core REST API Base URL | Realtime WebSocket Gateway URL | Status |
-| :--- | :--- | :--- | :--- |
-| **LOCAL** | `http://localhost:3000` | `ws://localhost:3001` | **NOT CONFIGURED** (Phase 1) |
-| **DEVELOPMENT** | `https://dev-api.creatorconnect.com` | `wss://dev-realtime.creatorconnect.com` | **NOT CONFIGURED** (Phase 3) |
-| **STAGING** | `https://staging-api.creatorconnect.com` | `wss://staging-realtime.creatorconnect.com` | **NOT CONFIGURED** (Phase 3) |
-| **PRODUCTION** | `https://api.creatorconnect.com` | `wss://realtime.creatorconnect.com` | **NOT CONFIGURED** (Phase 14) |
+| Environment     | Core REST API Base URL                   | Realtime WebSocket Gateway URL              | Status                        |
+| :-------------- | :--------------------------------------- | :------------------------------------------ | :---------------------------- |
+| **LOCAL**       | `http://localhost:3000`                  | `ws://localhost:3001`                       | **NOT CONFIGURED** (Phase 1)  |
+| **DEVELOPMENT** | `https://dev-api.creatorconnect.com`     | `wss://dev-realtime.creatorconnect.com`     | **NOT CONFIGURED** (Phase 3)  |
+| **STAGING**     | `https://staging-api.creatorconnect.com` | `wss://staging-realtime.creatorconnect.com` | **NOT CONFIGURED** (Phase 3)  |
+| **PRODUCTION**  | `https://api.creatorconnect.com`         | `wss://realtime.creatorconnect.com`         | **NOT CONFIGURED** (Phase 14) |
 
 ---
 
 ## 5. API Versioning Strategy
 
 All REST API endpoints are strictly versioned within the URI path:
+
 ```
 /api/v1/<domain>/<resource>
 ```
+
 ### Versioning Rules:
+
 - **Non-Breaking Changes**: Adding optional query parameters, new response fields, or new endpoints occurs under `/api/v1/` without bumping the version.
 - **Breaking Changes**: Changing field types, removing fields, or altering state-machine transitions requires a new major version prefix (`/api/v2/`).
 - **Deprecation Policy**: An older API version is supported for a minimum of **180 days** post-deprecation notice. Deprecated endpoints return the standard `Sunset` and `Deprecation` HTTP headers:
@@ -143,6 +148,7 @@ sequenceDiagram
 ```
 
 ### Authentication Rules for Clients:
+
 - **Header Standard**: All authenticated requests MUST include:
   ```http
   Authorization: Bearer <access_token>
@@ -154,9 +160,10 @@ sequenceDiagram
 
 ## 7. Authorization & Role-Based Access Control (RBAC)
 
-Authentication verifies *who* the user is; the backend exclusively enforces *what* the user can do.
+Authentication verifies _who_ the user is; the backend exclusively enforces _what_ the user can do.
 
 ### 7.1 System Roles:
+
 1. `CREATOR`: Access to creator rate cards, job board, proposal submission, milestone uploads, crew hiring.
 2. `PROFESSIONAL`: Access to production gig board, equipment inventories, proposal submission, deliverable submissions.
 3. `BRAND`: Access to campaign creation, talent discovery, applicant shortlisting, escrow funding, deliverable approval.
@@ -164,12 +171,15 @@ Authentication verifies *who* the user is; the backend exclusively enforces *wha
 5. `ADMIN`: Elevated operational access to KYC verification, dispute arbitration, financial ledger audits, and account bans.
 
 ### 7.2 Multi-Tier Authorization Enforcement:
+
 - **Tier 1 (Role Guard)**: Fastify preHandler hook asserts `req.user.roles.includes('BRAND')`.
 - **Tier 2 (Tenancy Guard)**: Validates that brand managers can only access campaigns belonging to their corporate entity. **Tenant context is derived strictly from the authenticated server session, NEVER trusted from client request parameters.**
 - **Tier 3 (Resource Ownership Guard)**: Validates that a user attempting to view or submit a milestone deliverable is an explicit party (`client_user_id` or `talent_user_id`) to that project contract.
 
 ### 7.3 Database-Level Access Control (Defense in Depth)
+
 Never assume API middleware alone protects data. Repositories must enforce ownership boundaries at query time:
+
 - **PROHIBITED**: `prisma.project.findUnique({ where: { id } })`
 - **MANDATORY**: `findOwnedProject(userId, projectId)` filtering by `OR: [{ client_user_id: userId }, { talent_user_id: userId }]`.
 
@@ -180,74 +190,87 @@ Never assume API middleware alone protects data. Repositories must enforce owner
 > All endpoints listed below represent the authoritative Phase 0 contract specification. Implementation begins in Phase 4.
 
 ### 8.1 Authentication & Identity (`/api/v1/auth`)
-- `POST /api/v1/auth/sync`: Syncs Supabase user record to PostgreSQL database. *(PLANNED)*
-- `POST /api/v1/auth/logout`: Revokes server-side session and invalidates Redis cache. *(PLANNED)*
+
+- `POST /api/v1/auth/sync`: Syncs Supabase user record to PostgreSQL database. _(PLANNED)_
+- `POST /api/v1/auth/logout`: Revokes server-side session and invalidates Redis cache. _(PLANNED)_
 
 ### 8.2 Users & Accounts (`/api/v1/users`)
-- `GET /api/v1/users/me`: Retrieves current authenticated user profile and roles. *(PLANNED)*
-- `PATCH /api/v1/users/me`: Updates contact information and notification preferences. *(PLANNED)*
-- `POST /api/v1/users/device-token`: Registers FCM push notification token. *(PLANNED)*
+
+- `GET /api/v1/users/me`: Retrieves current authenticated user profile and roles. _(PLANNED)_
+- `PATCH /api/v1/users/me`: Updates contact information and notification preferences. _(PLANNED)_
+- `POST /api/v1/users/device-token`: Registers FCM push notification token. _(PLANNED)_
 
 ### 8.3 Profiles & Rate Cards (`/api/v1/profiles`)
-- `GET /api/v1/profiles/creator/{id}`: Retrieves public creator rate card and stats. *(PLANNED)*
-- `PUT /api/v1/profiles/creator/me`: Creates or updates creator rate cards and bio. *(PLANNED)*
-- `GET /api/v1/profiles/pro/{id}`: Retrieves production freelancer portfolio and equipment list. *(PLANNED)*
-- `PUT /api/v1/profiles/pro/me`: Updates production professional details. *(PLANNED)*
-- `PUT /api/v1/profiles/brand/me`: Updates company registration and billing profile. *(PLANNED)*
+
+- `GET /api/v1/profiles/creator/{id}`: Retrieves public creator rate card and stats. _(PLANNED)_
+- `PUT /api/v1/profiles/creator/me`: Creates or updates creator rate cards and bio. _(PLANNED)_
+- `GET /api/v1/profiles/pro/{id}`: Retrieves production freelancer portfolio and equipment list. _(PLANNED)_
+- `PUT /api/v1/profiles/pro/me`: Updates production professional details. _(PLANNED)_
+- `PUT /api/v1/profiles/brand/me`: Updates company registration and billing profile. _(PLANNED)_
 
 ### 8.4 Media & Portfolio (`/api/v1/media`, `/api/v1/portfolio`)
-- `POST /api/v1/media/upload-session`: Issues presigned Cloudflare R2 direct PUT URL. *(PLANNED)*
-- `POST /api/v1/media/upload-confirm`: Confirms client upload and enqueues background processing. *(PLANNED)*
-- `GET /api/v1/portfolio/user/{userId}`: Lists verified portfolio items. *(PLANNED)*
-- `POST /api/v1/portfolio/items`: Adds a new portfolio item with media attachments. *(PLANNED)*
+
+- `POST /api/v1/media/upload-session`: Issues presigned Cloudflare R2 direct PUT URL. _(PLANNED)_
+- `POST /api/v1/media/upload-confirm`: Confirms client upload and enqueues background processing. _(PLANNED)_
+- `GET /api/v1/portfolio/user/{userId}`: Lists verified portfolio items. _(PLANNED)_
+- `POST /api/v1/portfolio/items`: Adds a new portfolio item with media attachments. _(PLANNED)_
 
 ### 8.5 Discovery & Matching (`/api/v1/discovery`, `/api/v1/matching`)
-- `GET /api/v1/discovery/creators`: FTS search and filter across creator profiles. *(PLANNED)*
-- `GET /api/v1/discovery/professionals`: FTS search for videographers, editors, sound designers. *(PLANNED)*
-- `POST /api/v1/matching/recommendations`: Calculates explainable rule-based candidate match scores. *(PLANNED)*
+
+- `GET /api/v1/discovery/creators`: FTS search and filter across creator profiles. _(PLANNED)_
+- `GET /api/v1/discovery/professionals`: FTS search for videographers, editors, sound designers. _(PLANNED)_
+- `POST /api/v1/matching/recommendations`: Calculates explainable rule-based candidate match scores. _(PLANNED)_
 
 ### 8.6 Campaigns & Assignments (`/api/v1/campaigns`)
-- `POST /api/v1/campaigns`: Brand creates a new campaign brief. *(PLANNED)*
-- `GET /api/v1/campaigns`: Lists open campaigns with cursor pagination. *(PLANNED)*
-- `GET /api/v1/campaigns/{id}`: Retrieves detailed campaign brief and milestone requirements. *(PLANNED)*
-- `PATCH /api/v1/campaigns/{id}`: Updates campaign brief (allowed only before escrow funding). *(PLANNED)*
+
+- `POST /api/v1/campaigns`: Brand creates a new campaign brief. _(PLANNED)_
+- `GET /api/v1/campaigns`: Lists open campaigns with cursor pagination. _(PLANNED)_
+- `GET /api/v1/campaigns/{id}`: Retrieves detailed campaign brief and milestone requirements. _(PLANNED)_
+- `PATCH /api/v1/campaigns/{id}`: Updates campaign brief (allowed only before escrow funding). _(PLANNED)_
 
 ### 8.7 Applications & Proposals (`/api/v1/applications`)
-- `POST /api/v1/campaigns/{id}/apply`: Talent submits proposal with custom rate. *(PLANNED)*
-- `GET /api/v1/campaigns/{id}/applications`: Brand views applicant queue. *(PLANNED)*
-- `PATCH /api/v1/applications/{id}/status`: Brand transitions application (SHORTLISTED, REJECTED). *(PLANNED)*
+
+- `POST /api/v1/campaigns/{id}/apply`: Talent submits proposal with custom rate. _(PLANNED)_
+- `GET /api/v1/campaigns/{id}/applications`: Brand views applicant queue. _(PLANNED)_
+- `PATCH /api/v1/applications/{id}/status`: Brand transitions application (SHORTLISTED, REJECTED). _(PLANNED)_
 
 ### 8.8 Projects & Deliverables (`/api/v1/projects`)
-- `POST /api/v1/projects/hire`: Converts shortlisted application into a binding escrow contract. *(PLANNED)*
-- `GET /api/v1/projects/{id}`: Retrieves project workspace and milestone timeline. *(PLANNED)*
-- `POST /api/v1/projects/{id}/milestones/{milestoneId}/submit`: Submits deliverable for review. *(PLANNED)*
-- `POST /api/v1/projects/{id}/milestones/{milestoneId}/approve`: Client approves deliverable; triggers escrow release. *(PLANNED)*
-- `POST /api/v1/projects/{id}/milestones/{milestoneId}/request-revision`: Requests modifications. *(PLANNED)*
+
+- `POST /api/v1/projects/hire`: Converts shortlisted application into a binding escrow contract. _(PLANNED)_
+- `GET /api/v1/projects/{id}`: Retrieves project workspace and milestone timeline. _(PLANNED)_
+- `POST /api/v1/projects/{id}/milestones/{milestoneId}/submit`: Submits deliverable for review. _(PLANNED)_
+- `POST /api/v1/projects/{id}/milestones/{milestoneId}/approve`: Client approves deliverable; triggers escrow release. _(PLANNED)_
+- `POST /api/v1/projects/{id}/milestones/{milestoneId}/request-revision`: Requests modifications. _(PLANNED)_
 
 ### 8.9 Payments & Financial Ledger (`/api/v1/payments`)
-- `POST /api/v1/payments/create-order`: Initializes Razorpay payment order for project escrow. *(PLANNED)*
-- `POST /api/v1/payments/webhook`: Authoritative Razorpay webhook consumer with HMAC verification. *(PLANNED)*
-- `GET /api/v1/payments/ledger`: Retrieves user transaction history and pending payouts. *(PLANNED)*
+
+- `POST /api/v1/payments/create-order`: Initializes Razorpay payment order for project escrow. _(PLANNED)_
+- `POST /api/v1/payments/webhook`: Authoritative Razorpay webhook consumer with HMAC verification. _(PLANNED)_
+- `GET /api/v1/payments/ledger`: Retrieves user transaction history and pending payouts. _(PLANNED)_
 
 ### 8.10 Realtime Messaging (`/api/v1/conversations`)
-- `GET /api/v1/conversations`: Lists user conversation threads with unread counts. *(PLANNED)*
-- `GET /api/v1/conversations/{id}/messages`: Paginated chat message history. *(PLANNED)*
+
+- `GET /api/v1/conversations`: Lists user conversation threads with unread counts. _(PLANNED)_
+- `GET /api/v1/conversations/{id}/messages`: Paginated chat message history. _(PLANNED)_
 
 ### 8.11 Reviews & Reputation (`/api/v1/reviews`)
-- `POST /api/v1/projects/{id}/reviews`: Submits double-blind project rating. *(PLANNED)*
-- `GET /api/v1/reviews/user/{userId}`: Lists revealed public reviews. *(PLANNED)*
+
+- `POST /api/v1/projects/{id}/reviews`: Submits double-blind project rating. _(PLANNED)_
+- `GET /api/v1/reviews/user/{userId}`: Lists revealed public reviews. _(PLANNED)_
 
 ### 8.12 Admin Operations (`/api/v1/admin`)
-- `GET /api/v1/admin/verification-queue`: Lists pending creator verification requests. *(PLANNED)*
-- `POST /api/v1/admin/verification/{id}/decision`: Approves or rejects verification with reason. *(PLANNED)*
-- `POST /api/v1/admin/disputes/{id}/arbitrate`: Admin resolves escrow dispute. *(PLANNED)*
-- `POST /api/v1/admin/users/{id}/suspend`: Suspends malicious account and terminates active sessions. *(PLANNED)*
+
+- `GET /api/v1/admin/verification-queue`: Lists pending creator verification requests. _(PLANNED)_
+- `POST /api/v1/admin/verification/{id}/decision`: Approves or rejects verification with reason. _(PLANNED)_
+- `POST /api/v1/admin/disputes/{id}/arbitrate`: Admin resolves escrow dispute. _(PLANNED)_
+- `POST /api/v1/admin/users/{id}/suspend`: Suspends malicious account and terminates active sessions. _(PLANNED)_
 
 ---
 
 ## 9. API Endpoint Detail Specification (Canonical Example)
 
 ### `POST /api/v1/campaigns`
+
 - **Purpose**: Brand creates a new campaign assignment with required milestones.
 - **Authentication**: Required (`Bearer <JWT>`)
 - **Required Role**: `BRAND`
@@ -255,6 +278,7 @@ Never assume API middleware alone protects data. Repositories must enforce owner
 - **Idempotency**: Supported via `Idempotency-Key` header.
 
 #### Request Body Schema (`application/json`):
+
 ```json
 {
   "title": "4K Tech Product Showcase Reel",
@@ -289,6 +313,7 @@ Never assume API middleware alone protects data. Repositories must enforce owner
 ```
 
 #### Success Response (`201 Created`):
+
 ```json
 {
   "data": {
@@ -304,6 +329,7 @@ Never assume API middleware alone protects data. Repositories must enforce owner
 ```
 
 #### Possible Error Responses:
+
 - `400 Bad Request`: Payload validation failed (`INVALID_PAYLOAD`).
 - `401 Unauthorized`: Missing or expired Bearer token.
 - `403 Forbidden`: Authenticated user does not possess `BRAND` role.
@@ -315,6 +341,7 @@ Never assume API middleware alone protects data. Repositories must enforce owner
 ## 10. OpenAPI Contract Source of Truth
 
 The OpenAPI 3.1 JSON specification is compiled deterministically from backend Fastify route schemas:
+
 - **Build Output**: `packages/contracts/openapi.json`
 - **Interactive Documentation**: Available at `http://localhost:3000/docs` (rendered via Scalar).
 - **Inspection**: Offline Bruno collections stored in `apps/api/bruno/`.
@@ -349,6 +376,7 @@ Clients never manually author API types or HTTP fetch calls.
 > All responses must serialize through explicit **TypeBox DTO Allowlists**. Internal IDs, password hashes, moderation notes, and private metadata must never be exposed.
 
 ### 12.1 Standard Success Envelope
+
 ```json
 {
   "data": { ... },
@@ -360,7 +388,9 @@ Clients never manually author API types or HTTP fetch calls.
 ```
 
 ### 12.2 Standard RFC 7807 Error Envelope
+
 All error responses (4xx, 5xx) strictly follow RFC 7807 Problem Details:
+
 ```json
 {
   "type": "https://errors.creatorconnect.com/errors/VALIDATION_ERROR",
@@ -379,7 +409,8 @@ All error responses (4xx, 5xx) strictly follow RFC 7807 Problem Details:
   ]
 }
 ```
-*Note: In production environments, 500 Internal Errors return a generic message ("An unexpected error occurred") with zero SQL details, Prisma internals, or stack traces.*
+
+_Note: In production environments, 500 Internal Errors return a generic message ("An unexpected error occurred") with zero SQL details, Prisma internals, or stack traces._
 
 ---
 
@@ -388,10 +419,12 @@ All error responses (4xx, 5xx) strictly follow RFC 7807 Problem Details:
 All collection endpoints implement cursor pagination to eliminate offset degradation and duplicate records during infinite scrolls:
 
 ### Request Query Parameters:
+
 - `limit`: Integer (default: 20, max: 100)
 - `cursor`: Opaque base64-encoded string representing the timestamp/UUID of the last seen item.
 
 ### Response Format:
+
 ```json
 {
   "data": [ ... ],
@@ -436,18 +469,20 @@ sequenceDiagram
 The Realtime Gateway runs as an isolated service on port `3001` with a persistent Redis Pub/Sub adapter.
 
 ### 15.1 Connection Lifecycle:
+
 - **Handshake Authentication**: Client connects with `auth: { token: '<access_token>' }`. Gateway validates JWT against JWKS public key.
 - **Room Subscriptions**: Clients automatically join their personal user room `user:{userId}` and active project/conversation rooms `conversation:{conversationId}` upon backend membership verification.
 
 ### 15.2 Confirmed Event Catalog:
-| Direction | Event Name | Payload Description | Auth Required |
-| :--- | :--- | :--- | :--- |
-| **Client → Server** | `message:send` | `{ conversationId, content, attachmentKey }` | Yes (Room Member) |
-| **Server → Client** | `message:new` | Full message object with sender metadata | Yes |
-| **Client → Server** | `typing:start` | `{ conversationId }` (Broadcasts to room) | Yes |
-| **Client → Server** | `typing:stop` | `{ conversationId }` | Yes |
-| **Server → Client** | `presence:update`| `{ userId, status: 'online' | 'offline' }` | Yes |
-| **Server → Client** | `notification:new`| User-targeted system alert (milestone approved, deal offered) | Yes |
+
+| Direction           | Event Name         | Payload Description                                           | Auth Required     |
+| :------------------ | :----------------- | :------------------------------------------------------------ | :---------------- |
+| **Client → Server** | `message:send`     | `{ conversationId, content, attachmentKey }`                  | Yes (Room Member) |
+| **Server → Client** | `message:new`      | Full message object with sender metadata                      | Yes               |
+| **Client → Server** | `typing:start`     | `{ conversationId }` (Broadcasts to room)                     | Yes               |
+| **Client → Server** | `typing:stop`      | `{ conversationId }`                                          | Yes               |
+| **Server → Client** | `presence:update`  | `{ userId, status: 'online'                                   | 'offline' }`      | Yes |
+| **Server → Client** | `notification:new` | User-targeted system alert (milestone approved, deal offered) | Yes               |
 
 ---
 
@@ -492,6 +527,7 @@ sequenceDiagram
 ## 17. Notifications Engine
 
 The notification engine is completely asynchronous. Triggers emit Outbox events consumed by BullMQ:
+
 - **Push Notifications**: Routed via **Firebase Cloud Messaging (FCM)** to Android, iOS (via APNs), and Web.
 - **Transactional Emails**: Delivered via **Resend** using compiled **React Email** templates.
 - **User Preferences**: The worker checks `notification_preferences` before dispatching to respect user quiet hours and channel opt-outs.
@@ -500,40 +536,42 @@ The notification engine is completely asynchronous. Triggers emit Outbox events 
 
 ## 18. Error Handling & Code Directory
 
-| HTTP Status | Application Error Code | Meaning | Client Action |
-| :--- | :--- | :--- | :--- |
-| `400` | `VALIDATION_ERROR` | Request body, query, or path parameters failed schema check. | Highlight form fields. |
-| `401` | `UNAUTHORIZED` | Bearer token missing, malformed, or expired. | Refresh token via Supabase Auth or redirect to login. |
-| `403` | `FORBIDDEN` | Authenticated user lacks required role or resource ownership. | Display permission denied alert. |
-| `404` | `NOT_FOUND` | Resource does not exist. | Display 404 empty state. |
-| `409` | `CONFLICT` | Optimistic lock failure or unique constraint violation. | Refresh data and prompt user retry. |
-| `422` | `UNPROCESSABLE_ENTITY` | Business rule violated (e.g. milestone amount exceeds budget). | Display inline business error. |
-| `429` | `RATE_LIMITED` | Rate limit threshold exceeded. | Back off request and retry after `Retry-After` seconds. |
-| `500` | `INTERNAL_ERROR` | Unexpected server defect (tracked in Sentry). | Display generic fallback alert. |
+| HTTP Status | Application Error Code | Meaning                                                        | Client Action                                           |
+| :---------- | :--------------------- | :------------------------------------------------------------- | :------------------------------------------------------ |
+| `400`       | `VALIDATION_ERROR`     | Request body, query, or path parameters failed schema check.   | Highlight form fields.                                  |
+| `401`       | `UNAUTHORIZED`         | Bearer token missing, malformed, or expired.                   | Refresh token via Supabase Auth or redirect to login.   |
+| `403`       | `FORBIDDEN`            | Authenticated user lacks required role or resource ownership.  | Display permission denied alert.                        |
+| `404`       | `NOT_FOUND`            | Resource does not exist.                                       | Display 404 empty state.                                |
+| `409`       | `CONFLICT`             | Optimistic lock failure or unique constraint violation.        | Refresh data and prompt user retry.                     |
+| `422`       | `UNPROCESSABLE_ENTITY` | Business rule violated (e.g. milestone amount exceeds budget). | Display inline business error.                          |
+| `429`       | `RATE_LIMITED`         | Rate limit threshold exceeded.                                 | Back off request and retry after `Retry-After` seconds. |
+| `500`       | `INTERNAL_ERROR`       | Unexpected server defect (tracked in Sentry).                  | Display generic fallback alert.                         |
 
 ---
 
 ## 19. Rate Limiting Categories
 
-| Tier | Endpoints Covered | Limit (Sliding Window) | Storage |
-| :--- | :--- | :--- | :--- |
-| **Tier 1 (Auth Operations)** | `/api/v1/auth/*`, login, OTP submission | 5 requests / minute per IP | Redis |
-| **Tier 2 (Sensitive Ops)** | `/api/v1/payments/*`, `/api/v1/admin/*` | 10 requests / minute per user | Redis |
-| **Tier 3 (Search & Discovery)**| `/api/v1/discovery/*`, `/api/v1/search/*` | 30 requests / minute per user | Redis |
-| **Tier 4 (Standard Read/Write)**| `/api/v1/campaigns`, `/api/v1/projects` | 120 requests / minute per user | Redis |
-| **Tier 5 (Messaging / Heartbeat)**| Socket.IO handshakes, message emits | 300 requests / minute per user | Redis |
+| Tier                               | Endpoints Covered                         | Limit (Sliding Window)         | Storage |
+| :--------------------------------- | :---------------------------------------- | :----------------------------- | :------ |
+| **Tier 1 (Auth Operations)**       | `/api/v1/auth/*`, login, OTP submission   | 5 requests / minute per IP     | Redis   |
+| **Tier 2 (Sensitive Ops)**         | `/api/v1/payments/*`, `/api/v1/admin/*`   | 10 requests / minute per user  | Redis   |
+| **Tier 3 (Search & Discovery)**    | `/api/v1/discovery/*`, `/api/v1/search/*` | 30 requests / minute per user  | Redis   |
+| **Tier 4 (Standard Read/Write)**   | `/api/v1/campaigns`, `/api/v1/projects`   | 120 requests / minute per user | Redis   |
+| **Tier 5 (Messaging / Heartbeat)** | Socket.IO handshakes, message emits       | 300 requests / minute per user | Redis   |
 
 ---
 
 ## 20. Caching Strategy
 
 ### Allowed for Caching (Redis, TTL 300s to 3600s):
+
 - User session & role mappings (`session:{sub}`) — TTL 300s.
 - Public creator profile views & rate cards — TTL 600s (invalidated on profile edit).
 - Standard category and skill taxonomies — TTL 86400s (24h).
 - Supabase JWKS public keys — TTL 86400s.
 
 ### Strictly Prohibited from Caching:
+
 - Financial ledger balances and pending payouts.
 - Active escrow contract status queries.
 - Deliverable review and approval state transitions.
@@ -543,31 +581,32 @@ The notification engine is completely asynchronous. Triggers emit Outbox events 
 
 ## 21. Background Job Queues (BullMQ)
 
-| Queue Name | Primary Purpose | Producer | Consumer | Retries | Idempotency Key Pattern |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `outbox-relay` | Polls `outbox_events` and enqueues domain jobs | Poller Daemon | Outbox Worker | 5 (Backoff) | `outbox:{eventId}` |
-| `media-processing` | Sharp thumbnail generation, FFmpeg metadata | API Gateway | Media Worker | 3 (Backoff) | `media:{assetId}` |
-| `notifications-fcm` | Dispatches push alerts via Firebase Admin SDK | Outbox Worker | Push Worker | 5 (Backoff) | `fcm:{notificationId}` |
-| `notifications-email` | Dispatches transactional emails via Resend | Outbox Worker | Email Worker | 5 (Backoff) | `email:{notificationId}` |
-| `payout-processing` | Executes bank disbursements for approved milestones| API Gateway | Finance Worker| 3 (Linear) | `payout:{payoutId}` |
+| Queue Name            | Primary Purpose                                     | Producer      | Consumer       | Retries     | Idempotency Key Pattern  |
+| :-------------------- | :-------------------------------------------------- | :------------ | :------------- | :---------- | :----------------------- |
+| `outbox-relay`        | Polls `outbox_events` and enqueues domain jobs      | Poller Daemon | Outbox Worker  | 5 (Backoff) | `outbox:{eventId}`       |
+| `media-processing`    | Sharp thumbnail generation, FFmpeg metadata         | API Gateway   | Media Worker   | 3 (Backoff) | `media:{assetId}`        |
+| `notifications-fcm`   | Dispatches push alerts via Firebase Admin SDK       | Outbox Worker | Push Worker    | 5 (Backoff) | `fcm:{notificationId}`   |
+| `notifications-email` | Dispatches transactional emails via Resend          | Outbox Worker | Email Worker   | 5 (Backoff) | `email:{notificationId}` |
+| `payout-processing`   | Executes bank disbursements for approved milestones | API Gateway   | Finance Worker | 3 (Linear)  | `payout:{payoutId}`      |
 
 ---
 
 ## 22. Domain Events (Transactional Outbox)
 
 The following events are emitted to the `outbox_events` table within database transactions:
-- `UserRegistered` *(PLANNED)*
-- `ProfileVerified` *(PLANNED)*
-- `CampaignCreated` *(PLANNED)*
-- `ApplicationSubmitted` *(PLANNED)*
-- `CandidateShortlisted` *(PLANNED)*
-- `ProjectHired` *(PLANNED)*
-- `EscrowFunded` *(PLANNED)*
-- `DeliverableSubmitted` *(PLANNED)*
-- `DeliverableApproved` *(PLANNED)*
-- `EscrowReleased` *(PLANNED)*
-- `ReviewCreated` *(PLANNED)*
-- `AccountSuspended` *(PLANNED)*
+
+- `UserRegistered` _(PLANNED)_
+- `ProfileVerified` _(PLANNED)_
+- `CampaignCreated` _(PLANNED)_
+- `ApplicationSubmitted` _(PLANNED)_
+- `CandidateShortlisted` _(PLANNED)_
+- `ProjectHired` _(PLANNED)_
+- `EscrowFunded` _(PLANNED)_
+- `DeliverableSubmitted` _(PLANNED)_
+- `DeliverableApproved` _(PLANNED)_
+- `EscrowReleased` _(PLANNED)_
+- `ReviewCreated` _(PLANNED)_
+- `AccountSuspended` _(PLANNED)_
 
 ---
 
@@ -640,6 +679,7 @@ pnpm test:e2e
 ## 26. CI/CD Pipeline Summary
 
 Every Pull Request executes:
+
 1. `pnpm typecheck` (`tsc --noEmit`)
 2. `pnpm lint` (ESLint with clean-architecture boundaries)
 3. `pnpm test:unit` (Vitest)
@@ -660,6 +700,6 @@ Every Pull Request executes:
 
 ## 28. Backend Changelog
 
-| Phase | Date | Changes Summary | API Changes | Database Changes | Breaking Changes | Client Impact |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Phase       | Date       | Changes Summary                      | API Changes                                      | Database Changes                         | Breaking Changes            | Client Impact                                                                    |
+| :---------- | :--------- | :----------------------------------- | :----------------------------------------------- | :--------------------------------------- | :-------------------------- | :------------------------------------------------------------------------------- |
 | **Phase 0** | 2026-09-13 | Initial Architecture & Contract Lock | Complete OpenAPI 3.1 & endpoint catalog defined. | 42 canonical entities & ledger designed. | None (Greenfield baseline). | Establishes authoritative integration contract for Web, Android, iOS, and Admin. |

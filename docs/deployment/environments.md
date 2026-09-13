@@ -4,15 +4,15 @@
 
 CreatorConnect strictly enforces complete physical and credential isolation across four distinct environments:
 
-| Attribute | LOCAL | DEVELOPMENT | STAGING | PRODUCTION |
-| :--- | :--- | :--- | :--- | :--- |
-| **Purpose** | Developer workstations & automated unit tests | Shared integration & feature branch preview | Production parity, rehearsal, full Playwright | End-user live platform |
-| **Hosting** | Docker Compose (Localhost) | Cloudflare Pages + ECS Dev Cluster | Cloudflare Pages + ECS Staging Cluster | Cloudflare Pages + AWS ECS Fargate Multi-AZ |
-| **Database** | Local PostgreSQL 16 container | AWS Aurora PostgreSQL Dev | AWS Aurora PostgreSQL Staging (Replica of Prod) | AWS Aurora PostgreSQL Multi-AZ Cluster |
-| **Redis** | Local Redis 7 container | AWS ElastiCache Dev | AWS ElastiCache Staging | AWS ElastiCache Cluster (Multi-AZ) |
-| **Object Storage** | MinIO / Local R2 dev bucket | Cloudflare R2 Dev Bucket | Cloudflare R2 Staging Bucket | Cloudflare R2 Production Bucket (CDN backed) |
-| **Third-Party Mode**| Mock / Sandbox Mode | Test Mode (Test Keys) | Sandbox Mode (Razorpay Sandbox, Test FCM) | Live Mode (Real funds, Real APNs/FCM) |
-| **Data Policy** | Synthetic factory fixtures | Synthetic anonymized data | Anonymized production-scale dataset | Encrypted customer live data (Zero PII in dev) |
+| Attribute            | LOCAL                                         | DEVELOPMENT                                 | STAGING                                         | PRODUCTION                                     |
+| :------------------- | :-------------------------------------------- | :------------------------------------------ | :---------------------------------------------- | :--------------------------------------------- |
+| **Purpose**          | Developer workstations & automated unit tests | Shared integration & feature branch preview | Production parity, rehearsal, full Playwright   | End-user live platform                         |
+| **Hosting**          | Docker Compose (Localhost)                    | Cloudflare Pages + ECS Dev Cluster          | Cloudflare Pages + ECS Staging Cluster          | Cloudflare Pages + AWS ECS Fargate Multi-AZ    |
+| **Database**         | Local PostgreSQL 16 container                 | AWS Aurora PostgreSQL Dev                   | AWS Aurora PostgreSQL Staging (Replica of Prod) | AWS Aurora PostgreSQL Multi-AZ Cluster         |
+| **Redis**            | Local Redis 7 container                       | AWS ElastiCache Dev                         | AWS ElastiCache Staging                         | AWS ElastiCache Cluster (Multi-AZ)             |
+| **Object Storage**   | MinIO / Local R2 dev bucket                   | Cloudflare R2 Dev Bucket                    | Cloudflare R2 Staging Bucket                    | Cloudflare R2 Production Bucket (CDN backed)   |
+| **Third-Party Mode** | Mock / Sandbox Mode                           | Test Mode (Test Keys)                       | Sandbox Mode (Razorpay Sandbox, Test FCM)       | Live Mode (Real funds, Real APNs/FCM)          |
+| **Data Policy**      | Synthetic factory fixtures                    | Synthetic anonymized data                   | Anonymized production-scale dataset             | Encrypted customer live data (Zero PII in dev) |
 
 > **Strict Isolation Rule**: No non-production environment may ever have network connectivity to, or credentials for, production databases, caches, or third-party live gateways.
 
@@ -58,6 +58,7 @@ CMD ["dist/main.js"]
 ```
 
 ### Docker Hardening Checklist:
+
 - **Zero Root Execution**: Container runs under unprivileged `nonroot` UID 65532.
 - **Pinned Base Images**: Base images pinned to specific LTS release tags; floating `:latest` tags are prohibited.
 - **Zero Secrets in Layers**: Build arguments and environment secrets are never baked into Docker images. Secret injection occurs exclusively at runtime via AWS Secrets Manager / ECS Task Definitions.
@@ -68,11 +69,13 @@ CMD ["dist/main.js"]
 ## 3. Environment Variable Taxonomy & Safe Configuration Template
 
 Configuration variables are segregated into three sensitivity tiers:
+
 1. **Public / Client (`NEXT_PUBLIC_*`)**: Safe for browser bundling (e.g., Supabase project URL, public CDN base domain).
 2. **Internal Application Config**: Operational toggles (e.g., `PORT`, `LOG_LEVEL`, `CORS_ORIGINS`).
 3. **Sensitive Infrastructure Secrets**: High-security keys (e.g., `DATABASE_URL`, `RAZORPAY_KEY_SECRET`, `R2_SECRET_ACCESS_KEY`).
 
 ### Safe `.env.example` (Reference Template — Zero Real Secrets)
+
 ```bash
 # ==============================================================================
 # CreatorConnect — Environment Configuration Template (.env.example)

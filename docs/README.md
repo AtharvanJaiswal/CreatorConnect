@@ -5,6 +5,7 @@ Welcome to the authoritative engineering and architectural documentation suite f
 ---
 
 ## Primary Integration Manuals
+
 - [**Root Repository Entry Point**](file:///f:/CreatorConnect/README.md)
 - [**BACKEND.MD (The Master Backend Integration Manual)**](file:///f:/CreatorConnect/BACKEND.md)
 - [**Mobile Integration Manual (Android & iOS)**](file:///f:/CreatorConnect/docs/api/mobile-integration.md)
@@ -15,6 +16,7 @@ Welcome to the authoritative engineering and architectural documentation suite f
 ## Documentation Index
 
 ### 1. Architecture & Domain Design
+
 - [Product Architecture](file:///f:/CreatorConnect/docs/architecture/product-architecture.md): Personas, user journeys, marketplace lifecycle, capabilities.
 - [System Architecture](file:///f:/CreatorConnect/docs/architecture/system-architecture.md): C4 context and container models, sync vs async communications.
 - [Microservices & Domain Boundary Analysis](file:///f:/CreatorConnect/docs/architecture/microservices.md): 26-domain Service Boundary Decision Matrix, physical extraction triggers.
@@ -26,19 +28,23 @@ Welcome to the authoritative engineering and architectural documentation suite f
 - [Architecture Risk Register](file:///f:/CreatorConnect/docs/architecture/risk-register.md): Quantified matrix of technical, financial, operational, and security risks.
 
 ### 2. Data & API Architecture
+
 - [Database Architecture Specification](file:///f:/CreatorConnect/docs/database/database-architecture.md): Conceptual ERD, 42 canonical entities, indexing, ledger, UUIDv7.
 - [API Architecture Specification](file:///f:/CreatorConnect/docs/api/api-architecture.md): OpenAPI 3.1, TypeBox, Fastify Swagger, Orval client generation, cursor pagination.
 - [Mobile Integration Manual](file:///f:/CreatorConnect/docs/api/mobile-integration.md): 20-point guide for native/RN Android & iOS developers.
 - [Web Frontend Integration Manual](file:///f:/CreatorConnect/docs/api/web-integration.md): Guide for typed TanStack Query microfrontend consumers.
 
 ### 3. Security Architecture
+
 - [Security Architecture & Threat Model](file:///f:/CreatorConnect/docs/security/security-architecture.md): STRIDE analysis, Supabase Auth decoupling, RBAC, presigned uploads, webhook security.
 
 ### 4. Quality Assurance & Testing
+
 - [Quality Engineering & Testing Strategy](file:///f:/CreatorConnect/docs/testing/testing-strategy.md): Testing pyramid, Vitest, Testcontainers, contract tests, k6 load testing.
 - [Playwright E2E Strategy](file:///f:/CreatorConnect/docs/testing/playwright-strategy.md): Specification and fixtures for the 21 critical customer journeys.
 
 ### 5. DevOps, Deployment & Operations
+
 - [CI/CD Pipeline Strategy](file:///f:/CreatorConnect/docs/deployment/cicd.md): Automated PR checks, staging rehearsal, blue/green production deployment, Trivy scans.
 - [Environment & Containerization Strategy](file:///f:/CreatorConnect/docs/deployment/environments.md): Local/Dev/Staging/Prod isolation, multi-stage Dockerfiles, safe `.env.example`.
 - [Disaster Recovery & Business Continuity](file:///f:/CreatorConnect/docs/deployment/disaster-recovery.md): RPO/RTO metrics, Aurora Multi-AZ failover, mandatory restore drills.
@@ -46,25 +52,27 @@ Welcome to the authoritative engineering and architectural documentation suite f
 - [Observability & Telemetry Specification](file:///f:/CreatorConnect/docs/operations/observability.md): Pino logging, Sentry error monitoring, OpenTelemetry metrics, alerting thresholds.
 
 ### 6. Engineering Roadmap & Phase README System
+
 - [Master 16-Phase Roadmap](file:///f:/CreatorConnect/docs/roadmap/phase-roadmap.md): Milestone objectives, dependencies, deliverables, and DoD for Phases 0 through 15.
-- [Phase 00 — Product & Architecture Lock](file:///f:/CreatorConnect/docs/roadmap/PHASE-00-README.md) *(READY FOR REVIEW)*
-- [Phase 01 — Monorepo & Dev Environment](file:///f:/CreatorConnect/docs/roadmap/PHASE-01-README.md) *(NOT STARTED)*
-- [Phase 02 — Design System & MFE Foundation](file:///f:/CreatorConnect/docs/roadmap/PHASE-02-README.md) *(NOT STARTED)*
-- [Phase 03 — Infrastructure & DevOps Foundation](file:///f:/CreatorConnect/docs/roadmap/PHASE-03-README.md) *(NOT STARTED)*
-- [Phase 04 — Identity, Auth & RBAC](file:///f:/CreatorConnect/docs/roadmap/PHASE-04-README.md) *(NOT STARTED)*
-- [Phase 05 — Profiles & Portfolio (R2 Uploads)](file:///f:/CreatorConnect/docs/roadmap/PHASE-05-README.md) *(NOT STARTED)*
-- [Phase 06 — Discovery, FTS & Matcher](file:///f:/CreatorConnect/docs/roadmap/PHASE-06-README.md) *(NOT STARTED)*
-- [Phase 07 — Campaigns & Applications](file:///f:/CreatorConnect/docs/roadmap/PHASE-07-README.md) *(NOT STARTED)*
-- [Phase 08 — Projects, Deliverables & Hiring](file:///f:/CreatorConnect/docs/roadmap/PHASE-08-README.md) *(NOT STARTED)*
-- [Phase 09 — Messaging (Socket.IO) & Community](file:///f:/CreatorConnect/docs/roadmap/PHASE-09-README.md) *(NOT STARTED)*
-- [Phase 10 — Notifications (FCM/Resend) & Worker](file:///f:/CreatorConnect/docs/roadmap/PHASE-10-README.md) *(NOT STARTED)*
-- [Phase 11 — Payments (Razorpay Escrow) & Ledger](file:///f:/CreatorConnect/docs/roadmap/PHASE-11-README.md) *(NOT STARTED)*
-- [Phase 12 — Reviews, Moderation & Admin](file:///f:/CreatorConnect/docs/roadmap/PHASE-12-README.md) *(NOT STARTED)*
-- [Phase 13 — Analytics, Performance (k6) & Security](file:///f:/CreatorConnect/docs/roadmap/PHASE-13-README.md) *(NOT STARTED)*
-- [Phase 14 — Full QA, Staging Rehearsal & Launch](file:///f:/CreatorConnect/docs/roadmap/PHASE-14-README.md) *(NOT STARTED)*
-- [Phase 15 — Scale & AI Semantic Matching](file:///f:/CreatorConnect/docs/roadmap/PHASE-15-README.md) *(NOT STARTED)*
+- [Phase 00 — Product & Architecture Lock](file:///f:/CreatorConnect/docs/roadmap/PHASE-00-README.md) _(READY FOR REVIEW)_
+- [Phase 01 — Monorepo & Dev Environment](file:///f:/CreatorConnect/docs/roadmap/PHASE-01-README.md) _(NOT STARTED)_
+- [Phase 02 — Design System & MFE Foundation](file:///f:/CreatorConnect/docs/roadmap/PHASE-02-README.md) _(NOT STARTED)_
+- [Phase 03 — Infrastructure & DevOps Foundation](file:///f:/CreatorConnect/docs/roadmap/PHASE-03-README.md) _(NOT STARTED)_
+- [Phase 04 — Identity, Auth & RBAC](file:///f:/CreatorConnect/docs/roadmap/PHASE-04-README.md) _(NOT STARTED)_
+- [Phase 05 — Profiles & Portfolio (R2 Uploads)](file:///f:/CreatorConnect/docs/roadmap/PHASE-05-README.md) _(NOT STARTED)_
+- [Phase 06 — Discovery, FTS & Matcher](file:///f:/CreatorConnect/docs/roadmap/PHASE-06-README.md) _(NOT STARTED)_
+- [Phase 07 — Campaigns & Applications](file:///f:/CreatorConnect/docs/roadmap/PHASE-07-README.md) _(NOT STARTED)_
+- [Phase 08 — Projects, Deliverables & Hiring](file:///f:/CreatorConnect/docs/roadmap/PHASE-08-README.md) _(NOT STARTED)_
+- [Phase 09 — Messaging (Socket.IO) & Community](file:///f:/CreatorConnect/docs/roadmap/PHASE-09-README.md) _(NOT STARTED)_
+- [Phase 10 — Notifications (FCM/Resend) & Worker](file:///f:/CreatorConnect/docs/roadmap/PHASE-10-README.md) _(NOT STARTED)_
+- [Phase 11 — Payments (Razorpay Escrow) & Ledger](file:///f:/CreatorConnect/docs/roadmap/PHASE-11-README.md) _(NOT STARTED)_
+- [Phase 12 — Reviews, Moderation & Admin](file:///f:/CreatorConnect/docs/roadmap/PHASE-12-README.md) _(NOT STARTED)_
+- [Phase 13 — Analytics, Performance (k6) & Security](file:///f:/CreatorConnect/docs/roadmap/PHASE-13-README.md) _(NOT STARTED)_
+- [Phase 14 — Full QA, Staging Rehearsal & Launch](file:///f:/CreatorConnect/docs/roadmap/PHASE-14-README.md) _(NOT STARTED)_
+- [Phase 15 — Scale & AI Semantic Matching](file:///f:/CreatorConnect/docs/roadmap/PHASE-15-README.md) _(NOT STARTED)_
 
 ### 7. Architecture Decision Records (ADRs)
+
 - [ADR-001: Modular Monolith Core with Physically Isolated Specialist Services](file:///f:/CreatorConnect/docs/adr/ADR-001-microservices-boundary.md)
 - [ADR-002: Multi-Zone Domain Microfrontends with Shared Monorepo Packages](file:///f:/CreatorConnect/docs/adr/ADR-002-microfrontend-shell-architecture.md)
 - [ADR-003: Adoption of Fastify as the Core HTTP Framework](file:///f:/CreatorConnect/docs/adr/ADR-003-fastify-backend-runtime.md)

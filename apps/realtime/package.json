@@ -1,0 +1,33 @@
+{
+  "name": "@creatorconnect/realtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CreatorConnect Realtime WebSocket Service (Socket.IO)",
+  "type": "module",
+  "main": "./dist/main.js",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run"
+  },
+  "dependencies": {
+    "@creatorconnect/utils": "workspace:*",
+    "@creatorconnect/validation": "workspace:*",
+    "@socket.io/redis-adapter": "^8.3.0",
+    "dotenv": "^16.4.5",
+    "fastify": "^4.28.1",
+    "ioredis": "^5.4.1",
+    "pino": "^9.4.0",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "@creatorconnect/config": "workspace:*",
+    "@types/node": "^20.14.12",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.1"
+  }
+}

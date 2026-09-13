@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: creatorconnect-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_local_password
+      POSTGRES_DB: creatorconnect_dev
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d creatorconnect_dev']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - creatorconnect-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: creatorconnect-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes', '--requirepass', 'redis_local_password']
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', 'redis_local_password', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - creatorconnect-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: creatorconnect-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio_local_user
+      MINIO_ROOT_PASSWORD: minio_local_password
+    ports:
+      - '9000:9000' # S3 API endpoint
+      - '9001:9001' # Web Console
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - creatorconnect-network
+
+networks:
+  creatorconnect-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:

@@ -41,11 +41,11 @@ flowchart LR
 To trace requests that initiate in a Web client, pass through Fastify REST endpoints, emit an Outbox database event, and execute asynchronously in a BullMQ worker:
 
 ```
-[Web Client] 
+[Web Client]
   │  x-request-id: req_01j7q9k2...
   │  x-correlation-id: cor_01j7q9k2...
   ▼
-[Fastify Core API] 
+[Fastify Core API]
   │  Logs with { reqId, correlationId, userId }
   │  Stores outbox row with { correlation_id }
   ▼
@@ -60,6 +60,7 @@ To trace requests that initiate in a Web client, pass through Fastify REST endpo
 ```
 
 ### Context Header Standards:
+
 - `x-request-id`: Unique identifier generated for the single HTTP hop.
 - `x-correlation-id`: Stable end-to-end identifier that persists across distributed background queues and microservices.
 
@@ -69,18 +70,18 @@ To trace requests that initiate in a Web client, pass through Fastify REST endpo
 
 The platform tracks the following system and business metrics:
 
-| Metric Name | Type | Target SLA / Threshold | Alerting Condition |
-| :--- | :--- | :--- | :--- |
-| `http_request_duration_seconds` | Histogram | p95 < 200ms; p99 < 500ms | p95 > 500ms for 3 consecutive minutes |
-| `http_requests_total{status=~"5.."}` | Counter | Error rate < 0.1% | 5xx error rate > 1.0% in 5-minute window |
-| `db_query_duration_seconds` | Histogram | p95 < 50ms | p95 > 150ms (Investigate missing DB index) |
-| `queue_job_waiting_count` | Gauge | Queue backlog < 500 jobs | Backlog > 2,000 jobs (Worker scaling required) |
-| `queue_job_failed_total` | Counter | Failure rate < 0.5% | > 10 failed jobs in 5 minutes (DLQ alert) |
-| `payment_success_rate` | Gauge | Success rate > 92% | Success rate < 85% in 15 minutes (Gateway issue) |
-| `websocket_active_connections` | Gauge | Monitored for capacity | Sudden drop of > 30% connections (Gateway restart) |
-| `websocket_message_latency_seconds` | Histogram | p95 < 80ms | p95 > 250ms (Redis backplane latency) |
-| `media_processing_duration_seconds` | Histogram | 95% videos transcoded < 60s | Processing time > 180s (Worker CPU throttled) |
-| `search_query_duration_seconds` | Histogram | p95 < 100ms | p95 > 250ms (GIN index rebuild / cache check) |
+| Metric Name                          | Type      | Target SLA / Threshold      | Alerting Condition                                 |
+| :----------------------------------- | :-------- | :-------------------------- | :------------------------------------------------- |
+| `http_request_duration_seconds`      | Histogram | p95 < 200ms; p99 < 500ms    | p95 > 500ms for 3 consecutive minutes              |
+| `http_requests_total{status=~"5.."}` | Counter   | Error rate < 0.1%           | 5xx error rate > 1.0% in 5-minute window           |
+| `db_query_duration_seconds`          | Histogram | p95 < 50ms                  | p95 > 150ms (Investigate missing DB index)         |
+| `queue_job_waiting_count`            | Gauge     | Queue backlog < 500 jobs    | Backlog > 2,000 jobs (Worker scaling required)     |
+| `queue_job_failed_total`             | Counter   | Failure rate < 0.5%         | > 10 failed jobs in 5 minutes (DLQ alert)          |
+| `payment_success_rate`               | Gauge     | Success rate > 92%          | Success rate < 85% in 15 minutes (Gateway issue)   |
+| `websocket_active_connections`       | Gauge     | Monitored for capacity      | Sudden drop of > 30% connections (Gateway restart) |
+| `websocket_message_latency_seconds`  | Histogram | p95 < 80ms                  | p95 > 250ms (Redis backplane latency)              |
+| `media_processing_duration_seconds`  | Histogram | 95% videos transcoded < 60s | Processing time > 180s (Worker CPU throttled)      |
+| `search_query_duration_seconds`      | Histogram | p95 < 100ms                 | p95 > 250ms (GIN index rebuild / cache check)      |
 
 ---
 

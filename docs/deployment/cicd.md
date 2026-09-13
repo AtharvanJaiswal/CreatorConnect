@@ -51,6 +51,7 @@ flowchart TD
 ## 2. Pipeline Stage Specifications
 
 ### 2.1 Pull Request Pipeline (Fast Feedback < 8 mins)
+
 - **Concurrency Control**: Cancel in-progress runs on new commits to the same branch.
 - **Security Scanners**:
   - **Gitleaks**: Blocks any commit containing API keys, private keys, or passwords.
@@ -59,11 +60,13 @@ flowchart TD
 - **Contract Integrity**: Compares PR OpenAPI output with `@creatorconnect/contracts`. Breaking changes require explicit major version bumping.
 
 ### 2.2 Staging Pipeline (Automated Continuous Delivery)
+
 - **Migration Rehearsal**: Applies Prisma migrations against a sanitized copy of staging DB. Validates that no tables are locked for > 2 seconds.
 - **Playwright Full Pass**: Executes the 21 critical customer journeys against the running staging web applications and backend API.
 - **k6 Performance Gate**: Tests search and booking endpoints to ensure p95 latency remains under 200ms.
 
 ### 2.3 Production Pipeline (Zero-Downtime Blue/Green)
+
 - **Approval Gate**: Requires sign-off from designated Tech Lead / DevOps Architect in GitHub Environments.
 - **Blue/Green Switch**: Deploys new containers alongside existing instances; routes 5% canary traffic for 2 minutes; monitors Sentry 5xx error rates and HTTP response latency.
 - **Automatic Rollback**: If error rate exceeds 0.5% or health checks fail, the load balancer automatically reverts 100% traffic to the Blue cluster and alerts on-call engineers.

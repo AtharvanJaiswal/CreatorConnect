@@ -10,6 +10,7 @@
 ## 1. The "Code Should Not Break" Philosophy
 
 CreatorConnect enforces strict change-impact discipline. Prior to modifying any existing production component, developers must execute an impact analysis across 8 dimensions:
+
 1. **Existing Behavior**: What exact invariants does the current code guarantee?
 2. **Dependent Services**: Does this change impact the Realtime Gateway or Background Workers?
 3. **API Contracts**: Does this modify or omit any existing response fields?
@@ -55,19 +56,20 @@ flowchart LR
 
 High-concurrency race conditions can corrupt escrow states, produce duplicate applications, or over-allocate campaign budgets. The system mitigates these at the database level:
 
-| Operation Surface | Potential Race Condition | Architectural Defense & Concurrency Control |
-| :--- | :--- | :--- |
-| **Escrow Funding** | Concurrent payment webhook deliveries attempt double crediting. | Unique constraint on `payment_events(event_id)` + atomic database transaction + double-entry ledger check. |
-| **Candidate Shortlisting**| Two brand managers shortlist the same applicant simultaneously. | Optimistic concurrency locking via an integer `version` field incremented on update (`WHERE id = ? AND version = ?`). |
-| **Milestone Approvals** | Client clicks approve repeatedly while network lags. | Database transaction asserting `milestone.status === 'SUBMITTED'` before transition; subsequent calls rejected as `409 Conflict`. |
-| **Proposal Submissions** | User double-clicks submit proposal button. | Unique composite constraint on `applications(campaign_id, user_id)` rejecting duplicates at the SQL level. |
-| **Campaign Budget Limits**| Multiple hires exceed `budget_max`. | Atomic `SELECT FOR UPDATE` on campaign row during hiring transaction before inserting project record. |
+| Operation Surface          | Potential Race Condition                                        | Architectural Defense & Concurrency Control                                                                                       |
+| :------------------------- | :-------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------- |
+| **Escrow Funding**         | Concurrent payment webhook deliveries attempt double crediting. | Unique constraint on `payment_events(event_id)` + atomic database transaction + double-entry ledger check.                        |
+| **Candidate Shortlisting** | Two brand managers shortlist the same applicant simultaneously. | Optimistic concurrency locking via an integer `version` field incremented on update (`WHERE id = ? AND version = ?`).             |
+| **Milestone Approvals**    | Client clicks approve repeatedly while network lags.            | Database transaction asserting `milestone.status === 'SUBMITTED'` before transition; subsequent calls rejected as `409 Conflict`. |
+| **Proposal Submissions**   | User double-clicks submit proposal button.                      | Unique composite constraint on `applications(campaign_id, user_id)` rejecting duplicates at the SQL level.                        |
+| **Campaign Budget Limits** | Multiple hires exceed `budget_max`.                             | Atomic `SELECT FOR UPDATE` on campaign row during hiring transaction before inserting project record.                             |
 
 ---
 
 ## 4. Failure Must Be Safe (Atomic Transactions & Outbox Pattern)
 
 When unexpected failures occur, the system **NEVER** leaves partial state:
+
 1. **ACID Transaction Boundaries**: Multi-table state mutations (e.g., approving a milestone, creating a ledger entry, and updating escrow status) execute inside a single `prisma.$transaction()` block. If any step fails, all mutations roll back completely.
 2. **Guaranteed Event Delivery (Transactional Outbox)**: Domain events are written to `outbox_events` in the **exact same database transaction** as the business data change. Dual-write inconsistencies (updating DB but failing to publish to Redis) are mathematically impossible.
 3. **Dead-Letter Queues (DLQ)**: BullMQ worker jobs that fail 5 retry attempts are routed to a persistent DLQ with automated PagerDuty notifications for developer intervention.
@@ -78,13 +80,13 @@ When unexpected failures occur, the system **NEVER** leaves partial state:
 
 External networks are inherently unreliable. CreatorConnect implements defensive resilience:
 
-| External Dependency | Potential Failure Mode | Defense & Fallback Behavior |
-| :--- | :--- | :--- |
-| **Supabase Auth** | JWKS endpoint unreachable or token issue. | Gateway caches public keys locally for 24h; active sessions continue validating with zero outbound network calls. |
-| **Razorpay API** | Order creation timeouts or 5xx errors. | Return clean RFC 7807 `PAYMENT_GATEWAY_UNAVAILABLE` error; client prompts retry without creating orphan orders. |
-| **Firebase FCM** | Push notification delivery timeouts. | Worker retries with exponential backoff and jitter; failing push alerts do not block milestone or project workflows. |
-| **Cloudflare R2** | Temporary upload failure. | Client directly retries upload using resumable multi-part upload or presigned URL retry. |
-| **Redis Cache Outage** | Cache node crash or failover. | Realtime Gateway buffers messages in memory; BullMQ re-establishes connection; API queries fall back directly to PostgreSQL. |
+| External Dependency    | Potential Failure Mode                    | Defense & Fallback Behavior                                                                                                  |
+| :--------------------- | :---------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| **Supabase Auth**      | JWKS endpoint unreachable or token issue. | Gateway caches public keys locally for 24h; active sessions continue validating with zero outbound network calls.            |
+| **Razorpay API**       | Order creation timeouts or 5xx errors.    | Return clean RFC 7807 `PAYMENT_GATEWAY_UNAVAILABLE` error; client prompts retry without creating orphan orders.              |
+| **Firebase FCM**       | Push notification delivery timeouts.      | Worker retries with exponential backoff and jitter; failing push alerts do not block milestone or project workflows.         |
+| **Cloudflare R2**      | Temporary upload failure.                 | Client directly retries upload using resumable multi-part upload or presigned URL retry.                                     |
+| **Redis Cache Outage** | Cache node crash or failover.             | Realtime Gateway buffers messages in memory; BullMQ re-establishes connection; API queries fall back directly to PostgreSQL. |
 
 ---
 
@@ -150,6 +152,7 @@ flowchart TD
 ## 9. Reliability Definition of Done (DoD)
 
 A feature is **REJECTED** and cannot merge if it fails any of the following reliability criteria:
+
 - [ ] Database mutations span multiple tables without an atomic `prisma.$transaction()` block.
 - [ ] State mutations lack idempotency key handling or duplicate submission safeguards.
 - [ ] Database schema changes drop or rename columns without adhering to the Expand-Migrate-Contract pattern.

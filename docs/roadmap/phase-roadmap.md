@@ -37,6 +37,7 @@ gantt
 ## 2. Detailed Phase Specifications
 
 ### Phase 0: Product + Architecture Lock (Current Phase)
+
 - **Objective**: Establish all system boundaries, API-first contracts, database architecture, testing strategy, risk register, and ADRs before writing any feature code.
 - **Dependencies**: None.
 - **Deliverables**: Comprehensive architecture docs in `docs/`, 20 ADRs, Risk Register, and Phase 0 Final Report.
@@ -45,6 +46,7 @@ gantt
 ---
 
 ### Phase 1: Development Environment + Monorepo Scaffolding
+
 - **Objective**: Initialize the pnpm / Turborepo workspace, root configurations, linting, formatting, and Docker Compose local stacks.
 - **Dependencies**: Phase 0.
 - **Deliverables**: Root `package.json`, `pnpm-workspace.yaml`, `turbo.json`, `docker-compose.yml` (Postgres, Redis, MinIO), shared TypeScript bases in `packages/config`.
@@ -53,6 +55,7 @@ gantt
 ---
 
 ### Phase 2: Design System + Microfrontend Foundation
+
 - **Objective**: Establish the unified UI component library, Tailwind tokens, and shell layouts across microfrontends.
 - **Dependencies**: Phase 1.
 - **Deliverables**: `packages/design-system`, `packages/ui` (Radix primitives, buttons, dialogs, form controls), Storybook setup with Chromatic visual regression.
@@ -61,6 +64,7 @@ gantt
 ---
 
 ### Phase 3: Infrastructure + DevOps Foundation
+
 - **Objective**: Provision baseline CI/CD pipelines, containerization scripts, and AWS/Cloudflare infrastructure as code.
 - **Dependencies**: Phase 2.
 - **Deliverables**: GitHub Actions workflows (`pr-validation.yml`, `staging-deploy.yml`), multi-stage Dockerfiles, Cloudflare DNS/R2 buckets.
@@ -69,6 +73,7 @@ gantt
 ---
 
 ### Phase 4: Identity + Authentication + Authorization
+
 - **Objective**: Implement Supabase Auth integration, session verification middleware, and backend RBAC guards.
 - **Dependencies**: Phase 3.
 - **Deliverables**: Supabase Auth client in `packages/auth`, Fastify auth plugin, RBAC route guards, `users`, `roles`, and `user_roles` database schema.
@@ -77,6 +82,7 @@ gantt
 ---
 
 ### Phase 5: Profiles + Portfolio
+
 - **Objective**: Build multi-persona profiles (Creator, Pro, Brand, Podcaster) and Cloudflare R2 direct media upload pipeline.
 - **Dependencies**: Phase 4.
 - **Deliverables**: Profile schemas, presigned R2 upload endpoints, Sharp/FFmpeg background thumbnail generator, portfolio showcase UI.
@@ -85,6 +91,7 @@ gantt
 ---
 
 ### Phase 6: Discovery + Search + Matching
+
 - **Objective**: Implement PostgreSQL full-text search (`tsvector`), trigram fuzzy search (`pg_trgm`), and explainable rule-based matching.
 - **Dependencies**: Phase 5.
 - **Deliverables**: Database FTS GIN indices, `/api/v1/search/creators` endpoints with cursor pagination, deterministic match score calculator.
@@ -93,6 +100,7 @@ gantt
 ---
 
 ### Phase 7: Assignments / Campaigns + Applications
+
 - **Objective**: Implement the campaign creation workflow for brands and proposal submission engine for talent.
 - **Dependencies**: Phase 6.
 - **Deliverables**: `campaigns`, `campaign_requirements`, and `applications` tables; brand brief builder; talent proposal submission form.
@@ -101,6 +109,7 @@ gantt
 ---
 
 ### Phase 8: Projects + Deliverables + Hiring
+
 - **Objective**: Build active engagement workspaces, milestone deliverables, revision requests, and sign-offs.
 - **Dependencies**: Phase 7.
 - **Deliverables**: `projects` and `project_deliverables` schemas; milestone submission UI; watermarked asset previews.
@@ -109,6 +118,7 @@ gantt
 ---
 
 ### Phase 9: Messaging + Community
+
 - **Objective**: Deploy the dedicated Realtime Gateway (Fastify + Socket.IO) and community discussion forums.
 - **Dependencies**: Phase 8.
 - **Deliverables**: Realtime Gateway container, Redis socket adapter, chat UI with typing indicators and unread badges, community threads.
@@ -117,6 +127,7 @@ gantt
 ---
 
 ### Phase 10: Notifications + Background Jobs
+
 - **Objective**: Deploy the BullMQ worker tier and multi-channel notification engine (FCM, Resend).
 - **Dependencies**: Phase 9.
 - **Deliverables**: Outbox publisher daemon, BullMQ worker consumers, user notification preference center, FCM web/mobile push integration.
@@ -125,6 +136,7 @@ gantt
 ---
 
 ### Phase 11: Payments + Subscriptions
+
 - **Objective**: Implement Razorpay escrow capture, webhook signature verification, double-entry ledger, and platform SaaS subscriptions.
 - **Dependencies**: Phase 10.
 - **Deliverables**: Razorpay provider adapter, `payment_orders`, `ledger_entries`, webhook signature validator, financial reconciliation script.
@@ -133,6 +145,7 @@ gantt
 ---
 
 ### Phase 12: Reviews + Referrals + Moderation + Admin
+
 - **Objective**: Implement double-blind review revelation, referral attribution, trust & safety reporting, and the operational Admin cockpit.
 - **Dependencies**: Phase 11.
 - **Deliverables**: Double-blind review scheduler, referral reward ledger credits, `app-admin` dashboard with dispute arbitration and audit logs.
@@ -141,6 +154,7 @@ gantt
 ---
 
 ### Phase 13: Analytics + Performance + Security Hardening
+
 - **Objective**: Platform-wide optimization, rate-limiting hardening, k6 stress testing, and third-party security audits.
 - **Dependencies**: Phase 12.
 - **Deliverables**: Redis rate limit tiers, database query optimization (zero N+1 queries), OWASP ZAP DAST scan remediation.
@@ -149,6 +163,7 @@ gantt
 ---
 
 ### Phase 14: Full QA + UAT + Production Launch
+
 - **Objective**: End-to-end regression validation, staging rehearsal, zero-downtime blue/green production deployment.
 - **Dependencies**: Phase 13.
 - **Deliverables**: Production multi-AZ cluster deployment, smoke tests pass, live DNS switch, Sentry alerting active.
@@ -157,6 +172,7 @@ gantt
 ---
 
 ### Phase 15: Scaling + AI Features (Post-Launch Evolution)
+
 - **Objective**: Introduce AI-assisted creator-brand matching (vector embeddings via pgvector), automated contract brief parsing, and dedicated search engine extraction if metrics warrant it.
 - **Dependencies**: Phase 14.
 - **Deliverables**: `pgvector` extension or OpenSearch integration; LLM-assisted proposal drafting.

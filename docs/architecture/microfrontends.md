@@ -5,6 +5,7 @@
 CreatorConnect adopts a **Vertical Domain Microfrontend Architecture** managed within a Turborepo/pnpm monorepo.
 
 Rather than running complex runtime Module Federation that introduces fragile browser-level dependency negotiations and version drift, CreatorConnect employs:
+
 1. **Next.js Multi-Zones / Domain Apps**: Each high-level persona workspace operates as an independently deployable Next.js application behind a Cloudflare Edge Router, sharing a strict set of compile-time shared libraries.
 2. **Shared Package Ecosystem**: Zero duplicate UI components, form validation schemas, or API clients across domains.
 
@@ -50,6 +51,7 @@ graph TD
 ```
 
 ### Domain Application Boundaries:
+
 - **`web-shell`**: Public discovery, landing pages, creator showcase directory, blog, terms, and authentication entry point (`/login`, `/register`).
 - **`app-creator`**: Focused workflow for content creators: incoming brand deals, post-production job briefs, crew hiring, milestone reviews.
 - **`app-pro`**: Tailored for freelancers/crew: application tracker, deliverable upload center, rate card manager, portfolio editor.
@@ -76,6 +78,7 @@ packages/
 ```
 
 ### Strict Architectural Rules for Packages:
+
 1. **No Circular Dependencies**: `ui` depends on `design-system`; `api-client` depends on `contracts`; `validation` depends on nothing.
 2. **Zero Direct Fetch Calls in Apps**: All data fetching must use `@creatorconnect/api-client`.
 3. **Zero Custom Color Hex Codes in Apps**: All UI styling must use semantic tokens from `@creatorconnect/design-system`.

@@ -3,6 +3,7 @@
 ## 1. Executive Summary & Vision
 
 **CreatorConnect** is an enterprise-grade, multi-sided creator economy platform engineered to orchestrate collaborations, assignments, hiring, deliverables, and financial settlements among five core ecosystem participants:
+
 1. **Creators / Influencers** (Content creators across YouTube, Instagram, TikTok, LinkedIn, podcasts, etc.)
 2. **Production Professionals** (Videographers, video editors, sound designers, scriptwriters, thumbnail artists, creative directors)
 3. **Brands / Companies** (Direct-to-consumer brands, B2B enterprises, agencies, marketing managers)
@@ -45,13 +46,13 @@ graph TD
 
 ### 2.1 Persona Definitions & Capabilities
 
-| Persona | Primary Needs & Motivations | Core Platform Capabilities | Key Metrics for Value |
-| :--- | :--- | :--- | :--- |
-| **Creator / Influencer** | Monetization, reliable production crew, authentic brand sponsorships, secure escrow. | Profile showcases, verified metrics, rate cards, job applications, hiring crew, deliverable approval. | Deals secured, earnings growth, turnaround time, crew satisfaction. |
-| **Production Professional** | Steady deal pipeline, transparent project scope, guaranteed payouts, reputation building. | Rich portfolio (video/audio/design), custom quotes, milestone submissions, direct client messaging. | Completed contracts, repeat hire rate, average contract value, client rating. |
-| **Brand / Company** | Verified creator ROI, compliance tracking, risk-free payments, unified campaign workflows. | Campaign posting, creator discovery & filtering, applicant shortlisting, contract escrow, deliverable review. | Campaign reach, milestone adherence, hiring velocity, dispute incidence. |
-| **Podcaster** | Guest booking, sponsorship monetization, professional sound engineering, audience growth. | Dual-sided profiles (show host & producer), guest sourcing, audio portfolio, sponsor pitches. | Sponsorship fill rate, production consistency, listener reach. |
-| **Platform Administrator** | Platform integrity, regulatory compliance, dispute resolution, financial reconciliation. | User verification approval, campaign/review moderation, dispute arbitration, ledger audit, fee management. | Resolution turnaround, fraud prevention rate, platform liquidity. |
+| Persona                     | Primary Needs & Motivations                                                                | Core Platform Capabilities                                                                                    | Key Metrics for Value                                                         |
+| :-------------------------- | :----------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------ | :---------------------------------------------------------------------------- |
+| **Creator / Influencer**    | Monetization, reliable production crew, authentic brand sponsorships, secure escrow.       | Profile showcases, verified metrics, rate cards, job applications, hiring crew, deliverable approval.         | Deals secured, earnings growth, turnaround time, crew satisfaction.           |
+| **Production Professional** | Steady deal pipeline, transparent project scope, guaranteed payouts, reputation building.  | Rich portfolio (video/audio/design), custom quotes, milestone submissions, direct client messaging.           | Completed contracts, repeat hire rate, average contract value, client rating. |
+| **Brand / Company**         | Verified creator ROI, compliance tracking, risk-free payments, unified campaign workflows. | Campaign posting, creator discovery & filtering, applicant shortlisting, contract escrow, deliverable review. | Campaign reach, milestone adherence, hiring velocity, dispute incidence.      |
+| **Podcaster**               | Guest booking, sponsorship monetization, professional sound engineering, audience growth.  | Dual-sided profiles (show host & producer), guest sourcing, audio portfolio, sponsor pitches.                 | Sponsorship fill rate, production consistency, listener reach.                |
+| **Platform Administrator**  | Platform integrity, regulatory compliance, dispute resolution, financial reconciliation.   | User verification approval, campaign/review moderation, dispute arbitration, ledger audit, fee management.    | Resolution turnaround, fraud prevention rate, platform liquidity.             |
 
 ---
 
@@ -66,7 +67,7 @@ stateDiagram-v2
     VERIFY --> BUILD_PROFILE : Role Customization & Rate Cards
     BUILD_PROFILE --> ADD_PORTFOLIO : Direct R2 Media Uploads
     ADD_PORTFOLIO --> DISCOVER : FTS Indexing & Availability Flags
-    
+
     state "Discovery & Matching" as DM {
         DISCOVER --> MATCH : Rule-based Matcher (Skills, Category, Budget)
         MATCH --> POST_ASSIGNMENT : Brand/Creator Posts Campaign
@@ -95,6 +96,7 @@ stateDiagram-v2
 ```
 
 ### Detailed Lifecycle Phases:
+
 1. **REGISTER**: Email/OAuth onboarding via Supabase Auth. Issue of global identity UUIDv7.
 2. **VERIFY**: Submission of official credentials, automated social media OAuth metrics check (YouTube API, Instagram Graph API) to prevent impersonation.
 3. **BUILD PROFILE**: Deep personalization: creator genre, production specialty, equipment list, languages, hourly/package rate cards.
@@ -117,6 +119,7 @@ stateDiagram-v2
 ## 4. Multi-Platform Architectural Requirements
 
 The platform capabilities are consumed across four primary client tiers:
+
 - **Web App**: Responsive, rich microfrontend experience (Next.js, Radix UI, TanStack Query).
 - **Mobile Apps (iOS & Android)**: React Native / Native client consumers consuming the exact same OpenAPI 3.1 REST contracts and WebSocket endpoints.
 - **Web Admin Portal**: Dedicated operational dashboard with elevated RBAC, audit trails, and financial reconciliation tooling.

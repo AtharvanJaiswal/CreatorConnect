@@ -5,6 +5,7 @@
 All code written across backend services, shared packages, and frontend applications must rigorously embody these foundational principles.
 
 ### 1.1 SOLID in TypeScript
+
 - **Single Responsibility Principle (SRP)**:
   - Modules, classes, and React components have one, and only one, reason to change.
   - Controllers only parse HTTP requests and delegate to Domain Services.
@@ -26,6 +27,7 @@ All code written across backend services, shared packages, and frontend applicat
 ---
 
 ### 1.2 DRY (Don't Repeat Yourself) & Code Reusability
+
 1. **Search Before Implementing**: Developers must search `packages/*` before creating any helper, validator, or component.
 2. **Rule of Three**: If identical logic is needed in 2 places, keep it clean and localized. If needed in 3 places, extract it immediately into a shared package (`@creatorconnect/utils`, `@creatorconnect/ui`, or `@creatorconnect/contracts`).
 3. **No Duplicated DTOs**: Never write custom TypeScript types for an API response if OpenAPI/TypeBox can generate it.
@@ -33,6 +35,7 @@ All code written across backend services, shared packages, and frontend applicat
 ---
 
 ### 1.3 KISS (Keep It Simple, Stupid)
+
 1. Avoid speculative abstractions. Do not build generic "plugin systems" or distributed meshes until a concrete requirement emerges.
 2. Favor simple, readable, explicit code over clever metaprogramming or deep inheritance hierarchies.
 
@@ -84,13 +87,17 @@ All HTTP error responses must adhere strictly to the **RFC 7807 Problem Details 
 ```
 
 ### Application Error Hierarchy:
+
 ```typescript
 export abstract class AppError extends Error {
   abstract readonly statusCode: number;
   abstract readonly code: string;
   abstract readonly type: string;
-  
-  constructor(message: string, public readonly details?: unknown) {
+
+  constructor(
+    message: string,
+    public readonly details?: unknown,
+  ) {
     super(message);
   }
 }
@@ -145,6 +152,7 @@ Every Pull Request must satisfy the **Definition of Done (DoD)** before merging 
 
 ```markdown
 ### Pull Request Checklist
+
 - [ ] **Architecture**: Conforms to domain boundaries; no cross-domain database queries.
 - [ ] **SOLID & DRY**: No duplicate helpers; interfaces used for external integrations.
 - [ ] **Library-First**: Uses approved libraries; no ad-hoc queue, date, or validation engines.

@@ -3,11 +3,13 @@
 ## 1. Core Mandate: Library-First Development
 
 CreatorConnect enforces a strict engineering principle:
+
 > **"USE A LIBRARY WHEN IT PROVIDES MEANINGFUL, TRUSTWORTHY, REUSABLE VALUE. DO NOT REINVENT ESTABLISHED ENGINEERING SOLUTIONS."**
 
 Engineers must not write custom implementations for problems that have been solved, hardened, and maintained by mature open-source libraries.
 
 ### Concrete Non-Negotiables:
+
 - **DO NOT** write custom queue/retry logic when **BullMQ** provides it.
 - **DO NOT** write custom validation engines when **TypeBox / Zod** provides it.
 - **DO NOT** build custom UI primitives (accordions, dialogs, dropdowns) when **Radix UI / shadcn/ui** provides accessible, keyboard-navigable primitives.
@@ -26,6 +28,7 @@ While library-first is mandatory, **"Use a library" does NOT mean "install an np
 If 10 lines of clean, native, zero-dependency TypeScript code can solve a trivial problem (e.g., `clsx` logic, simple string slugification) without security or cross-browser edge cases, avoid adding an unvetted 50-dependency tree.
 
 ### 7-Point Dependency Vetting Checklist
+
 Before adding any new dependency to `package.json`, the Technical Lead or PR reviewer must verify:
 
 ```mermaid
@@ -53,20 +56,20 @@ flowchart TD
 
 The project strictly prohibits running parallel or competing libraries for the same technical responsibility:
 
-| Domain Responsibility | Canonical Approved Technology | Prohibited Duplications | Rationale |
-| :--- | :--- | :--- | :--- |
-| **ORM / Data Access** | **Prisma** | Drizzle, TypeORM, MikroORM, raw pg queries | Unified migration engine, schema clarity, single query-logging middleware. |
-| **Backend Validation** | **TypeBox** (for Fastify routes) | Zod everywhere, Joi, Yup | TypeBox generates JSON Schema natively at near-instant compile speed for Fastify + OpenAPI 3.1. |
-| **Frontend Form Validation** | **Zod** (via `@hookform/resolvers`) | Yup, Joi, Superstruct | React Hook Form ecosystem standard; shared with `@creatorconnect/validation`. |
-| **HTTP Client** | **Standard `fetch` + Orval generated client** | Axios, Got, Superagent, request | Native Fetch API is built into Node 20+ and modern browsers. Zero bundle weight. |
-| **API Testing / Spec** | **OpenAPI 3.1 + Scalar + Bruno** | Postman collections, Insomnia, Swagger UI | Version-controlled, offline-first, Git-friendly `.bru` collections and interactive Scalar docs. |
-| **Server State** | **TanStack Query** | SWR, RTK Query | Standardized cache invalidation, SSR hydration, optimistic updates. |
-| **Client UI State** | **Zustand** (only where required) | Redux Toolkit, MobX, Recoil, Jotai | Tiny (<2KB), boilerplate-free, decoupled from React lifecycle. |
-| **CSS & Styling** | **Tailwind CSS + shadcn/ui** | Styled Components, Emotion, CSS Modules | Zero runtime CSS injection, deterministic utility tokens, design system consistency. |
-| **Icons** | **Lucide React** | FontAwesome, Material Icons, react-icons | Uniform 24x24 grid, tree-shakeable SVG strokes, accessible naming. |
-| **Date / Time** | **date-fns** | Moment.js, Day.js, Luxon | Modular, tree-shakeable, pure functional TypeScript functions, immutable. |
-| **Unit & Integration Test** | **Vitest** | Jest, Mocha, Chai | Native ESM, instant HMR, shared Vite configuration across monorepo. |
-| **Logging** | **Pino** | Winston, Bunyan, console.log | Fastest JSON logger in Node.js ecosystem, zero GC pressure, redaction support. |
+| Domain Responsibility        | Canonical Approved Technology                 | Prohibited Duplications                    | Rationale                                                                                       |
+| :--------------------------- | :-------------------------------------------- | :----------------------------------------- | :---------------------------------------------------------------------------------------------- |
+| **ORM / Data Access**        | **Prisma**                                    | Drizzle, TypeORM, MikroORM, raw pg queries | Unified migration engine, schema clarity, single query-logging middleware.                      |
+| **Backend Validation**       | **TypeBox** (for Fastify routes)              | Zod everywhere, Joi, Yup                   | TypeBox generates JSON Schema natively at near-instant compile speed for Fastify + OpenAPI 3.1. |
+| **Frontend Form Validation** | **Zod** (via `@hookform/resolvers`)           | Yup, Joi, Superstruct                      | React Hook Form ecosystem standard; shared with `@creatorconnect/validation`.                   |
+| **HTTP Client**              | **Standard `fetch` + Orval generated client** | Axios, Got, Superagent, request            | Native Fetch API is built into Node 20+ and modern browsers. Zero bundle weight.                |
+| **API Testing / Spec**       | **OpenAPI 3.1 + Scalar + Bruno**              | Postman collections, Insomnia, Swagger UI  | Version-controlled, offline-first, Git-friendly `.bru` collections and interactive Scalar docs. |
+| **Server State**             | **TanStack Query**                            | SWR, RTK Query                             | Standardized cache invalidation, SSR hydration, optimistic updates.                             |
+| **Client UI State**          | **Zustand** (only where required)             | Redux Toolkit, MobX, Recoil, Jotai         | Tiny (<2KB), boilerplate-free, decoupled from React lifecycle.                                  |
+| **CSS & Styling**            | **Tailwind CSS + shadcn/ui**                  | Styled Components, Emotion, CSS Modules    | Zero runtime CSS injection, deterministic utility tokens, design system consistency.            |
+| **Icons**                    | **Lucide React**                              | FontAwesome, Material Icons, react-icons   | Uniform 24x24 grid, tree-shakeable SVG strokes, accessible naming.                              |
+| **Date / Time**              | **date-fns**                                  | Moment.js, Day.js, Luxon                   | Modular, tree-shakeable, pure functional TypeScript functions, immutable.                       |
+| **Unit & Integration Test**  | **Vitest**                                    | Jest, Mocha, Chai                          | Native ESM, instant HMR, shared Vite configuration across monorepo.                             |
+| **Logging**                  | **Pino**                                      | Winston, Bunyan, console.log               | Fastest JSON logger in Node.js ecosystem, zero GC pressure, redaction support.                  |
 
 ---
 

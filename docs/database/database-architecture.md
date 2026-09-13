@@ -5,6 +5,7 @@
 The database architecture for CreatorConnect is built on PostgreSQL 16 using Prisma ORM, engineered for strict data integrity, zero loss in financial operations, high-performance search, and backward-compatible evolution.
 
 ### Core Non-Negotiables:
+
 1. **Primary Keys**: Use **UUIDv7** (time-ordered UUIDs) across all entities to ensure chronological indexing, eliminate B-tree index fragmentation, and allow safe client-side ID generation.
 2. **Timestamps**: All timestamps stored strictly in **UTC (`timestamptz`)**.
 3. **Monetary Values**: All currency stored as **integers in the lowest currency denomination** (e.g., cents or paise) paired with an ISO 4217 currency code (e.g., `amount: 150000`, `currency: 'INR'`). Floating-point money fields are strictly prohibited.
@@ -60,6 +61,7 @@ erDiagram
 ## 3. Comprehensive Entity Taxonomy (42 Canonical Entities)
 
 ### 3.1 Identity & User Profiles Domain
+
 - **`users`**: Root platform account. (`id: uuidv7`, `supabase_auth_id`, `email`, `phone`, `status: active|suspended|banned`, `created_at`, `updated_at`, `version`)
 - **`roles`**: System roles (`CREATOR`, `PROFESSIONAL`, `BRAND`, `PODCASTER`, `ADMIN`, `MODERATOR`, `AUDITOR`).
 - **`user_roles`**: Many-to-many role binding with activation state.
@@ -74,10 +76,12 @@ erDiagram
 - **`social_verifications`**: Snapshot of verified subscriber counts, view counts, and engagement rates verified via official APIs.
 
 ### 3.2 Portfolio & Showcase Domain
+
 - **`portfolio_items`**: Case studies and projects (`id`, `user_id`, `title`, `description`, `external_link`, `created_at`).
 - **`portfolio_media`**: Media assets hosted on Cloudflare R2 (`id`, `portfolio_item_id`, `storage_key`, `mime_type`, `width`, `height`, `duration_seconds`, `thumbnail_key`).
 
 ### 3.3 Campaigns & Applications Domain
+
 - **`campaigns`**: Brand briefs or job assignments (`id`, `brand_profile_id`, `title`, `description`, `budget_min`, `budget_max`, `currency`, `escrow_type`, `status: draft|open|in_progress|completed|cancelled`).
 - **`campaign_requirements`**: Structured rules (e.g., minimum follower count, geographic location, deliverable formats).
 - **`campaign_attachments`**: Reference briefs, brand guidelines, and mood boards stored in R2.
@@ -85,24 +89,29 @@ erDiagram
 - **`application_status_history`**: Audit trail of every application status change with timestamp and actor ID.
 
 ### 3.4 Projects & Deliverables Domain
+
 - **`projects`**: Active legal & escrow agreement between client and hired talent (`id`, `campaign_id`, `application_id`, `client_user_id`, `talent_user_id`, `total_amount`, `currency`, `status: funded|in_progress|submitted|revision_requested|approved|disputed|closed`).
 - **`project_deliverables`**: Milestones and assets submitted for review (`id`, `project_id`, `title`, `due_date`, `storage_key`, `version_number`, `status: pending|approved|rejected`, `feedback`).
 
 ### 3.5 Realtime Collaboration & Messaging Domain
+
 - **`conversations`**: Chat thread container (`id`, `project_id_nullable`, `type: direct|project|support`, `created_at`).
 - **`conversation_members`**: Membership link (`conversation_id`, `user_id`, `last_read_message_id`, `joined_at`).
 - **`messages`**: Individual messages (`id`, `conversation_id`, `sender_user_id`, `content`, `message_type: text|attachment|system`, `created_at`).
 - **`message_attachments`**: Secure file attachments sent inside conversations (`id`, `message_id`, `storage_key`, `mime_type`, `file_size`).
 
 ### 3.6 Communities & Social Engagement Domain
+
 - **`communities`**: Creator forums and topic circles.
 - **`community_posts`**: Discussion posts, questions, and showcases.
 - **`comments`**: Threaded replies to community posts.
 
 ### 3.7 Reviews & Reputation Domain
+
 - **`reviews`**: Double-blind feedback submissions (`id`, `project_id`, `reviewer_id`, `reviewee_id`, `rating: 1-5`, `feedback_text`, `is_revealed: boolean`, `created_at`).
 
 ### 3.8 Financial Ledger & Escrow Domain (Strictly Append-Only)
+
 - **`subscriptions`**: Active user SaaS subscription tier.
 - **`subscription_plans`**: Pricing tiers and platform feature limits.
 - **`payments`**: High-level payment records.
@@ -114,22 +123,26 @@ erDiagram
 - **`ledger_entries`**: Double-entry ledger (`id`, `transaction_ref`, `account_type: escrow|platform_fee|talent_payable`, `entry_type: debit|credit`, `amount`, `currency`, `created_at`).
 
 ### 3.9 Notifications & Device Domain
+
 - **`notifications`**: User notification inbox items.
 - **`notification_preferences`**: User opt-in/opt-out toggles per channel (Push, Email, SMS).
 - **`device_tokens`**: FCM registration tokens for mobile and web push with invalidation tracking.
 - **`notification_deliveries`**: Log of external delivery status from FCM/Resend.
 
 ### 3.10 Referrals & Growth Domain
+
 - **`referrals`**: Attribution mapping of who invited whom (`referrer_id`, `referee_id`, `code`, `status`).
 - **`referral_rewards`**: Credits and discount vouchers awarded upon qualifying milestone.
 
 ### 3.11 Trust, Safety & Governance Domain
+
 - **`reports`**: User-submitted flags on spam, harassment, or contract fraud.
 - **`disputes`**: Formal arbitration cases opened on escrowed projects.
 - **`audit_logs`**: Tamper-proof append-only ledger of sensitive user actions and authentication events.
 - **`admin_actions`**: Administrative overrides (e.g., account bans, manual escrow unlocks, dispute resolutions) with required justification notes.
 
 ### 3.12 Asynchronous Event Relay Domain
+
 - **`outbox_events`**: Transactional outbox table (`id: uuidv7`, `aggregate_type`, `aggregate_id`, `event_type`, `payload: jsonb`, `status: pending|processing|published|failed`, `retry_count`, `created_at`, `published_at`).
 
 ---

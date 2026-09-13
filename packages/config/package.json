@@ -1,0 +1,17 @@
+{
+  "name": "@creatorconnect/config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared TypeScript and Tooling Configurations for CreatorConnect",
+  "main": "index.js",
+  "files": [
+    "tsconfig.base.json",
+    "tsconfig.node.json",
+    "tsconfig.react.json",
+    "eslint-preset.js"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.14.12",
+    "typescript": "^5.5.4"
+  }
+}

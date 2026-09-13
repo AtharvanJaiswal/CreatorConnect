@@ -183,7 +183,7 @@ flowchart LR
     ROUTE_DEF["Fastify Route + TypeBox Schemas<br/>(Query, Params, Body, Response)"]
     SPEC_GEN["@fastify/swagger<br/>(Emits openapi.json)"]
     ORVAL_GEN["Orval Code Generator"]
-    
+
     subgraph Clients ["Generated Client Artifacts"]
         WEB_HOOKS["@creatorconnect/api-client<br/>(TanStack Query Hooks for Web)"]
         MOBILE_API["@creatorconnect/mobile-api<br/>(Typed Fetch SDK for Mobile)"]
@@ -345,7 +345,7 @@ sequenceDiagram
     GW1->>GW1: Verify UserA is member of conversationId
     GW1->>DB: INSERT INTO messages (id, conversation_id, sender_id, content)
     GW1->>Redis: PUBLISH room:conversation_123 { messagePayload }
-    
+
     GW1-->>UserA: Emit 'message_sent_ack' { messageId, status: 'delivered' }
     Redis-->>GW2: Message received on subscription
     GW2-->>UserB: WebSocket Emit: 'new_message' { messagePayload }
@@ -404,7 +404,7 @@ flowchart TD
 ```mermaid
 graph TB
     Internet([Internet Users & Mobile Clients])
-    
+
     subgraph CloudflareEdge ["Cloudflare Global Network"]
         WAF["Cloudflare WAF / DDoS Shield"]
         EdgeDNS["DNS & Geo-Routing"]
@@ -413,7 +413,7 @@ graph TB
 
     subgraph AWS_Cloud ["AWS Production VPC (Multi-AZ)"]
         ALB["Application Load Balancer (HTTPS / SSL Termination)"]
-        
+
         subgraph FargateECS ["ECS Fargate Cluster"]
             API_AZ1["Fastify Core API (AZ-1)"]
             API_AZ2["Fastify Core API (AZ-2)"]

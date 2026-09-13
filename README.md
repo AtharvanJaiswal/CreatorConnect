@@ -14,9 +14,11 @@ Welcome to the official repository for **CreatorConnect**, an enterprise-grade m
 ## 1. Project Overview & Architecture Direction
 
 CreatorConnect operates under the architectural principle of:
+
 > **"Enterprise architecture without unnecessary enterprise overengineering."**
 
 The platform is designed around an **API-First, Event-Driven, Multi-Zone Microfrontend architecture** built on a **Modular Monolithic Core** with **physically isolated specialist services**:
+
 - **Core Modular API (`Fastify REST`)**: Stateless business API managing 22 logical domains with ACID transactions in PostgreSQL 16.
 - **Realtime Gateway (`Fastify + Socket.IO`)**: Physically isolated service managing 10,000+ persistent WebSocket connections, presence, and chat via Redis Pub/Sub.
 - **Background Worker Tier (`BullMQ Worker`)**: Physically isolated worker tier running compute-heavy video/image transcoding (Sharp/FFmpeg), FCM push alerts, Resend emails, and transactional outbox relays.
@@ -27,31 +29,31 @@ The platform is designed around an **API-First, Event-Driven, Multi-Zone Microfr
 ## 2. Master Integration Manuals
 
 - [**BACKEND.MD (The Definitive Backend Integration Manual)**](file:///f:/CreatorConnect/BACKEND.md)  
-  *Mandatory reading for all Web, Mobile (Android/iOS), and Admin engineers. Covers authentication, 42 canonical entities, the API endpoint catalog, RFC 7807 error envelopes, cursor pagination, R2 uploads, WebSockets, and Razorpay escrow.*
+  _Mandatory reading for all Web, Mobile (Android/iOS), and Admin engineers. Covers authentication, 42 canonical entities, the API endpoint catalog, RFC 7807 error envelopes, cursor pagination, R2 uploads, WebSockets, and Razorpay escrow._
 - [**Mobile Client Integration Manual (Android & iOS)**](file:///f:/CreatorConnect/docs/api/mobile-integration.md)  
-  *20-point engineering manual covering offline handling, background WebSockets, mobile retry backoff, and FCM tokens.*
+  _20-point engineering manual covering offline handling, background WebSockets, mobile retry backoff, and FCM tokens._
 - [**Web Frontend Integration Manual**](file:///f:/CreatorConnect/docs/api/web-integration.md)  
-  *Covers typed TanStack Query client generation, Radix UI primitives, React Hook Form, and UX smoothness states.*
+  _Covers typed TanStack Query client generation, Radix UI primitives, React Hook Form, and UX smoothness states._
 
 ---
 
 ## 3. Technology Stack
 
-| Layer | Canonical Approved Technology |
-| :--- | :--- |
-| **Language & Runtime** | Node.js (v20 LTS) + TypeScript (v5.5+) |
-| **HTTP Framework** | Fastify v4.x (High throughput, native schema compilation) |
-| **Relational Database** | PostgreSQL 16 managed via Prisma ORM |
-| **Cache & Task Broker** | Redis 7 + BullMQ v5.x |
-| **Realtime Gateway** | Socket.IO v4.x with `@socket.io/redis-adapter` |
-| **Identity Provider** | Supabase Auth (OAuth, OTP, RS256 JWTs via JWKS) |
-| **Object Storage** | Cloudflare R2 (S3-compatible SDK, $0 egress fees) |
-| **Payment Gateway** | Razorpay (Provider abstraction port, double-entry ledger) |
-| **Push & Email** | Firebase Cloud Messaging (FCM) + Resend (React Email) |
-| **Testing Suite** | Vitest + Testcontainers (Postgres/Redis) + Playwright |
-| **API Contract & Tooling**| OpenAPI 3.1 + TypeBox + Scalar + Bruno + Orval |
-| **DevOps & Containers** | Multi-stage Distroless Docker + GitHub Actions + AWS ECS Multi-AZ |
-| **Observability** | Pino JSON Logger + Sentry APM + OpenTelemetry |
+| Layer                      | Canonical Approved Technology                                     |
+| :------------------------- | :---------------------------------------------------------------- |
+| **Language & Runtime**     | Node.js (v20 LTS) + TypeScript (v5.5+)                            |
+| **HTTP Framework**         | Fastify v4.x (High throughput, native schema compilation)         |
+| **Relational Database**    | PostgreSQL 16 managed via Prisma ORM                              |
+| **Cache & Task Broker**    | Redis 7 + BullMQ v5.x                                             |
+| **Realtime Gateway**       | Socket.IO v4.x with `@socket.io/redis-adapter`                    |
+| **Identity Provider**      | Supabase Auth (OAuth, OTP, RS256 JWTs via JWKS)                   |
+| **Object Storage**         | Cloudflare R2 (S3-compatible SDK, $0 egress fees)                 |
+| **Payment Gateway**        | Razorpay (Provider abstraction port, double-entry ledger)         |
+| **Push & Email**           | Firebase Cloud Messaging (FCM) + Resend (React Email)             |
+| **Testing Suite**          | Vitest + Testcontainers (Postgres/Redis) + Playwright             |
+| **API Contract & Tooling** | OpenAPI 3.1 + TypeBox + Scalar + Bruno + Orval                    |
+| **DevOps & Containers**    | Multi-stage Distroless Docker + GitHub Actions + AWS ECS Multi-AZ |
+| **Observability**          | Pino JSON Logger + Sentry APM + OpenTelemetry                     |
 
 ---
 
@@ -98,24 +100,24 @@ f:\CreatorConnect/
 
 Execution progresses sequentially across 16 formal phases:
 
-| Phase | Description | Status |
-| :--- | :--- | :--- |
-| [**Phase 0**](file:///f:/CreatorConnect/docs/roadmap/PHASE-00-README.md) | **Product + Architecture Lock** | **READY FOR REVIEW** |
-| [**Phase 1**](file:///f:/CreatorConnect/docs/roadmap/PHASE-01-README.md) | Development Environment + Monorepo Scaffolding | NOT STARTED |
-| [**Phase 2**](file:///f:/CreatorConnect/docs/roadmap/PHASE-02-README.md) | Design System + Microfrontend Foundation | NOT STARTED |
-| [**Phase 3**](file:///f:/CreatorConnect/docs/roadmap/PHASE-03-README.md) | Infrastructure + DevOps Foundation | NOT STARTED |
-| [**Phase 4**](file:///f:/CreatorConnect/docs/roadmap/PHASE-04-README.md) | Identity + Authentication + Authorization | NOT STARTED |
-| [**Phase 5**](file:///f:/CreatorConnect/docs/roadmap/PHASE-05-README.md) | Profiles + Portfolio (Cloudflare R2 Direct Upload) | NOT STARTED |
-| [**Phase 6**](file:///f:/CreatorConnect/docs/roadmap/PHASE-06-README.md) | Discovery + Search (PostgreSQL FTS) + Matching | NOT STARTED |
-| [**Phase 7**](file:///f:/CreatorConnect/docs/roadmap/PHASE-07-README.md) | Assignments / Campaigns + Applications | NOT STARTED |
-| [**Phase 8**](file:///f:/CreatorConnect/docs/roadmap/PHASE-08-README.md) | Projects + Deliverables + Hiring | NOT STARTED |
-| [**Phase 9**](file:///f:/CreatorConnect/docs/roadmap/PHASE-09-README.md) | Messaging (Socket.IO Gateway) + Community | NOT STARTED |
-| [**Phase 10**](file:///f:/CreatorConnect/docs/roadmap/PHASE-10-README.md) | Notifications (FCM + Resend) + Background Jobs | NOT STARTED |
-| [**Phase 11**](file:///f:/CreatorConnect/docs/roadmap/PHASE-11-README.md) | Payments (Razorpay Escrow) + Ledger + Subscriptions | NOT STARTED |
-| [**Phase 12**](file:///f:/CreatorConnect/docs/roadmap/PHASE-12-README.md) | Reviews (Double-Blind) + Referrals + Moderation + Admin | NOT STARTED |
-| [**Phase 13**](file:///f:/CreatorConnect/docs/roadmap/PHASE-13-README.md) | Analytics + Performance Hardening (k6) + Security | NOT STARTED |
-| [**Phase 14**](file:///f:/CreatorConnect/docs/roadmap/PHASE-14-README.md) | Full QA + Staging Rehearsal + Production Launch | NOT STARTED |
-| [**Phase 15**](file:///f:/CreatorConnect/docs/roadmap/PHASE-15-README.md) | Evolutionary Scale + AI Semantic Matching (`pgvector`) | NOT STARTED |
+| Phase                                                                     | Description                                             | Status               |
+| :------------------------------------------------------------------------ | :------------------------------------------------------ | :------------------- |
+| [**Phase 0**](file:///f:/CreatorConnect/docs/roadmap/PHASE-00-README.md)  | **Product + Architecture Lock**                         | **COMPLETED**        |
+| [**Phase 1**](file:///f:/CreatorConnect/docs/roadmap/PHASE-01-README.md)  | Development Environment + Monorepo Scaffolding          | **READY FOR REVIEW** |
+| [**Phase 2**](file:///f:/CreatorConnect/docs/roadmap/PHASE-02-README.md)  | Design System + Microfrontend Foundation                | NOT STARTED          |
+| [**Phase 3**](file:///f:/CreatorConnect/docs/roadmap/PHASE-03-README.md)  | Infrastructure + DevOps Foundation                      | NOT STARTED          |
+| [**Phase 4**](file:///f:/CreatorConnect/docs/roadmap/PHASE-04-README.md)  | Identity + Authentication + Authorization               | NOT STARTED          |
+| [**Phase 5**](file:///f:/CreatorConnect/docs/roadmap/PHASE-05-README.md)  | Profiles + Portfolio (Cloudflare R2 Direct Upload)      | NOT STARTED          |
+| [**Phase 6**](file:///f:/CreatorConnect/docs/roadmap/PHASE-06-README.md)  | Discovery + Search (PostgreSQL FTS) + Matching          | NOT STARTED          |
+| [**Phase 7**](file:///f:/CreatorConnect/docs/roadmap/PHASE-07-README.md)  | Assignments / Campaigns + Applications                  | NOT STARTED          |
+| [**Phase 8**](file:///f:/CreatorConnect/docs/roadmap/PHASE-08-README.md)  | Projects + Deliverables + Hiring                        | NOT STARTED          |
+| [**Phase 9**](file:///f:/CreatorConnect/docs/roadmap/PHASE-09-README.md)  | Messaging (Socket.IO Gateway) + Community               | NOT STARTED          |
+| [**Phase 10**](file:///f:/CreatorConnect/docs/roadmap/PHASE-10-README.md) | Notifications (FCM + Resend) + Background Jobs          | NOT STARTED          |
+| [**Phase 11**](file:///f:/CreatorConnect/docs/roadmap/PHASE-11-README.md) | Payments (Razorpay Escrow) + Ledger + Subscriptions     | NOT STARTED          |
+| [**Phase 12**](file:///f:/CreatorConnect/docs/roadmap/PHASE-12-README.md) | Reviews (Double-Blind) + Referrals + Moderation + Admin | NOT STARTED          |
+| [**Phase 13**](file:///f:/CreatorConnect/docs/roadmap/PHASE-13-README.md) | Analytics + Performance Hardening (k6) + Security       | NOT STARTED          |
+| [**Phase 14**](file:///f:/CreatorConnect/docs/roadmap/PHASE-14-README.md) | Full QA + Staging Rehearsal + Production Launch         | NOT STARTED          |
+| [**Phase 15**](file:///f:/CreatorConnect/docs/roadmap/PHASE-15-README.md) | Evolutionary Scale + AI Semantic Matching (`pgvector`)  | NOT STARTED          |
 
 ---
 
@@ -160,6 +162,7 @@ pnpm test:e2e
 ---
 
 ## 8. Non-Negotiable Contribution Rules
+
 1. **SOLID Principles**: No god classes, god services, or god components. Business rules belong in domain services, not HTTP route handlers or React components.
 2. **Library-First Mandate**: Before implementing functionality manually, evaluate mature open-source libraries (BullMQ, TypeBox, Radix, Sharp, FFmpeg, date-fns).
 3. **No Duplicate Libraries**: Never install parallel libraries for the same job (no Axios alongside Fetch; no Drizzle alongside Prisma).
