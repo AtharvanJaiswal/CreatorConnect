@@ -1,8 +1,16 @@
+import pino from 'pino';
 import type { UpdateProfileRequest, UserResponse } from '@creatorconnect/contracts';
 import { UserStatus } from '@creatorconnect/database';
 import { IUserRepository, userRepository } from '../../repositories/user.repository.js';
 import { redisCache, RedisCacheService } from '../../services/redis-cache.js';
 import { IdentityNotSyncedError } from '../../errors/app-error.js';
+import { loggerConfig } from '../../plugins/logger.js';
+
+/**
+ * Module-level structured logger for UsersService.
+ * Reuses the application-wide Pino configuration (redaction rules, log level).
+ */
+const logger = pino(loggerConfig);
 
 export class UsersService {
   private userRepo: IUserRepository;
@@ -80,9 +88,16 @@ export class UsersService {
     // Immediate post-commit Redis invalidation
     const evicted = await this.cache.invalidateUser(targetUserId, updated.supabaseAuthId);
     if (!evicted) {
-      // Invalidation failure is recorded in metrics and local tombstones
-      console.warn(
-        `[CACHE_INVALIDATION_FAILED] Eviction failed for user ${targetUserId}. DB remains authoritative.`,
+      // Invalidation failure is recorded in metrics and local tombstones.
+      // PostgreSQL remains the sole authorization authority — stale Redis state cannot grant access.
+      logger.warn(
+        {
+          event: 'CACHE_INVALIDATION_FAILED',
+          metric: 'auth_cache_invalidation_failure_total',
+          userId: targetUserId,
+          note: 'Redis eviction failed post status-mutation. DB remains authoritative.',
+        },
+        'Cache invalidation failure: PostgreSQL remains authoritative for account status.',
       );
     }
 

@@ -106,4 +106,73 @@ describe('JwtVerifier', () => {
       /Token header is not valid base64url JSON/,
     );
   });
+
+  // ---------------------------------------------------------------------------
+  // Fix M1 regression tests — issuer validation is mandatory and fail-closed
+  // ---------------------------------------------------------------------------
+
+  it('rejects tokens with a wrong issuer (issuer mismatch)', async () => {
+    // Token claims a different issuer than the one trusted by the verifier.
+    const token = await createTestJwt({
+      sub: 'wrong_iss_user',
+      iss: 'https://attacker.evil.com/auth/v1',
+    });
+
+    await expect(verifier.verifyToken(token)).rejects.toThrow(/Token verification failed/);
+  });
+
+  it('fails closed when issuer is explicitly empty (treats as absent — no tokens accepted)', async () => {
+    // An empty string issuer is normalized to undefined, triggering fail-closed behavior.
+    const keySet = await createTestKeySet();
+    const unconfiguredVerifier = new JwtVerifier({
+      localKeySet: keySet,
+      issuer: '', // empty → normalized to undefined → fail closed
+      audience: 'authenticated',
+    });
+
+    const token = await createTestJwt({ sub: 'any_sub', email: 'any@test.com' });
+
+    await expect(unconfiguredVerifier.verifyToken(token)).rejects.toThrow(
+      /JWT issuer is not configured/,
+    );
+  });
+
+  it('fails closed when issuer is only whitespace (treated as absent)', async () => {
+    const keySet = await createTestKeySet();
+    const whitespaceIssuerVerifier = new JwtVerifier({
+      localKeySet: keySet,
+      issuer: '   ', // whitespace only → normalized to undefined → fail closed
+      audience: 'authenticated',
+    });
+
+    const token = await createTestJwt({ sub: 'any_sub', email: 'any@test.com' });
+
+    await expect(whitespaceIssuerVerifier.verifyToken(token)).rejects.toThrow(
+      /JWT issuer is not configured/,
+    );
+  });
+
+  it('no client-controlled value can become the trusted issuer (issuer fixed at construction time)', async () => {
+    // The trusted issuer is always read from server config (options/env), never from the token.
+    // When issuer is explicitly set to empty string in options, the env var fallback is bypassed
+    // (simulating a deployment where SUPABASE_JWT_ISSUER was not set).
+    // The verifier must reject even a token with a "plausible" iss claim.
+    const keySet = await createTestKeySet();
+    const noIssuerVerifier = new JwtVerifier({
+      localKeySet: keySet,
+      issuer: '', // explicitly empty → env var NOT used → normalizes to undefined → fail closed
+      audience: 'authenticated',
+    });
+
+    const token = await createTestJwt({
+      sub: 'attacker_sub',
+      iss: 'https://localhost.supabase.co/auth/v1', // correct-looking issuer in token claim
+    });
+
+    // Must be rejected — verifier has no trusted issuer configured regardless
+    // of what the token's iss claim contains.
+    await expect(noIssuerVerifier.verifyToken(token)).rejects.toThrow(
+      /JWT issuer is not configured/,
+    );
+  });
 });

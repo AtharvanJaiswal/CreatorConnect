@@ -19,7 +19,15 @@ export class JwtVerifier implements IAuthenticationProvider {
   private clockTolerance: number;
 
   constructor(options: JwtVerifierOptions = {}) {
-    this.issuer = options.issuer || process.env.SUPABASE_JWT_ISSUER || undefined;
+    // Determine raw issuer:
+    // - If options.issuer was explicitly provided (even as empty string), use it.
+    // - Only fall back to SUPABASE_JWT_ISSUER env var if issuer was NOT provided in options at all.
+    // This ensures `new JwtVerifier({ issuer: '' })` is treated as "unconfigured" and fails
+    // closed, rather than accidentally inheriting the env var's issuer value.
+    const rawIssuer = 'issuer' in options ? options.issuer : process.env.SUPABASE_JWT_ISSUER;
+    // Normalize empty/whitespace to undefined so the fail-closed guard fires.
+    this.issuer = rawIssuer && rawIssuer.trim() ? rawIssuer.trim() : undefined;
+
     this.audience = options.audience || 'authenticated';
     this.clockTolerance = options.clockTolerance ?? 60;
 
@@ -48,10 +56,22 @@ export class JwtVerifier implements IAuthenticationProvider {
 
   /**
    * Cryptographically verifies an incoming JWT token against trusted JWKS keys.
+   *
+   * SECURITY: Issuer validation is MANDATORY. If SUPABASE_JWT_ISSUER is not
+   * configured, verification FAILS CLOSED — no token is accepted. This prevents
+   * accepting tokens from arbitrary issuers due to misconfiguration.
    */
   public async verifyToken(token: string): Promise<AuthTokenPayload> {
     if (!token || typeof token !== 'string') {
       throw new AuthInvalidTokenError('Authentication token missing or malformed.');
+    }
+
+    // FAIL CLOSED: issuer must always be configured. A missing issuer is a
+    // configuration error — do NOT skip validation and accept all issuers.
+    if (!this.issuer) {
+      throw new AuthInvalidTokenError(
+        'JWT issuer is not configured. Token verification is disabled until issuer is provided.',
+      );
     }
 
     // Inspect header without verification to validate algorithms and kid presence
@@ -79,11 +99,9 @@ export class JwtVerifier implements IAuthenticationProvider {
         algorithms: ALLOWED_ALGORITHMS,
         audience: this.audience,
         clockTolerance: this.clockTolerance,
+        // Issuer is always set — the fail-closed guard above ensures this.issuer is truthy.
+        issuer: this.issuer,
       };
-
-      if (this.issuer) {
-        verifyOptions.issuer = this.issuer;
-      }
 
       const { payload } = await jose.jwtVerify(token, this.getKeySet, verifyOptions);
 

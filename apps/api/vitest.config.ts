@@ -6,6 +6,14 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.spec.ts'],
     fileParallelism: false,
+    // Run all test files in a single Node.js fork to guarantee serial file execution and
+    // shared PostgreSQL/Redis state isolation in both standalone and vitest workspace mode.
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
     env: {
       DATABASE_URL:
         process.env.DATABASE_URL ||

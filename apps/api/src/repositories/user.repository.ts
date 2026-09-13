@@ -268,6 +268,13 @@ export class PrismaUserRepository implements IUserRepository {
         }
       }
 
+      // Capture the previous status BEFORE mutation for forensically correct audit trail.
+      const currentRecord = await tx.user.findUniqueOrThrow({
+        where: { id: targetUserId },
+        select: { status: true },
+      });
+      const previousStatus = currentRecord.status;
+
       // Update target user status
       const updated = await tx.user.update({
         where: { id: targetUserId },
@@ -279,7 +286,7 @@ export class PrismaUserRepository implements IUserRepository {
         },
       });
 
-      // Create Audit Log
+      // Create Audit Log with accurate before/after state
       await tx.auditLog.create({
         data: {
           id: generateUuidV7(),
@@ -290,7 +297,7 @@ export class PrismaUserRepository implements IUserRepository {
           ipAddress: ipAddress ?? null,
           userAgent: userAgent ?? null,
           metadata: {
-            previousStatus: updated.status,
+            previousStatus,
             newStatus,
             targetUserId,
           },

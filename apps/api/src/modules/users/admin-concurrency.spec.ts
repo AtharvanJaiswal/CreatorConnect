@@ -23,30 +23,27 @@ describe('Concurrency-Safe Last Active Admin Invariant', () => {
   });
 
   it('prohibits concurrent admin deactivations from eliminating the last active admin', async () => {
-    // 1. Suspend any existing active admins from previous tests to ensure isolation
     const adminRole = await prisma.role.findUniqueOrThrow({ where: { name: RoleType.ADMIN } });
+
+    // 1. Suspend ALL active admins from previous test runs.
+    //    With singleFork: true in vitest.config.ts, spec files run serially in one process,
+    //    so this updateMany cannot race against admins from other concurrently-running specs.
     await prisma.user.updateMany({
       where: {
         status: UserStatus.ACTIVE,
-        userRoles: {
-          some: {
-            roleId: adminRole.id,
-          },
-        },
+        userRoles: { some: { role: { name: RoleType.ADMIN } } },
       },
-      data: {
-        status: UserStatus.SUSPENDED,
-      },
+      data: { status: UserStatus.SUSPENDED },
     });
 
-    // 2. Provision exactly TWO active administrators
+    // 2. Provision exactly TWO active administrators for this test.
     const adminAId = generateUuidV7();
-    const adminASub = `sub_admin_a_${Date.now()}`;
-    const adminAEmail = `admin_a_${Date.now()}@test.com`;
+    const adminASub = `sub_admin_a_concurrency_${Date.now()}`;
+    const adminAEmail = `admin_a_concurrency_${Date.now()}@test.com`;
 
     const adminBId = generateUuidV7();
-    const adminBSub = `sub_admin_b_${Date.now()}`;
-    const adminBEmail = `admin_b_${Date.now()}@test.com`;
+    const adminBSub = `sub_admin_b_concurrency_${Date.now()}`;
+    const adminBEmail = `admin_b_concurrency_${Date.now()}@test.com`;
 
     await prisma.user.createMany({
       data: [
@@ -65,7 +62,7 @@ describe('Concurrency-Safe Last Active Admin Invariant', () => {
     const adminAToken = await createTestJwt({ sub: adminASub, email: adminAEmail });
     const adminBToken = await createTestJwt({ sub: adminBSub, email: adminBEmail });
 
-    // 3. Concurrently execute mutual suspension: Admin A suspends Admin B, while Admin B suspends Admin A!
+    // 3. Concurrently execute mutual suspension: Admin A suspends Admin B, Admin B suspends Admin A.
     const [resA, resB] = await Promise.all([
       app.inject({
         method: 'PATCH',
