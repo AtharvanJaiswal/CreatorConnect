@@ -1,0 +1,35 @@
+{
+  "name": "@creatorconnect/database",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prisma client, PostgreSQL schemas, and migration definitions for CreatorConnect",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:seed": "tsx --env-file=.env prisma/seed.ts"
+  },
+  "dependencies": {
+    "@creatorconnect/utils": "workspace:*",
+    "@prisma/client": "^5.18.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@creatorconnect/config": "workspace:*",
+    "@types/node": "^20.14.12",
+    "prisma": "^5.18.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  }
+}

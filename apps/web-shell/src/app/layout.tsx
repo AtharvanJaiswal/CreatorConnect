@@ -3,6 +3,7 @@ import React from 'react';
 import '@creatorconnect/design-system/globals.css';
 import { Header } from '../components/header';
 import { Footer } from '../components/footer';
+import { AuthProvider } from '../providers/auth-provider';
 
 export const metadata: Metadata = {
   title: 'CreatorConnect — Multi-Sided Creator Economy Platform',
@@ -22,11 +23,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased selection:bg-primary/20 selection:text-primary flex flex-col justify-between">
-        <div>
-          <Header />
-          <main className="flex-1">{children}</main>
-        </div>
-        <Footer />
+        <AuthProvider>
+          <div>
+            <Header />
+            <main className="flex-1">{children}</main>
+          </div>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );

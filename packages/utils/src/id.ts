@@ -1,12 +1,18 @@
+import { uuidv7 } from 'uuidv7';
+
 /**
- * Unique identifier helpers with domain prefixing.
+ * Generates an RFC 9562-compliant UUIDv7 string.
+ * Combines 48-bit millisecond timestamp with monotonic counter and random entropy.
  */
+export function generateUuidV7(): string {
+  return uuidv7();
+}
 
+/**
+ * Unique identifier helper with domain prefixing.
+ * Uses UUIDv7 as the underlying identifier.
+ */
 export function generateId(prefix?: string): string {
-  const uuid =
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : Math.random().toString(36).substring(2) + Date.now().toString(36);
-
+  const uuid = generateUuidV7();
   return prefix ? `${prefix}_${uuid.replace(/-/g, '')}` : uuid;
 }

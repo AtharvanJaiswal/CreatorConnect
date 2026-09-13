@@ -14,7 +14,9 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
+    "@creatorconnect/auth": "workspace:*",
     "@creatorconnect/contracts": "workspace:*",
+    "@creatorconnect/database": "workspace:*",
     "@creatorconnect/utils": "workspace:*",
     "@creatorconnect/validation": "workspace:*",
     "@fastify/cors": "^9.0.1",
@@ -25,6 +27,9 @@
     "@sinclair/typebox": "^0.33.7",
     "dotenv": "^16.4.5",
     "fastify": "^4.28.1",
+    "fastify-plugin": "^6.0.0",
+    "ioredis": "^5.4.1",
+    "jose": "^5.9.6",
     "pino": "^9.4.0",
     "pino-pretty": "^11.2.2"
   },

@@ -7,7 +7,10 @@ import scalar from '@scalar/fastify-api-reference';
 import { createProblemDetails } from '@creatorconnect/validation';
 import { loggerConfig } from './plugins/logger.js';
 import { errorHandler } from './plugins/error-handler.js';
+import { authPlugin } from './plugins/auth.js';
 import { healthRoutes } from './routes/health.js';
+import { authRoutes } from './modules/auth/auth.routes.js';
+import { usersRoutes } from './modules/users/users.routes.js';
 
 export async function buildApp(opts: FastifyServerOptions = {}): Promise<FastifyInstance> {
   const app = fastify({
@@ -42,12 +45,25 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
           description: 'Local development server',
         },
       ],
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'JWT',
+            description: 'Supabase-issued RS256/ES256 Access Token',
+          },
+        },
+      },
     },
   });
 
   await app.register(scalar, {
     routePrefix: '/docs',
   });
+
+  // Register Core Authentication & Identity Plugin
+  await app.register(authPlugin);
 
   app.setErrorHandler(errorHandler);
 
@@ -66,6 +82,8 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
 
   // Register routes
   await app.register(healthRoutes);
+  await app.register(authRoutes);
+  await app.register(usersRoutes);
 
   return app;
 }

@@ -18,6 +18,8 @@
     "@creatorconnect/ui": "workspace:*",
     "@creatorconnect/utils": "workspace:*",
     "@creatorconnect/validation": "workspace:*",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.116.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.436.0",
     "next": "^15.5.25",

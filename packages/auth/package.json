@@ -1,8 +1,8 @@
 {
-  "name": "@creatorconnect/utils",
+  "name": "@creatorconnect/auth",
   "version": "0.1.0",
   "private": true,
-  "description": "Shared utility functions for CreatorConnect",
+  "description": "Core authentication interfaces, role definitions, and CASL authorization abilities",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,13 +17,16 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@casl/ability": "^6.7.1",
+    "@creatorconnect/contracts": "workspace:*",
+    "@creatorconnect/utils": "workspace:*",
+    "@creatorconnect/validation": "workspace:*"
+  },
   "devDependencies": {
     "@creatorconnect/config": "workspace:*",
     "@types/node": "^20.14.12",
     "typescript": "^5.5.4",
     "vitest": "^2.1.1"
-  },
-  "dependencies": {
-    "uuidv7": "^1.2.1"
   }
 }
