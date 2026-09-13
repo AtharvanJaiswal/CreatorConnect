@@ -1,0 +1,32 @@
+{
+  "name": "@creatorconnect/design-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Unified visual design system, design tokens, and Tailwind preset for CreatorConnect",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./tailwind-preset": {
+      "types": "./dist/tailwind-preset.d.ts",
+      "import": "./dist/tailwind-preset.js"
+    },
+    "./globals.css": "./src/styles/globals.css"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@creatorconnect/config": "workspace:*",
+    "@types/node": "^20.14.12",
+    "tailwindcss": "^3.4.10",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.1"
+  }
+}

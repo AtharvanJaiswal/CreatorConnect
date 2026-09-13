@@ -4,7 +4,9 @@ const nextConfig = {
   transpilePackages: [
     '@creatorconnect/utils',
     '@creatorconnect/validation',
-    '@creatorconnect/contracts'
+    '@creatorconnect/contracts',
+    '@creatorconnect/design-system',
+    '@creatorconnect/ui'
   ],
   poweredByHeader: false
 };
