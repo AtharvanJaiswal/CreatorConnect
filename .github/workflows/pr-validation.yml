@@ -35,6 +35,9 @@ jobs:
       - name: Format Check
         run: pnpm format:check
 
+      - name: Lint Workspaces
+        run: pnpm lint
+
       - name: Typecheck
         run: pnpm typecheck
 
@@ -49,6 +52,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: false
+
+  semgrep:
+    name: Semgrep SAST Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep OSS SAST Scan
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/owasp-top-ten
 
   e2e:
     name: Playwright E2E Smoke Tests

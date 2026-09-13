@@ -128,6 +128,10 @@ Adopts the unified design system.
 
 - Revert Phase 2 PRs.
 
+## Phase 2.1 Follow-Up Tasks
+
+- [ ] `TASK-P2.1-VITEST-MIGRATION`: Evaluate monorepo upgrade from Vitest 2.1.9 to Vitest 3.x/4.x patched LTS (reference: `docs/architecture/toolchain-reconciliation.md`).
+
 ## Completion Status
 
 **NOT STARTED**
