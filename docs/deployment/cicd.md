@@ -75,11 +75,33 @@ flowchart TD
 
 ## 3. Branch Protection & Repository Governance
 
-1. **`main` Branch Protection**:
-   - Direct pushes and force pushes strictly disabled.
-   - Requires 2 approved pull request reviews (including at least one from `CODEOWNERS`).
-   - Requires all PR checks to pass green (typecheck, tests, security, docker).
-   - Linear history required (Squash and merge or rebase).
-2. **Automated Dependency Updates**:
-   - **Renovate / Dependabot**: Weekly dependency vulnerability scans with automated PR creation.
-   - Minor/patch dependency updates automatically tested in CI; major versions require explicit architectural review.
+### 3.1 Branching Strategy & Lifecycle Flow
+
+```mermaid
+flowchart LR
+    F["feature/*\nfix/*\ndocs/*"] -->|PR + CI Pass| D["dev\n(Integration)"]
+    D -->|Release PR + QA Rehearsal| M["main\n(Production)"]
+    M -->|Automated Deploy| P["Production Environment"]
+    M -.->|Hotfix Back-merge| D
+```
+
+| Branch          | Classification            | Access & Policy                                                                                                      | Promotion Path                                              |
+| :-------------- | :------------------------ | :------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------- |
+| **`main`**      | Production / Release      | **Strictly Protected**: No direct pushes, PR required, CI pass required, min 1 review, no force pushes, no deletion. | Deploys directly to Staging rehearsal and gated Production. |
+| **`dev`**       | Integration / Development | **Protected Integration**: Active development hub. All feature/fix branches branch off and merge into `dev`.         | Promoted to `main` via formal Release PR.                   |
+| **`feature/*`** | Feature Workspaces        | Short-lived branch per bounded task. Branch off `dev`.                                                               | Merges to `dev` via Pull Request.                           |
+| **`fix/*`**     | Defect Remediation        | Short-lived bugfix branch. Branch off `dev`.                                                                         | Merges to `dev` via Pull Request.                           |
+| **`hotfix/*`**  | Critical Production Fix   | Urgent fix for live defects. Branch off `main`.                                                                      | Merges to `main` (with review) and back-merges to `dev`.    |
+| **`docs/*`**    | Documentation             | Architectural ADRs and docs updates.                                                                                 | Merges to `dev` via Pull Request.                           |
+
+### 3.2 Non-Negotiable Branch Rules
+
+1. **Never Force Push**: `--force` and `--force-with-lease` are disabled on both `main` and `dev`.
+2. **Never Commit Secrets**: Centralized environment variable management; Gitleaks automated scanning blocks PRs with detected credentials.
+3. **Conventional Commits Enforced**: All commits must follow `feat(domain):`, `fix(domain):`, `docs(domain):`, `test(domain):`, `chore(tool):`.
+4. **Linear History & PR Quality Gates**: PRs into `main` require linear history (Squash and Merge or Rebase), green CI checks, and peer approval.
+
+### 3.3 Automated Dependency Updates
+
+- **Renovate / Dependabot**: Weekly dependency vulnerability scans with automated PR creation.
+- Minor/patch dependency updates automatically tested in CI; major versions require explicit architectural review.
