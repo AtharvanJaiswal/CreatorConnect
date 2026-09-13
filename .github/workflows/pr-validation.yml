@@ -12,6 +12,31 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_local_password
+          POSTGRES_DB: creatorconnect_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        command: redis-server --requirepass redis_local_password
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli -a redis_local_password ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -32,6 +57,9 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma Client
+        run: pnpm --filter @creatorconnect/database db:generate
+
       - name: Format Check
         run: pnpm format:check
 
@@ -41,11 +69,26 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Deploy Database Migrations & Seed Roles
+        run: |
+          pnpm --filter @creatorconnect/database db:migrate
+          pnpm --filter @creatorconnect/database db:seed
+        env:
+          DATABASE_URL: postgresql://postgres:postgres_local_password@localhost:5432/creatorconnect_dev?schema=public
+
       - name: Unit & Integration Tests
         run: pnpm test:unit
+        env:
+          DATABASE_URL: postgresql://postgres:postgres_local_password@localhost:5432/creatorconnect_dev?schema=public
+          REDIS_URL: redis://:redis_local_password@localhost:6379/0
+          SUPABASE_JWT_ISSUER: https://localhost.supabase.co/auth/v1
 
       - name: Build All Workspaces
         run: pnpm build
+        env:
+          DATABASE_URL: postgresql://postgres:postgres_local_password@localhost:5432/creatorconnect_dev?schema=public
+          REDIS_URL: redis://:redis_local_password@localhost:6379/0
+          SUPABASE_JWT_ISSUER: https://localhost.supabase.co/auth/v1
 
       - name: Secret Scanning (Gitleaks)
         uses: gitleaks/gitleaks-action@v2

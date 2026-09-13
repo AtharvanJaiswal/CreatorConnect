@@ -13,12 +13,13 @@
     }
   },
   "scripts": {
+    "postinstall": "prisma generate",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
-    "db:seed": "tsx --env-file=.env prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@creatorconnect/utils": "workspace:*",

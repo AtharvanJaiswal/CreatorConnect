@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { PrismaClient, RoleType } from '@prisma/client';
 
 import { generateUuidV7 } from '@creatorconnect/utils';

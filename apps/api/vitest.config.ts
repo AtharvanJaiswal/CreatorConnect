@@ -8,9 +8,11 @@ export default defineConfig({
     fileParallelism: false,
     env: {
       DATABASE_URL:
+        process.env.DATABASE_URL ||
         'postgresql://postgres:postgres_local_password@localhost:5433/creatorconnect_dev?schema=public',
-      REDIS_URL: 'redis://:redis_local_password@localhost:6379/0',
-      SUPABASE_JWT_ISSUER: 'https://localhost.supabase.co/auth/v1',
+      REDIS_URL: process.env.REDIS_URL || 'redis://:redis_local_password@localhost:6379/0',
+      SUPABASE_JWT_ISSUER:
+        process.env.SUPABASE_JWT_ISSUER || 'https://localhost.supabase.co/auth/v1',
     },
   },
 });
