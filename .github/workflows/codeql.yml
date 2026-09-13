@@ -36,3 +36,12 @@ jobs:
         uses: github/codeql-action/analyze@v3
         with:
           category: '/language:${{matrix.language}}'
+          upload: never
+          output: '../results'
+
+      - name: Upload CodeQL SARIF Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: codeql-sarif-report
+          path: '../results'
+          retention-days: 14

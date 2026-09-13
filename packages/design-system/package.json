@@ -9,11 +9,15 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./tailwind-preset": {
       "types": "./dist/tailwind-preset.d.ts",
-      "import": "./dist/tailwind-preset.js"
+      "import": "./dist/tailwind-preset.js",
+      "require": "./dist/tailwind-preset.js",
+      "default": "./dist/tailwind-preset.js"
     },
     "./globals.css": "./src/styles/globals.css"
   },
