@@ -14,6 +14,8 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1132.0",
+    "@aws-sdk/s3-request-presigner": "^3.1132.0",
     "@creatorconnect/auth": "workspace:*",
     "@creatorconnect/contracts": "workspace:*",
     "@creatorconnect/database": "workspace:*",
@@ -25,6 +27,7 @@
     "@fastify/swagger": "^8.15.0",
     "@scalar/fastify-api-reference": "^1.25.105",
     "@sinclair/typebox": "^0.33.7",
+    "bullmq": "^5.8.6",
     "dotenv": "^16.4.5",
     "fastify": "^4.28.1",
     "fastify-plugin": "^6.0.0",

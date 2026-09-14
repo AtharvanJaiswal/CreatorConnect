@@ -6,8 +6,17 @@ test.describe('Platform Web Shell Smoke Scaffolding', () => {
   });
 
   test('verifies multi-zone persona routes and domain boundaries are defined', async () => {
-    const routes = ['/', '/creator', '/pro', '/brand', '/admin'];
-    expect(routes).toHaveLength(5);
+    const routes = [
+      '/',
+      '/creator',
+      '/pro',
+      '/professional',
+      '/brand',
+      '/admin',
+      '/discovery',
+      '/profiles/me',
+    ];
+    expect(routes).toHaveLength(8);
     for (const route of routes) {
       expect(typeof route).toBe('string');
       expect(route.startsWith('/')).toBe(true);

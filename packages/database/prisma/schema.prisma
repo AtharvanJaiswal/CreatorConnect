@@ -21,6 +21,57 @@ enum RoleType {
   ADMIN
 }
 
+enum ProfileVisibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
+enum AssignmentStatus {
+  DRAFT
+  PUBLISHED
+  IN_PROGRESS
+  COMPLETED
+  CLOSED
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  SHORTLISTED
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum BudgetType {
+  FIXED
+  RANGE
+  HOURLY
+}
+
+enum MediaAssetStatus {
+  QUARANTINED
+  PENDING_SCAN
+  ACTIVE
+  REJECTED_INVALID
+  DELETED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+}
+
+enum SkillProficiency {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
 model User {
   id             String      @id @db.Uuid
   supabaseAuthId String      @unique @map("supabase_auth_id") @db.VarChar(64)
@@ -32,8 +83,17 @@ model User {
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
 
-  userRoles      UserRole[]
-  auditLogs      AuditLog[]
+  userRoles           UserRole[]
+  auditLogs           AuditLog[]
+  creatorProfile      CreatorProfile?
+  professionalProfile ProfessionalProfile?
+  brandProfile        BrandProfile?
+  podcasterProfile    PodcasterProfile?
+  userSkills          UserSkill[]
+  portfolioItems      PortfolioItem[]
+  mediaAssets         MediaAsset[]
+  applications        Application[]
+  statusHistories     ApplicationStatusHistory[]
 
   @@index([email])
   @@index([supabaseAuthId])
@@ -83,4 +143,313 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ==============================================================================
+// Taxonomy
+// ==============================================================================
+
+model Category {
+  id          String   @id @db.Uuid
+  slug        String   @unique @db.VarChar(64)
+  name        String   @db.VarChar(100)
+  description String?  @db.VarChar(255)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  creatorProfiles CreatorProfileCategory[]
+  assignments     Assignment[]
+
+  @@map("categories")
+}
+
+model Skill {
+  id        String      @id @db.Uuid
+  slug      String      @unique @db.VarChar(64)
+  name      String      @db.VarChar(100)
+  isActive  Boolean     @default(true) @map("is_active")
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  userSkills UserSkill[]
+
+  @@map("skills")
+}
+
+model UserSkill {
+  id          String           @id @db.Uuid
+  userId      String           @map("user_id") @db.Uuid
+  skillId     String           @map("skill_id") @db.Uuid
+  proficiency SkillProficiency @default(INTERMEDIATE)
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill       Skill            @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillId])
+  @@index([userId])
+  @@index([skillId])
+  @@map("user_skills")
+}
+
+// ==============================================================================
+// Profiles
+// ==============================================================================
+
+model CreatorProfile {
+  id              String                   @id @db.Uuid
+  userId          String                   @unique @map("user_id") @db.Uuid
+  tagline         String?                  @db.VarChar(160)
+  bio             String?                  @db.Text
+  locationCountry String?                  @map("location_country") @db.VarChar(2)
+  locationCity    String?                  @map("location_city") @db.VarChar(100)
+  isRemote        Boolean                  @default(true) @map("is_remote")
+  startingRate    Int?                     @map("starting_rate")
+  currency        String                   @default("INR") @db.VarChar(3)
+  visibility      ProfileVisibility        @default(PUBLIC)
+  isVerified      Boolean                  @default(false) @map("is_verified")
+  socialLinks     Json?                    @map("social_links") @db.JsonB
+  completionScore Int                      @default(0) @map("completion_score")
+  deletedAt       DateTime?                @map("deleted_at")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categories      CreatorProfileCategory[]
+
+  @@index([visibility, deletedAt])
+  @@index([locationCountry, locationCity])
+  @@map("creator_profiles")
+}
+
+model CreatorProfileCategory {
+  creatorProfileId String         @map("creator_profile_id") @db.Uuid
+  categoryId       String         @map("category_id") @db.Uuid
+
+  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  category         Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([creatorProfileId, categoryId])
+  @@map("creator_profile_categories")
+}
+
+model ProfessionalProfile {
+  id              String            @id @db.Uuid
+  userId          String            @unique @map("user_id") @db.Uuid
+  headline        String?           @db.VarChar(160)
+  bio             String?           @db.Text
+  yearsExperience Int?              @map("years_experience")
+  dayRate         Int?              @map("day_rate")
+  currency        String            @default("INR") @db.VarChar(3)
+  isAvailable     Boolean           @default(true) @map("is_available")
+  visibility      ProfileVisibility @default(PUBLIC)
+  locationCountry String?           @map("location_country") @db.VarChar(2)
+  locationCity    String?           @map("location_city") @db.VarChar(100)
+  equipmentList   String[]          @default([]) @map("equipment_list")
+  deletedAt       DateTime?         @map("deleted_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([visibility, deletedAt])
+  @@index([isAvailable])
+  @@map("professional_profiles")
+}
+
+model BrandProfile {
+  id              String            @id @db.Uuid
+  userId          String            @unique @map("user_id") @db.Uuid
+  companyName     String            @map("company_name") @db.VarChar(150)
+  industry        String?           @db.VarChar(100)
+  websiteUrl      String?           @map("website_url") @db.VarChar(512)
+  companySize     String?           @map("company_size") @db.VarChar(32)
+  bio             String?           @db.Text
+  isVerified      Boolean           @default(false) @map("is_verified")
+  visibility      ProfileVisibility @default(PUBLIC)
+  deletedAt       DateTime?         @map("deleted_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignments     Assignment[]
+
+  @@index([visibility, deletedAt])
+  @@map("brand_profiles")
+}
+
+model PodcasterProfile {
+  id              String            @id @db.Uuid
+  userId          String            @unique @map("user_id") @db.Uuid
+  podcastName     String            @map("podcast_name") @db.VarChar(150)
+  description     String?           @db.Text
+  rssFeedUrl      String?           @map("rss_feed_url") @db.VarChar(512)
+  guestGuidelines String?           @map("guest_guidelines") @db.Text
+  visibility      ProfileVisibility @default(PUBLIC)
+  deletedAt       DateTime?         @map("deleted_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([visibility, deletedAt])
+  @@map("podcaster_profiles")
+}
+
+// ==============================================================================
+// Portfolio & Media
+// ==============================================================================
+
+model PortfolioItem {
+  id           String            @id @db.Uuid
+  userId       String            @map("user_id") @db.Uuid
+  title        String            @db.VarChar(160)
+  description  String?           @db.Text
+  externalUrl  String?           @map("external_url") @db.VarChar(512)
+  displayOrder Int               @default(0) @map("display_order")
+  visibility   ProfileVisibility @default(PUBLIC)
+  tags         String[]          @default([])
+  deletedAt    DateTime?         @map("deleted_at")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media        PortfolioMedia[]
+
+  @@index([userId, displayOrder])
+  @@index([visibility, deletedAt])
+  @@map("portfolio_items")
+}
+
+model PortfolioMedia {
+  id              String        @id @db.Uuid
+  portfolioItemId String        @map("portfolio_item_id") @db.Uuid
+  mediaAssetId    String        @map("media_asset_id") @db.Uuid
+  displayOrder    Int           @default(0) @map("display_order")
+  caption         String?       @db.VarChar(255)
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  portfolioItem   PortfolioItem @relation(fields: [portfolioItemId], references: [id], onDelete: Cascade)
+  mediaAsset      MediaAsset    @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
+
+  @@unique([portfolioItemId, mediaAssetId])
+  @@index([portfolioItemId, displayOrder])
+  @@map("portfolio_media")
+}
+
+model MediaAsset {
+  id           String           @id @db.Uuid
+  userId       String           @map("user_id") @db.Uuid
+  storageKey   String           @unique @map("storage_key") @db.VarChar(512)
+  thumbnailKey String?          @map("thumbnail_key") @db.VarChar(512)
+  previewKey   String?          @map("preview_key") @db.VarChar(512)
+  originalName String           @map("original_name") @db.VarChar(255)
+  mimeType     String           @map("mime_type") @db.VarChar(100)
+  byteSize     Int              @map("byte_size")
+  mediaType    MediaType        @map("media_type")
+  status       MediaAssetStatus @default(QUARANTINED)
+  expiresAt    DateTime?        @map("expires_at")
+  width        Int?
+  height       Int?
+  durationSec  Int?             @map("duration_sec")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolioMedia PortfolioMedia[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("media_assets")
+}
+
+// ==============================================================================
+// Assignments (Strictly Brand-Owned in Phase 4)
+// ==============================================================================
+
+model Assignment {
+  id           String           @id @db.Uuid
+  brandId      String           @map("brand_id") @db.Uuid
+  categoryId   String?          @map("category_id") @db.Uuid
+  title        String           @db.VarChar(200)
+  description  String           @db.Text
+  budgetType   BudgetType       @default(FIXED) @map("budget_type")
+  budgetMin    Int              @map("budget_min")
+  budgetMax    Int              @map("budget_max")
+  currency     String           @default("INR") @db.VarChar(3)
+  deadline     DateTime         @db.Timestamptz(3)
+  isRemote     Boolean          @default(true) @map("is_remote")
+  location     String?          @db.VarChar(150)
+  status       AssignmentStatus @default(DRAFT)
+  version      Int              @default(1)
+  deletedAt    DateTime?        @map("deleted_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  brand        BrandProfile     @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  category     Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  requirements AssignmentRequirement[]
+  applications Application[]
+
+  @@index([status, deletedAt, createdAt])
+  @@index([brandId])
+  @@index([categoryId])
+  @@index([budgetMin, budgetMax])
+  @@map("assignments")
+}
+
+model AssignmentRequirement {
+  id           String     @id @db.Uuid
+  assignmentId String     @map("assignment_id") @db.Uuid
+  title        String     @db.VarChar(150)
+  isMandatory  Boolean    @default(true) @map("is_mandatory")
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  @@index([assignmentId])
+  @@map("assignment_requirements")
+}
+
+// ==============================================================================
+// Applications
+// ==============================================================================
+
+model Application {
+  id           String            @id @db.Uuid
+  assignmentId String            @map("assignment_id") @db.Uuid
+  applicantId  String            @map("applicant_id") @db.Uuid
+  coverLetter  String            @map("cover_letter") @db.Text
+  proposedRate Int               @map("proposed_rate")
+  currency     String            @default("INR") @db.VarChar(3)
+  durationDays Int?              @map("duration_days")
+  status       ApplicationStatus @default(SUBMITTED)
+  version      Int               @default(1)
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  assignment   Assignment        @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  applicant    User              @relation(fields: [applicantId], references: [id], onDelete: Restrict)
+  history      ApplicationStatusHistory[]
+
+  @@unique([assignmentId, applicantId])
+  @@index([assignmentId, status])
+  @@index([applicantId, status])
+  @@map("applications")
+}
+
+model ApplicationStatusHistory {
+  id            String            @id @db.Uuid
+  applicationId String            @map("application_id") @db.Uuid
+  fromStatus    ApplicationStatus @map("from_status")
+  toStatus      ApplicationStatus @map("to_status")
+  actorId       String            @map("actor_id") @db.Uuid
+  reason        String?           @db.VarChar(255)
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  application   Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  actor         User              @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([applicationId, createdAt])
+  @@index([actorId])
+  @@map("application_status_history")
 }

@@ -39,21 +39,20 @@ CreatorConnect follows a sequential, gated engineering roadmap. Below is the aut
 | **Phase 1**     | **Monorepo & Engineering Foundation**        | **COMPLETED**         | pnpm 9 workspaces, Turborepo 2, strict TypeScript 5.5, Prettier, ESLint, Vitest, Playwright, Docker Compose stacks (PostgreSQL 16, Redis 7, MinIO).                                                                    |
 | **Phase 2**     | **Design System & Microfrontend Foundation** | **COMPLETED**         | Tailwind CSS token preset (`@creatorconnect/design-system`), accessible UI component library (`@creatorconnect/ui`), responsive Next.js 15.5 `apps/web-shell` shell layout.                                            |
 | **Phase 3**     | **Authentication & Identity Foundation**     | **COMPLETED**         | Managed Supabase Auth integration, asymmetric JWKS JWT verification, internal UUIDv7 user identity, 3-tier RBAC & CASL authorization, user lifecycle management, audit logging, Redis session caching, web auth flows. |
-| **Phases 4–15** | **Domain Features & Production Scale**       | **PLANNED**           | Profile portfolios, R2 presigned media, FTS matching, campaign briefs, escrow payments, realtime messaging, push notifications (see [Roadmap](#12-roadmap)).                                                           |
+| **Phase 4**     | **Core Business Domains & Discovery**        | **COMPLETED**         | 15-model schema, 4 profile personas, portfolio CRUD, S3/R2 presigned media pipeline, BullMQ magic-byte worker, brand assignments, atomic hiring acceptance, PostgreSQL FTS & pg_trgm discovery, Next.js UI console.    |
+| **Phases 5–15** | **Escrow, Realtime & Production Scale**      | **PLANNED**           | Escrow payment integration, realtime WebSockets messaging, push notifications, analytics (see [Roadmap](#12-roadmap)).                                                                                                 |
 
-### Phase 3 Technical Highlights (Implemented)
+### Phase 4 Technical Highlights (Implemented)
 
-- **Supabase Auth Integration**: External managed Identity Provider (IdP) handling registration, authentication, OAuth sessions, and password recovery.
-- **Asymmetric JWKS JWT Verification**: Fastify API validates RS256/ES256 bearer tokens against remote or local JWKS endpoints using `jose` with in-memory public key set caching.
-- **Fail-Closed Security Invariant**: Token verification strictly enforces configured `SUPABASE_JWT_ISSUER` and `aud`; requests without configured issuer or invalid signatures fail closed immediately.
-- **Internal UUIDv7 Identity**: Decouples external Supabase identity (`supabase_auth_id`) from internal database foreign keys using timestamp-ordered UUIDv7 identifiers.
-- **Role-Based Access Control (RBAC)**: Baseline platform roles (`CREATOR`, `PROFESSIONAL`, `BRAND`, `PODCASTER`, `ADMIN`) seeded with strict self-selection guards (e.g., `ADMIN` role can never be self-assigned during onboarding).
-- **CASL Scoped Authorization**: Fine-grained subject-based permissions (`@creatorconnect/auth`) with runtime policy checks for resource ownership.
-- **User Lifecycle Management**: Three-state account lifecycle (`ACTIVE`, `SUSPENDED`, `DEACTIVATED`) enforced at the API authentication boundary.
-- **Administrative Safeguards**: Last-admin lockout protection and self-status mutation prevention on administrative endpoints.
-- **Structured Audit Logging**: Transactional, tamper-evident audit records capturing `actor_id`, `action`, `resource_type`, `resource_id`, `before_state`, `after_state`, `ip_address`, and `user_agent`.
-- **Redis Identity & Session Caching**: High-performance caching layer for verified user identities and role assignments with graceful fallback when cache is unreachable.
-- **Web Authentication Flows**: Complete Next.js client pages for `/login`, `/register` (with persona selection), `/reset-password`, and `/unauthorized`, backed by an active `AuthProvider` React context.
+- **15-Model Relational Schema**: 15 database entities and 7 enums in PostgreSQL 16 via Prisma with canonical role names (`CREATOR`, `PROFESSIONAL`, `BRAND`, `PODCASTER`, `ADMIN`), money non-negative `CHECK` constraints, and strictly brand-owned assignments.
+- **Profiles Domain**: Comprehensive profile management across `CreatorProfile`, `ProfessionalProfile`, `BrandProfile`, and `PodcasterProfile`, taxonomy categories, skills with controlled `SkillProficiency`, visibility controls (`PUBLIC`, `UNLISTED`, `PRIVATE`), and role-gated ownership.
+- **Portfolio Domain**: Full portfolio item CRUD, attachment validation allowing strictly `ACTIVE` media, `(portfolioItemId, mediaAssetId)` uniqueness constraint, deterministic display ordering, and IDOR protection.
+- **Secure Media Pipeline**: S3/Cloudflare R2 presigned upload URLs with server-authoritative quarantine keys (`quarantine/{userId}/{assetId}.ext`), `HeadObject` byte-size validation CAS (`QUARANTINED` → `PENDING_SCAN`), BullMQ background processing worker with magic-byte verification, Sharp image derivative generation (256x256 WebP thumbnail, 640x360 16:9 WebP card preview), PDF validation, idempotent promotion to `ACTIVE`, and quarantine cleanup scheduler.
+- **Assignments Domain**: Brand-owned assignments with lifecycle states (`DRAFT` → `PUBLISHED` → `IN_PROGRESS` → `COMPLETED` / `CLOSED`), optimistic concurrency control (`version`), deliverables requirements, deadline validation, and soft deletion.
+- **Applications & Atomic Hiring**: Proposal submission protected by real PostgreSQL database row lock (`SELECT ... FOR UPDATE`) checking active deadlines and duplicate submission rejection (`409 Conflict`).
+- **Concurrency-Safe Acceptance Algorithm**: Atomic hiring transaction executing conditional update on assignment (`id + PUBLISHED + expectedVersion`), conditional update on application (`id + assignmentId + SHORTLISTED + expectedApplicationVersion`), and non-overwriting competitor auto-rejection (`where: id + assignmentId + observedStatus + observedVersion`, inserting `POSITION_FILLED` history strictly when update `count === 1`).
+- **Hybrid Discovery Engine**: PostgreSQL Full-Text Search (`tsvector`) combined with `pg_trgm` trigram fuzzy matching (`%` operator with 0.3 similarity threshold) and deterministic 3-field keyset cursor pagination `(computedRank, createdAt, id)` with fully parameterized raw SQL.
+- **Phase 4 Frontend Consoles**: Next.js 15.5 web routes for `/discovery` (full-text search, filter pills, keyset pagination), `/assignments/[id]` (brief details, deadline countdown, proposal modal), `/assignments/[id]/applications` (brand review cockpit, shortlist, atomic accept & hire), and `/profiles/me` (profile editing, visibility, presigned file uploads).
 
 ---
 

@@ -11,6 +11,12 @@ import { authPlugin } from './plugins/auth.js';
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { usersRoutes } from './modules/users/users.routes.js';
+import { profilesRoutes } from './modules/profiles/profiles.routes.js';
+import { portfolioRoutes } from './modules/portfolio/portfolio.routes.js';
+import { mediaRoutes } from './modules/media/media.routes.js';
+import { assignmentsRoutes } from './modules/assignments/assignments.routes.js';
+import { applicationsRoutes } from './modules/applications/applications.routes.js';
+import { discoveryRoutes } from './modules/discovery/discovery.routes.js';
 
 export async function buildApp(opts: FastifyServerOptions = {}): Promise<FastifyInstance> {
   const app = fastify({
@@ -18,6 +24,27 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
     disableRequestLogging: false,
     requestIdHeader: 'x-request-id',
     requestIdLogLabel: 'reqId',
+    ajv: {
+      customOptions: {
+        strict: false,
+      },
+      plugins: [
+        (ajv: any) => {
+          ajv.addFormat('https-url', {
+            type: 'string',
+            validate: (value: string) => {
+              try {
+                if (typeof value !== 'string' || !value.startsWith('https://')) return false;
+                const parsed = new URL(value);
+                return parsed.protocol === 'https:' && !parsed.username && !parsed.password;
+              } catch {
+                return false;
+              }
+            },
+          });
+        },
+      ],
+    },
     ...opts,
   });
 
@@ -84,6 +111,12 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
   await app.register(healthRoutes);
   await app.register(authRoutes);
   await app.register(usersRoutes);
+  await app.register(profilesRoutes);
+  await app.register(portfolioRoutes);
+  await app.register(mediaRoutes);
+  await app.register(assignmentsRoutes);
+  await app.register(applicationsRoutes);
+  await app.register(discoveryRoutes);
 
   return app;
 }

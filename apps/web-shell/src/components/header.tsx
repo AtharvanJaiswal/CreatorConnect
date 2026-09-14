@@ -4,10 +4,11 @@ import { ThemeToggle } from './theme-toggle';
 import { Sparkles, Compass, Video, Briefcase, Building2, ShieldCheck } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { href: '/', label: 'Explore', icon: Compass },
+  { href: '/discovery', label: 'Discover', icon: Compass },
   { href: '/creator', label: 'Creator Hub', icon: Video },
-  { href: '/pro', label: 'Production Talent', icon: Briefcase },
+  { href: '/professional', label: 'Production Talent', icon: Briefcase },
   { href: '/brand', label: 'Brand Campaigns', icon: Building2 },
+  { href: '/profiles/me', label: 'My Profile', icon: Sparkles },
   { href: '/admin', label: 'Admin Cockpit', icon: ShieldCheck },
 ];
 

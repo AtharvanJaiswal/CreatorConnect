@@ -21,6 +21,21 @@ if (!FormatRegistry.Has('uuid')) {
   );
 }
 
+if (!FormatRegistry.Has('https-url')) {
+  FormatRegistry.Set('https-url', (value) => {
+    try {
+      if (typeof value !== 'string') return false;
+      if (!value.startsWith('https://')) return false;
+      const parsed = new URL(value);
+      if (parsed.protocol !== 'https:') return false;
+      if (parsed.username || parsed.password) return false;
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}
+
 /**
  * Common TypeBox format definitions and string patterns.
  */
@@ -47,4 +62,10 @@ export const CurrencyCodeSchema = Type.String({
 export const MinorUnitsSchema = Type.Integer({
   minimum: 0,
   description: 'Monetary amount in lowest currency denomination (e.g. cents, paise)',
+});
+
+export const HttpsUrlSchema = Type.String({
+  format: 'https-url',
+  maxLength: 512,
+  description: 'Strict HTTPS URL without embedded credentials',
 });

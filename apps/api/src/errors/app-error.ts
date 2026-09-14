@@ -77,3 +77,63 @@ export class LastAdminLockoutError extends AppError {
     super(400, 'LAST_ADMIN_LOCKOUT_PREVENTED', 'Last Admin Lockout Prevented', detail);
   }
 }
+
+// ==============================================================================
+// Phase 4 Domain Errors
+// ==============================================================================
+
+export class NotFoundError extends AppError {
+  constructor(detail = 'The requested resource was not found.') {
+    super(404, 'NOT_FOUND', 'Resource Not Found', detail);
+  }
+}
+
+export class BadRequestError extends AppError {
+  constructor(detail = 'The request payload or parameters are invalid.') {
+    super(400, 'BAD_REQUEST', 'Bad Request', detail);
+  }
+}
+
+export class ForbiddenError extends AppError {
+  constructor(detail = 'You are not authorized to perform this operation.') {
+    super(403, 'FORBIDDEN', 'Access Forbidden', detail);
+  }
+}
+
+export class ConflictError extends AppError {
+  constructor(detail = 'The operation conflicted with existing resource state.') {
+    super(409, 'CONFLICT', 'Resource Conflict', detail);
+  }
+}
+
+export class OptimisticLockConflictError extends AppError {
+  constructor(
+    detail = 'The resource has been modified by another process. Please reload and retry.',
+  ) {
+    super(409, 'OPTIMISTIC_LOCK_CONFLICT', 'Optimistic Concurrency Conflict', detail);
+  }
+}
+
+export class AssignmentDeadlineExpiredError extends AppError {
+  constructor(detail = 'The assignment deadline has passed. New applications are not accepted.') {
+    super(400, 'ASSIGNMENT_DEADLINE_EXPIRED', 'Deadline Expired', detail);
+  }
+}
+
+export class InactiveTaxonomyError extends AppError {
+  constructor(detail = 'The selected taxonomy category or skill is inactive.') {
+    super(400, 'INACTIVE_TAXONOMY_ENTRY', 'Inactive Taxonomy', detail);
+  }
+}
+
+export class UploadSizeMismatchError extends AppError {
+  constructor(detail = 'Uploaded byte size does not match server-recorded asset size.') {
+    super(400, 'UPLOAD_SIZE_MISMATCH', 'Upload Size Mismatch', detail);
+  }
+}
+
+export class InvalidMediaStateError extends AppError {
+  constructor(detail = 'Media asset is not in an acceptable state for this operation.') {
+    super(400, 'INVALID_MEDIA_STATE', 'Invalid Media State', detail);
+  }
+}

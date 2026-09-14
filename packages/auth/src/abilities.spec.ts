@@ -11,6 +11,22 @@ describe('Pure CASL Authorization Abilities', () => {
     status: 'ACTIVE',
   };
 
+  const proUser: UserIdentity = {
+    id: '018f3a5e-2b1c-7f4d-9a8b-111111111111',
+    supabaseAuthId: 'sub_pro_111',
+    email: 'pro@example.com',
+    roles: ['PROFESSIONAL'],
+    status: 'ACTIVE',
+  };
+
+  const brandUser: UserIdentity = {
+    id: '018f3a5e-2b1c-7f4d-9a8b-222222222222',
+    supabaseAuthId: 'sub_brand_222',
+    email: 'brand@example.com',
+    roles: ['BRAND'],
+    status: 'ACTIVE',
+  };
+
   const adminUser: UserIdentity = {
     id: '018f3a5e-2b1c-7f4d-9a8b-987654321def',
     supabaseAuthId: 'sub_admin_456',
@@ -41,5 +57,53 @@ describe('Pure CASL Authorization Abilities', () => {
     expect(ability.can('read', 'User')).toBe(true);
     expect(ability.can('update', subject('User', { id: 'any-user-id' }))).toBe(true);
     expect(ability.can('manage', 'all')).toBe(true);
+  });
+
+  it('enforces role-gated assignment creation (BRAND only)', () => {
+    const brandAbility = defineAbilitiesFor(brandUser);
+    const creatorAbility = defineAbilitiesFor(creatorUser);
+
+    expect(brandAbility.can('create', 'Assignment')).toBe(true);
+    expect(creatorAbility.can('create', 'Assignment')).toBe(false);
+  });
+
+  it('enforces assignment update ownership (brandUserId)', () => {
+    const brandAbility = defineAbilitiesFor(brandUser);
+
+    expect(brandAbility.can('update', subject('Assignment', { brandUserId: brandUser.id }))).toBe(
+      true,
+    );
+    expect(
+      brandAbility.can('update', subject('Assignment', { brandUserId: 'other-brand-id' })),
+    ).toBe(false);
+  });
+
+  it('allows creators and professionals to apply to assignments', () => {
+    const creatorAbility = defineAbilitiesFor(creatorUser);
+    const proAbility = defineAbilitiesFor(proUser);
+    const brandAbility = defineAbilitiesFor(brandUser);
+
+    expect(creatorAbility.can('apply', 'Assignment')).toBe(true);
+    expect(proAbility.can('apply', 'Assignment')).toBe(true);
+    expect(brandAbility.can('apply', 'Assignment')).toBe(false);
+  });
+
+  it('allows applicants to withdraw their own proposals and brands to shortlist/accept', () => {
+    const creatorAbility = defineAbilitiesFor(creatorUser);
+    const brandAbility = defineAbilitiesFor(brandUser);
+
+    expect(
+      creatorAbility.can('withdraw', subject('Application', { applicantId: creatorUser.id })),
+    ).toBe(true);
+    expect(
+      creatorAbility.can('withdraw', subject('Application', { applicantId: 'other-applicant' })),
+    ).toBe(false);
+
+    expect(
+      brandAbility.can('accept', subject('Application', { assignmentBrandUserId: brandUser.id })),
+    ).toBe(true);
+    expect(
+      brandAbility.can('accept', subject('Application', { assignmentBrandUserId: 'other-brand' })),
+    ).toBe(false);
   });
 });

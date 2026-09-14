@@ -58,7 +58,7 @@ Welcome to the authoritative engineering and architectural documentation suite f
 - [Phase 01 — Monorepo & Dev Environment](file:///f:/CreatorConnect/docs/roadmap/PHASE-01-README.md) _(COMPLETED)_
 - [Phase 02 — Design System & MFE Foundation](file:///f:/CreatorConnect/docs/roadmap/PHASE-02-README.md) _(COMPLETED)_
 - [Phase 03 — Identity & Authentication Foundation](file:///f:/CreatorConnect/docs/roadmap/PHASE-03-README.md) _(COMPLETED)_
-- [Phase 04 — Identity, Auth & RBAC](file:///f:/CreatorConnect/docs/roadmap/PHASE-04-README.md) _(NOT STARTED)_
+- [Phase 04 — Core Business Domains & Discovery](file:///f:/CreatorConnect/docs/roadmap/PHASE-04-README.md) _(COMPLETED)_
 - [Phase 05 — Profiles & Portfolio (R2 Uploads)](file:///f:/CreatorConnect/docs/roadmap/PHASE-05-README.md) _(NOT STARTED)_
 - [Phase 06 — Discovery, FTS & Matcher](file:///f:/CreatorConnect/docs/roadmap/PHASE-06-README.md) _(NOT STARTED)_
 - [Phase 07 — Campaigns & Applications](file:///f:/CreatorConnect/docs/roadmap/PHASE-07-README.md) _(NOT STARTED)_
