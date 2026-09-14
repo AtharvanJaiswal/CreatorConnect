@@ -45,7 +45,7 @@ export class MediaService {
       : new S3StorageService(),
   ) {
     if (process.env.NODE_ENV !== 'test') {
-      const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+      const redisUrl = process.env.REDIS_URL || 'redis://:redis_local_password@localhost:6379/0';
       try {
         const parsed = new URL(redisUrl);
         this.mediaQueue = new Queue('media-processing', {

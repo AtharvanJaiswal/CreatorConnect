@@ -4,7 +4,7 @@ import { createRealtimeServer } from './server.js';
 async function main() {
   const port = parseInt(process.env.PORT || '3001', 10);
   const host = process.env.HOST || '0.0.0.0';
-  const redisUrl = process.env.REDIS_URL;
+  const redisUrl = process.env.REDIS_URL || 'redis://:redis_local_password@localhost:6379/0';
 
   const { app, close, logger } = await createRealtimeServer({
     port,
