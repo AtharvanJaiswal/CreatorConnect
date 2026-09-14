@@ -53,7 +53,7 @@ export const MediaAssetResponseSchema = Type.Object({
   width: Type.Union([Type.Integer(), Type.Null()]),
   height: Type.Union([Type.Integer(), Type.Null()]),
   durationSec: Type.Union([Type.Integer(), Type.Null()]),
-  url: Type.String(),
+  url: Type.Union([Type.String(), Type.Null()]),
   thumbnailUrl: Type.Union([Type.String(), Type.Null()]),
   previewUrl: Type.Union([Type.String(), Type.Null()]),
   createdAt: IsoDateTimeSchema,

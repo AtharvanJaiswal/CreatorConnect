@@ -180,13 +180,13 @@ export class MediaService {
   }
 
   async mapToResponse(asset: any): Promise<MediaAssetResponse> {
-    const url = await this.storage.getDownloadUrl(asset.storageKey);
-    const thumbnailUrl = asset.thumbnailKey
-      ? await this.storage.getDownloadUrl(asset.thumbnailKey)
-      : null;
-    const previewUrl = asset.previewKey
-      ? await this.storage.getDownloadUrl(asset.previewKey)
-      : null;
+    const isActive = asset.status === 'ACTIVE';
+
+    const url = isActive ? await this.storage.getDownloadUrl(asset.storageKey) : null;
+    const thumbnailUrl =
+      isActive && asset.thumbnailKey ? await this.storage.getDownloadUrl(asset.thumbnailKey) : null;
+    const previewUrl =
+      isActive && asset.previewKey ? await this.storage.getDownloadUrl(asset.previewKey) : null;
 
     return {
       id: asset.id,

@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll, afterAll } from 'vitest';
+import { describe, expect, it, beforeAll, afterAll, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { getPrismaClient } from '@creatorconnect/database';
 import { generateUuidV7 } from '@creatorconnect/utils';
@@ -278,5 +278,156 @@ describe('Atomic Hiring Acceptance & Concurrency-Safe Rejection Tests', () => {
     expect(appC?.status).toBe('REJECTED');
     const cHasRejected = appC?.history.some((h) => h.reason === 'POSITION_FILLED');
     expect(cHasRejected).toBe(true);
+  });
+
+  it('rejects updateStatus with 400 when parent assignment has progressed to IN_PROGRESS', async () => {
+    const candidate = await createCandidate('cand_lifecycle');
+
+    const assignmentId = generateUuidV7();
+    await prisma.assignment.create({
+      data: {
+        id: assignmentId,
+        brandId: brandProfileId,
+        title: 'Post-Hiring Status Transition Attempt',
+        description: 'Testing assignment lifecycle guard',
+        budgetMin: 20000,
+        budgetMax: 40000,
+        deadline: new Date(Date.now() + 86400000),
+        status: 'PUBLISHED',
+        version: 1,
+      },
+    });
+
+    const applicationId = generateUuidV7();
+    await prisma.application.create({
+      data: {
+        id: applicationId,
+        assignmentId,
+        applicantId: candidate.userId,
+        coverLetter: 'Proposal to be updated after hiring closed',
+        proposedRate: 25000,
+        status: 'SUBMITTED',
+        version: 1,
+      },
+    });
+
+    // Advance assignment to IN_PROGRESS (e.g. after candidate hiring completed)
+    await prisma.assignment.update({
+      where: { id: assignmentId },
+      data: { status: 'IN_PROGRESS', version: 2 },
+    });
+
+    // Attempt to transition application to SHORTLISTED on the IN_PROGRESS assignment
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/applications/${applicationId}/status`,
+      headers: { authorization: `Bearer ${brandToken}` },
+      payload: {
+        status: 'SHORTLISTED',
+        reason: 'Late shortlist attempt',
+      },
+    });
+
+    // Must be rejected with HTTP 400
+    expect(res.statusCode).toBe(400);
+
+    // Verify application remains unchanged in SUBMITTED state and version 1
+    const appRecord = await prisma.application.findUnique({
+      where: { id: applicationId },
+      include: { history: true },
+    });
+    expect(appRecord?.status).toBe('SUBMITTED');
+    expect(appRecord?.version).toBe(1);
+    expect(appRecord?.history.some((h) => h.toStatus === 'SHORTLISTED')).toBe(false);
+  });
+
+  it('rejects stale updateStatus with 409 when applicant concurrently withdrew', async () => {
+    const candidate = await createCandidate('cand_withdraw_race');
+
+    const assignmentId = generateUuidV7();
+    await prisma.assignment.create({
+      data: {
+        id: assignmentId,
+        brandId: brandProfileId,
+        title: 'Concurrent Withdrawal vs Shortlist Brief',
+        description: 'Testing optimistic locking on status update',
+        budgetMin: 20000,
+        budgetMax: 40000,
+        deadline: new Date(Date.now() + 86400000),
+        status: 'PUBLISHED',
+        version: 1,
+      },
+    });
+
+    const applicationId = generateUuidV7();
+    await prisma.application.create({
+      data: {
+        id: applicationId,
+        assignmentId,
+        applicantId: candidate.userId,
+        coverLetter: 'Proposal withdrawn concurrently',
+        proposedRate: 30000,
+        status: 'SUBMITTED',
+        version: 1,
+      },
+    });
+
+    // 1. Obtain current state: SUBMITTED, version 1
+    const observedApp = await prisma.application.findUniqueOrThrow({
+      where: { id: applicationId },
+      include: {
+        assignment: {
+          include: { brand: true },
+        },
+      },
+    });
+    expect(observedApp.status).toBe('SUBMITTED');
+    expect(observedApp.version).toBe(1);
+
+    // 2. Candidate withdrawal changes: SUBMITTED -> WITHDRAWN, version 1 -> version 2
+    const withdrawRes = await app.inject({
+      method: 'POST',
+      url: `/api/v1/applications/${applicationId}/withdraw`,
+      headers: { authorization: `Bearer ${candidate.token}` },
+    });
+    expect(withdrawRes.statusCode).toBe(200);
+
+    const withdrawnApp = await prisma.application.findUniqueOrThrow({
+      where: { id: applicationId },
+    });
+    expect(withdrawnApp.status).toBe('WITHDRAWN');
+    expect(withdrawnApp.version).toBe(2);
+
+    // 3. Stale brand update attempts: SUBMITTED -> SHORTLISTED using observed version 1
+    // Import applicationsRepository and spy findById to return the observed version 1 snapshot
+    const { applicationsRepository } = await import('./applications.repository.js');
+    const findByIdSpy = vi
+      .spyOn(applicationsRepository, 'findById')
+      .mockResolvedValueOnce(observedApp as any);
+
+    const updateRes = await app.inject({
+      method: 'POST',
+      url: `/api/v1/applications/${applicationId}/status`,
+      headers: { authorization: `Bearer ${brandToken}` },
+      payload: {
+        status: 'SHORTLISTED',
+        reason: 'Attempting to shortlist using stale observed version 1',
+      },
+    });
+
+    findByIdSpy.mockRestore();
+
+    // Assert HTTP/domain result is 409
+    expect(updateRes.statusCode).toBe(409);
+    expect(updateRes.json().code).toBe('OPTIMISTIC_LOCK_CONFLICT');
+
+    // Assert final application status is WITHDRAWN, version remains 2, and no SHORTLISTED history is created
+    const finalApp = await prisma.application.findUnique({
+      where: { id: applicationId },
+      include: { history: true },
+    });
+    expect(finalApp?.status).toBe('WITHDRAWN');
+    expect(finalApp?.version).toBe(2);
+    expect(finalApp?.history.some((h) => h.toStatus === 'SHORTLISTED')).toBe(false);
   });
 });

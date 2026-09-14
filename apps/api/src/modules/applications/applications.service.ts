@@ -172,6 +172,13 @@ export class ApplicationsService {
       );
     }
 
+    // Finding 01: Validate parent assignment lifecycle
+    if (app.assignment.status !== 'PUBLISHED' || app.assignment.deletedAt) {
+      throw new BadRequestError(
+        `Cannot transition application status when assignment is in ${app.assignment.status} status. Only active proposals for PUBLISHED assignments may be reviewed.`,
+      );
+    }
+
     const currentStatus = app.status;
     const targetStatus = payload.status as ApplicationStatus;
 
@@ -182,13 +189,24 @@ export class ApplicationsService {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.application.update({
-        where: { id: applicationId },
+      // Finding 02: Conditional atomic update preventing race conditions
+      const updateRes = await tx.application.updateMany({
+        where: {
+          id: applicationId,
+          status: currentStatus,
+          version: app.version,
+        },
         data: {
           status: targetStatus,
           version: { increment: 1 },
         },
       });
+
+      if (updateRes.count !== 1) {
+        throw new OptimisticLockConflictError(
+          'Application status was modified concurrently and cannot be updated.',
+        );
+      }
 
       await tx.applicationStatusHistory.create({
         data: {

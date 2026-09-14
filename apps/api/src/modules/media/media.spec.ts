@@ -147,6 +147,10 @@ describe('Media Domain Integration Tests', () => {
     expect(confirmRes.statusCode).toBe(200);
     const body = confirmRes.json();
     expect(body.status).toBe('PENDING_SCAN');
+    // Non-ACTIVE asset must receive null for all URLs
+    expect(body.url).toBeNull();
+    expect(body.thumbnailUrl).toBeNull();
+    expect(body.previewUrl).toBeNull();
 
     // Repeated confirmation is idempotent
     const repeatRes = await app.inject({
@@ -157,5 +161,92 @@ describe('Media Domain Integration Tests', () => {
     });
     expect(repeatRes.statusCode).toBe(200);
     expect(repeatRes.json().status).toBe('PENDING_SCAN');
+    expect(repeatRes.json().url).toBeNull();
+  });
+
+  it('proves inactive media states (QUARANTINED, PENDING_SCAN, REJECTED_INVALID) never expose download URLs', async () => {
+    // 1. QUARANTINED asset
+    const qAssetId = generateUuidV7();
+    await prisma.mediaAsset.create({
+      data: {
+        id: qAssetId,
+        userId: creatorUserId,
+        storageKey: `quarantine/${creatorUserId}/${qAssetId}.png`,
+        originalName: 'secret.png',
+        mimeType: 'image/png',
+        byteSize: 100,
+        mediaType: 'IMAGE',
+        status: 'QUARANTINED',
+      },
+    });
+
+    const qRes = await app.inject({
+      method: 'GET',
+      url: `/api/v1/media/${qAssetId}`,
+      headers: { authorization: `Bearer ${creatorToken}` },
+    });
+    expect(qRes.statusCode).toBe(200);
+    const qBody = qRes.json();
+    expect(qBody.status).toBe('QUARANTINED');
+    expect(qBody.url).toBeNull();
+    expect(qBody.thumbnailUrl).toBeNull();
+    expect(qBody.previewUrl).toBeNull();
+
+    // 2. REJECTED_INVALID asset
+    const rAssetId = generateUuidV7();
+    await prisma.mediaAsset.create({
+      data: {
+        id: rAssetId,
+        userId: creatorUserId,
+        storageKey: `quarantine/${creatorUserId}/${rAssetId}.png`,
+        originalName: 'malware.png',
+        mimeType: 'image/png',
+        byteSize: 100,
+        mediaType: 'IMAGE',
+        status: 'REJECTED_INVALID',
+      },
+    });
+
+    const rRes = await app.inject({
+      method: 'GET',
+      url: `/api/v1/media/${rAssetId}`,
+      headers: { authorization: `Bearer ${creatorToken}` },
+    });
+    expect(rRes.statusCode).toBe(200);
+    const rBody = rRes.json();
+    expect(rBody.status).toBe('REJECTED_INVALID');
+    expect(rBody.url).toBeNull();
+    expect(rBody.thumbnailUrl).toBeNull();
+    expect(rBody.previewUrl).toBeNull();
+
+    // 3. ACTIVE asset generates valid presigned URLs
+    const aAssetId = generateUuidV7();
+    await prisma.mediaAsset.create({
+      data: {
+        id: aAssetId,
+        userId: creatorUserId,
+        storageKey: `public-assets/${creatorUserId}/${aAssetId}.png`,
+        thumbnailKey: `public-assets/${creatorUserId}/${aAssetId}_thumb.webp`,
+        previewKey: `public-assets/${creatorUserId}/${aAssetId}_preview.webp`,
+        originalName: 'hero.png',
+        mimeType: 'image/png',
+        byteSize: 500,
+        mediaType: 'IMAGE',
+        status: 'ACTIVE',
+      },
+    });
+
+    const aRes = await app.inject({
+      method: 'GET',
+      url: `/api/v1/media/${aAssetId}`,
+      headers: { authorization: `Bearer ${creatorToken}` },
+    });
+    expect(aRes.statusCode).toBe(200);
+    const aBody = aRes.json();
+    expect(aBody.status).toBe('ACTIVE');
+    expect(typeof aBody.url).toBe('string');
+    expect(aBody.url).toContain(`public-assets/${creatorUserId}/${aAssetId}.png`);
+    expect(typeof aBody.thumbnailUrl).toBe('string');
+    expect(typeof aBody.previewUrl).toBe('string');
   });
 });
