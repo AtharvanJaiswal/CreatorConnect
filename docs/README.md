@@ -54,10 +54,10 @@ Welcome to the authoritative engineering and architectural documentation suite f
 ### 6. Engineering Roadmap & Phase README System
 
 - [Master 16-Phase Roadmap](file:///f:/CreatorConnect/docs/roadmap/phase-roadmap.md): Milestone objectives, dependencies, deliverables, and DoD for Phases 0 through 15.
-- [Phase 00 — Product & Architecture Lock](file:///f:/CreatorConnect/docs/roadmap/PHASE-00-README.md) _(READY FOR REVIEW)_
-- [Phase 01 — Monorepo & Dev Environment](file:///f:/CreatorConnect/docs/roadmap/PHASE-01-README.md) _(NOT STARTED)_
-- [Phase 02 — Design System & MFE Foundation](file:///f:/CreatorConnect/docs/roadmap/PHASE-02-README.md) _(NOT STARTED)_
-- [Phase 03 — Infrastructure & DevOps Foundation](file:///f:/CreatorConnect/docs/roadmap/PHASE-03-README.md) _(NOT STARTED)_
+- [Phase 00 — Product & Architecture Lock](file:///f:/CreatorConnect/docs/roadmap/PHASE-00-README.md) _(COMPLETED)_
+- [Phase 01 — Monorepo & Dev Environment](file:///f:/CreatorConnect/docs/roadmap/PHASE-01-README.md) _(COMPLETED)_
+- [Phase 02 — Design System & MFE Foundation](file:///f:/CreatorConnect/docs/roadmap/PHASE-02-README.md) _(COMPLETED)_
+- [Phase 03 — Identity & Authentication Foundation](file:///f:/CreatorConnect/docs/roadmap/PHASE-03-README.md) _(COMPLETED)_
 - [Phase 04 — Identity, Auth & RBAC](file:///f:/CreatorConnect/docs/roadmap/PHASE-04-README.md) _(NOT STARTED)_
 - [Phase 05 — Profiles & Portfolio (R2 Uploads)](file:///f:/CreatorConnect/docs/roadmap/PHASE-05-README.md) _(NOT STARTED)_
 - [Phase 06 — Discovery, FTS & Matcher](file:///f:/CreatorConnect/docs/roadmap/PHASE-06-README.md) _(NOT STARTED)_
