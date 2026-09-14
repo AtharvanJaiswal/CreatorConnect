@@ -3,7 +3,11 @@ import { creatorConnectPreset } from '@creatorconnect/design-system/tailwind-pre
 
 const config: Config = {
   presets: [creatorConnectPreset as Config],
-  content: ['./src/**/*.{ts,tsx,mdx}', '../../packages/ui/src/**/*.{ts,tsx}'],
+  content: [
+    './src/**/*.{ts,tsx,mdx}',
+    '../../packages/ui/src/**/*.{ts,tsx}',
+    '../../packages/design-system/src/**/*.{ts,tsx,css}',
+  ],
 };
 
 export default config;

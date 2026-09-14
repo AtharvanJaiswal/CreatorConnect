@@ -19,7 +19,11 @@
       "require": "./dist/tailwind-preset.js",
       "default": "./dist/tailwind-preset.js"
     },
-    "./globals.css": "./src/styles/globals.css"
+    "./globals.css": {
+      "import": "./src/styles/globals.css",
+      "require": "./src/styles/globals.css",
+      "default": "./src/styles/globals.css"
+    }
   },
   "scripts": {
     "build": "tsc",

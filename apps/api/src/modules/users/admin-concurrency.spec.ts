@@ -78,13 +78,15 @@ describe('Concurrency-Safe Last Active Admin Invariant', () => {
       }),
     ]);
 
-    // One must succeed (200) and one must be rejected (400 LAST_ADMIN_LOCKOUT_PREVENTED)
+    // One must succeed (200) and the other must be prevented:
+    // Either by the database last-admin lockout guard (400 LAST_ADMIN_LOCKOUT_PREVENTED)
+    // or by the caller-suspension auth guard (403 USER_SUSPENDED if the peer's deactivation committed first).
     const statuses = [resA.statusCode, resB.statusCode];
     expect(statuses).toContain(200);
-    expect(statuses).toContain(400);
+    expect(statuses.some((s) => s === 400 || s === 403)).toBe(true);
 
-    const rejectedResponse = resA.statusCode === 400 ? resA.json() : resB.json();
-    expect(rejectedResponse.code).toBe('LAST_ADMIN_LOCKOUT_PREVENTED');
+    const rejectedResponse = resA.statusCode !== 200 ? resA.json() : resB.json();
+    expect(['LAST_ADMIN_LOCKOUT_PREVENTED', 'USER_SUSPENDED']).toContain(rejectedResponse.code);
 
     // 4. Verify in PostgreSQL that at least one ACTIVE administrator remains
     const activeAdminsRemaining = await prisma.user.count({
