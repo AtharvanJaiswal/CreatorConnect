@@ -63,8 +63,50 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
     contentSecurityPolicy: false,
   });
 
+  // CORS Configuration & Production Boot Guard (SEC-02)
+  const isProduction = process.env.NODE_ENV === 'production';
+  let allowedOrigins: string[] | boolean;
+
+  if (isProduction) {
+    const rawCorsOrigin = process.env.CORS_ORIGIN;
+    if (!rawCorsOrigin || !rawCorsOrigin.trim()) {
+      throw new Error(
+        'Production boot guard failure: CORS_ORIGIN environment variable is required and cannot be empty in production mode.',
+      );
+    }
+
+    const origins = rawCorsOrigin
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    if (origins.length === 0) {
+      throw new Error(
+        'Production boot guard failure: CORS_ORIGIN must contain at least one valid origin in production mode.',
+      );
+    }
+
+    if (origins.includes('*')) {
+      throw new Error(
+        'Production boot guard failure: Wildcard CORS origin ("*") is prohibited when credentials are enabled.',
+      );
+    }
+
+    allowedOrigins = origins;
+  } else {
+    // Non-production (development, test, E2E)
+    if (process.env.CORS_ORIGIN && process.env.CORS_ORIGIN.trim()) {
+      const origins = process.env.CORS_ORIGIN.split(',')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      allowedOrigins = origins.length > 0 ? origins : true;
+    } else {
+      allowedOrigins = true;
+    }
+  }
+
   await app.register(cors, {
-    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : true,
+    origin: allowedOrigins,
     credentials: true,
   });
 

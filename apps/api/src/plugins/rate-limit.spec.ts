@@ -258,4 +258,64 @@ describe('F-14 Rate Limiting Architecture & Defense-in-Depth', () => {
     expect(res3.statusCode).toBe(429);
     expect(res3.json().code).toBe('RATE_LIMIT_EXCEEDED');
   });
+
+  it('prevents untrusted external clients from spoofing trusted proxy identity via IPv4-mapped IPv6 (SEC-01 GHSA-jqcg-44mw-7w3h)', async () => {
+    // External untrusted caller connecting from a public IP
+    const untrustedExternalIp = '203.0.113.42';
+
+    // Attacker attempts to spoof loopback / trusted proxy using IPv4-mapped IPv6 representation
+    const res1 = await app.inject({
+      method: 'GET',
+      url: '/api/test/anon-route',
+      remoteAddress: untrustedExternalIp,
+      headers: { 'x-forwarded-for': '::ffff:127.0.0.1' },
+    });
+    expect(res1.statusCode).toBe(200);
+
+    const res2 = await app.inject({
+      method: 'GET',
+      url: '/api/test/anon-route',
+      remoteAddress: untrustedExternalIp,
+      headers: { 'x-forwarded-for': '::ffff:127.0.0.1' },
+    });
+    expect(res2.statusCode).toBe(200);
+
+    // Third request from same external IP must be rate limited (max: 2)
+    // The spoofed ::ffff:127.0.0.1 header MUST be ignored because the peer is not in trustProxy.
+    const res3 = await app.inject({
+      method: 'GET',
+      url: '/api/test/anon-route',
+      remoteAddress: untrustedExternalIp,
+      headers: { 'x-forwarded-for': '::ffff:127.0.0.1' },
+    });
+    expect(res3.statusCode).toBe(429);
+    expect(res3.json().code).toBe('RATE_LIMIT_EXCEEDED');
+
+    // Also verify when remoteAddress itself arrives as an IPv4-mapped IPv6 untrusted external address
+    const mappedExternalIp = '::ffff:203.0.113.99';
+    const mappedRes1 = await app.inject({
+      method: 'GET',
+      url: '/api/test/anon-route',
+      remoteAddress: mappedExternalIp,
+      headers: { 'x-forwarded-for': '127.0.0.1' },
+    });
+    expect(mappedRes1.statusCode).toBe(200);
+
+    const mappedRes2 = await app.inject({
+      method: 'GET',
+      url: '/api/test/anon-route',
+      remoteAddress: mappedExternalIp,
+      headers: { 'x-forwarded-for': '127.0.0.1' },
+    });
+    expect(mappedRes2.statusCode).toBe(200);
+
+    const mappedRes3 = await app.inject({
+      method: 'GET',
+      url: '/api/test/anon-route',
+      remoteAddress: mappedExternalIp,
+      headers: { 'x-forwarded-for': '127.0.0.1' },
+    });
+    expect(mappedRes3.statusCode).toBe(429);
+    expect(mappedRes3.json().code).toBe('RATE_LIMIT_EXCEEDED');
+  });
 });

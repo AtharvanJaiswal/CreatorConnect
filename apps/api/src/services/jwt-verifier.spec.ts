@@ -303,5 +303,61 @@ describe('JwtVerifier', () => {
         /Token verification failed/,
       );
     });
+
+    describe('SEC-03 Never Allow HTTP JWKS in Production', () => {
+      it('rejects HTTP JWKS in production even if ALLOW_HTTP_JWKS=true is set', () => {
+        const origEnv = process.env.NODE_ENV;
+        const origAllow = process.env.ALLOW_HTTP_JWKS;
+        try {
+          process.env.NODE_ENV = 'production';
+          process.env.ALLOW_HTTP_JWKS = 'true';
+          expect(
+            () =>
+              new JwtVerifier({
+                issuer: 'https://auth.creatorconnect.com/auth/v1',
+                jwksUrl: 'http://insecure-jwks.internal/keys.json',
+              }),
+          ).toThrow(/Production boot guard failure: SUPABASE_JWKS_URL must be a valid HTTPS URL/);
+        } finally {
+          process.env.NODE_ENV = origEnv;
+          process.env.ALLOW_HTTP_JWKS = origAllow;
+        }
+      });
+
+      it('accepts valid HTTPS JWKS in production', () => {
+        const origEnv = process.env.NODE_ENV;
+        try {
+          process.env.NODE_ENV = 'production';
+          expect(
+            () =>
+              new JwtVerifier({
+                issuer: 'https://auth.creatorconnect.com/auth/v1',
+                jwksUrl: 'https://auth.creatorconnect.com/auth/v1/.well-known/jwks.json',
+              }),
+          ).not.toThrow();
+        } finally {
+          process.env.NODE_ENV = origEnv;
+        }
+      });
+
+      it('permits HTTP JWKS in development/test when ALLOW_HTTP_JWKS=true is set', () => {
+        const origEnv = process.env.NODE_ENV;
+        const origAllow = process.env.ALLOW_HTTP_JWKS;
+        try {
+          process.env.NODE_ENV = 'development';
+          process.env.ALLOW_HTTP_JWKS = 'true';
+          expect(
+            () =>
+              new JwtVerifier({
+                issuer: 'https://auth.creatorconnect.local/auth/v1',
+                jwksUrl: 'http://jwks-stub:8080/.well-known/jwks.json',
+              }),
+          ).not.toThrow();
+        } finally {
+          process.env.NODE_ENV = origEnv;
+          process.env.ALLOW_HTTP_JWKS = origAllow;
+        }
+      });
+    });
   });
 });

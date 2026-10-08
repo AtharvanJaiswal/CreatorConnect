@@ -106,7 +106,7 @@ services:
       migration-seed:
         condition: service_completed_successfully
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${NODE_ENV:-development}
       PORT: 3000
       HOST: 0.0.0.0
       LOG_LEVEL: info
@@ -155,7 +155,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${NODE_ENV:-development}
       PORT: 3001
       HOST: 0.0.0.0
       LOG_LEVEL: info
@@ -182,7 +182,7 @@ services:
       migration-seed:
         condition: service_completed_successfully
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${NODE_ENV:-development}
       LOG_LEVEL: info
       DATABASE_URL: postgresql://postgres:postgres_local_password@postgres:5432/creatorconnect_dev?schema=public
       REDIS_URL: redis://:redis_local_password@redis:6379/0
@@ -208,7 +208,7 @@ services:
       api:
         condition: service_healthy
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${NODE_ENV:-development}
       PORT: 3002
       API_URL: http://api:3000
       NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}

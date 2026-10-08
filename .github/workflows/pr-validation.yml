@@ -144,6 +144,7 @@ jobs:
           timeout 60 bash -c 'until docker compose exec -T api wget -qO- http://localhost:3000/health > /dev/null 2>&1; do sleep 2; done'
           timeout 60 bash -c 'until docker compose exec -T web-shell wget -qO- http://localhost:3002 > /dev/null 2>&1; do sleep 2; done'
         env:
+          NODE_ENV: development
           SUPABASE_JWT_ISSUER: https://auth.creatorconnect.local/auth/v1
           SUPABASE_JWKS_URL: http://jwks-stub:8080/.well-known/jwks.json
           ALLOW_HTTP_JWKS: 'true'

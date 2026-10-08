@@ -42,7 +42,8 @@
   },
   "pnpm": {
     "overrides": {
-      "undici": "^6.28.1"
+      "undici": "^6.28.1",
+      "proxy-addr": ">=2.0.8"
     }
   }
 }

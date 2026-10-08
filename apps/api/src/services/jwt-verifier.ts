@@ -51,13 +51,25 @@ export class JwtVerifier implements IAuthenticationProvider {
       }
       if (
         this.jwksUrlStr &&
-        !process.env.ALLOW_HTTP_JWKS &&
         (!this.jwksUrlStr.startsWith('https://') ||
           this.jwksUrlStr.includes('localhost') ||
           this.jwksUrlStr.includes('127.0.0.1'))
       ) {
         throw new Error(
           `Production boot guard failure: SUPABASE_JWKS_URL must be a valid HTTPS URL and cannot reference localhost. Received: ${this.jwksUrlStr}`,
+        );
+      }
+    }
+
+    // Non-production guard: Insecure HTTP JWKS requires explicit ALLOW_HTTP_JWKS=true
+    if (!isProduction && this.jwksUrlStr && this.jwksUrlStr.startsWith('http://')) {
+      const isAllowed =
+        process.env.ALLOW_HTTP_JWKS === 'true' ||
+        process.env.NODE_ENV === 'test' ||
+        !!process.env.VITEST;
+      if (!isAllowed) {
+        throw new Error(
+          `Non-production guard failure: HTTP JWKS URL requires ALLOW_HTTP_JWKS=true. Received: ${this.jwksUrlStr}`,
         );
       }
     }
