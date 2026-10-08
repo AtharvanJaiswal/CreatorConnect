@@ -189,6 +189,22 @@ export class ApplicationsService {
     }
 
     await this.prisma.$transaction(async (tx) => {
+      // Concurrency & Invariant Hardening: Lock parent assignment within transaction
+      const lockedAssignment = await tx.$queryRaw<Array<{ id: string; status: string }>>`
+        SELECT id, status FROM assignments
+        WHERE id = ${app.assignmentId}::uuid AND deleted_at IS NULL
+        FOR SHARE
+      `;
+
+      const firstLocked = lockedAssignment[0];
+      if (!firstLocked || firstLocked.status !== 'PUBLISHED') {
+        throw new BadRequestError(
+          `Cannot transition application status when parent assignment is in ${
+            firstLocked ? firstLocked.status : 'DELETED'
+          } status. Only active proposals for PUBLISHED assignments may be reviewed.`,
+        );
+      }
+
       // Finding 02: Conditional atomic update preventing race conditions
       const updateRes = await tx.application.updateMany({
         where: {

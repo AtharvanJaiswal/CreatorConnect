@@ -149,10 +149,14 @@ export class DiscoveryService {
     try {
       const json = Buffer.from(cursorStr, 'base64url').toString('utf-8');
       const [computedRank, createdAt, id] = JSON.parse(json);
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (
         typeof computedRank === 'number' &&
+        !Number.isNaN(computedRank) &&
         typeof createdAt === 'string' &&
-        typeof id === 'string'
+        !Number.isNaN(Date.parse(createdAt)) &&
+        typeof id === 'string' &&
+        uuidRegex.test(id)
       ) {
         return { computedRank, createdAt, id };
       }

@@ -19,6 +19,9 @@ describe('Profiles Domain Integration Tests', () => {
   let proUserId: string;
   let proToken: string;
 
+  let podcasterUserId: string;
+  let podcasterToken: string;
+
   let activeCategoryId: string;
   let inactiveCategoryId: string;
   let activeSkillId: string;
@@ -139,6 +142,32 @@ describe('Profiles Domain Integration Tests', () => {
         },
       },
     });
+
+    podcasterUserId = generateUuidV7();
+    podcasterToken = await createTestJwt({
+      sub: `sub_pod_${Date.now()}_${generateUuidV7()}`,
+      email: `pod_${Date.now()}_${generateUuidV7()}@test.com`,
+    });
+    const decodedPod: any = await defaultJwtVerifier.verifyToken(podcasterToken);
+    await prisma.user.create({
+      data: {
+        id: podcasterUserId,
+        supabaseAuthId: decodedPod.sub,
+        email: decodedPod.email,
+        status: 'ACTIVE',
+        userRoles: {
+          create: {
+            id: generateUuidV7(),
+            role: {
+              connectOrCreate: {
+                where: { name: 'PODCASTER' },
+                create: { id: generateUuidV7(), name: 'PODCASTER' },
+              },
+            },
+          },
+        },
+      },
+    });
   });
 
   afterAll(async () => {
@@ -231,5 +260,172 @@ describe('Profiles Domain Integration Tests', () => {
     const body = res.json();
     expect(body[0].skillId).toBe(activeSkillId);
     expect(body[0].proficiency).toBe('EXPERT');
+  });
+
+  describe('PATCH-like Profile Update Semantics (Phase C)', () => {
+    it('preserves omitted fields when performing partial updates on CREATOR profile', async () => {
+      // 1. Initial full creation
+      const initialRes = await app.inject({
+        method: 'PUT',
+        url: '/api/v1/profiles/creator',
+        headers: { authorization: `Bearer ${creatorToken}` },
+        payload: {
+          tagline: 'Initial Creator Tagline',
+          bio: 'Initial Bio Content',
+          locationCity: 'Bengaluru',
+          locationCountry: 'IN',
+          startingRate: 50000,
+          visibility: 'PUBLIC',
+        },
+      });
+      expect(initialRes.statusCode).toBe(200);
+      const initial = initialRes.json();
+      expect(initial.tagline).toBe('Initial Creator Tagline');
+      expect(initial.bio).toBe('Initial Bio Content');
+      expect(initial.locationCity).toBe('Bengaluru');
+
+      // 2. Partial update: ONLY provide new tagline
+      const patchRes = await app.inject({
+        method: 'PUT',
+        url: '/api/v1/profiles/creator',
+        headers: { authorization: `Bearer ${creatorToken}` },
+        payload: {
+          tagline: 'Updated Creator Tagline Only',
+        },
+      });
+      expect(patchRes.statusCode).toBe(200);
+      const patched = patchRes.json();
+
+      // Tagline was updated
+      expect(patched.tagline).toBe('Updated Creator Tagline Only');
+      // Omitted fields were NOT cleared or overwritten
+      expect(patched.bio).toBe('Initial Bio Content');
+      expect(patched.locationCity).toBe('Bengaluru');
+      expect(patched.locationCountry).toBe('IN');
+      expect(patched.startingRate).toBe(50000);
+      expect(patched.visibility).toBe('PUBLIC');
+    });
+
+    it('preserves omitted fields when performing partial updates on PROFESSIONAL profile', async () => {
+      // 1. Initial setup
+      const initialRes = await app.inject({
+        method: 'PUT',
+        url: '/api/v1/profiles/professional',
+        headers: { authorization: `Bearer ${proToken}` },
+        payload: {
+          headline: 'Senior Sound Designer & Mixer',
+          bio: 'Decade of post-production audio engineering.',
+          dayRate: 75000,
+          yearsExperience: 10,
+          locationCity: 'Mumbai',
+          locationCountry: 'IN',
+          equipmentList: ['ProTools HD', 'Genelec 8040'],
+          visibility: 'PUBLIC',
+        },
+      });
+      expect(initialRes.statusCode).toBe(200);
+      const initial = initialRes.json();
+      expect(initial.headline).toBe('Senior Sound Designer & Mixer');
+      expect(initial.dayRate).toBe(75000);
+
+      // 2. Partial update: only headline and dayRate
+      const patchRes = await app.inject({
+        method: 'PUT',
+        url: '/api/v1/profiles/professional',
+        headers: { authorization: `Bearer ${proToken}` },
+        payload: {
+          headline: 'Lead Audio Director',
+        },
+      });
+      expect(patchRes.statusCode).toBe(200);
+      const patched = patchRes.json();
+
+      expect(patched.headline).toBe('Lead Audio Director');
+      // Omitted fields remain intact
+      expect(patched.bio).toBe('Decade of post-production audio engineering.');
+      expect(patched.dayRate).toBe(75000);
+      expect(patched.yearsExperience).toBe(10);
+      expect(patched.locationCity).toBe('Mumbai');
+      expect(patched.equipmentList).toEqual(['ProTools HD', 'Genelec 8040']);
+    });
+
+    it('preserves omitted fields when performing partial updates on BRAND profile', async () => {
+      // 1. Initial setup
+      const initialRes = await app.inject({
+        method: 'PUT',
+        url: '/api/v1/profiles/brand',
+        headers: { authorization: `Bearer ${brandToken}` },
+        payload: {
+          companyName: 'Acme Media Labs',
+          industry: 'Film Production',
+          bio: 'Independent storytelling and documentary production.',
+          websiteUrl: 'https://acmemedia.example.com',
+          companySize: '11-50',
+          visibility: 'PUBLIC',
+        },
+      });
+      expect(initialRes.statusCode).toBe(200);
+      const initial = initialRes.json();
+      expect(initial.companyName).toBe('Acme Media Labs');
+      expect(initial.industry).toBe('Film Production');
+
+      // 2. Partial update: only update industry
+      const patchRes = await app.inject({
+        method: 'PUT',
+        url: '/api/v1/profiles/brand',
+        headers: { authorization: `Bearer ${brandToken}` },
+        payload: {
+          companyName: 'Acme Media Labs',
+          industry: 'Commercial & Advertising',
+        },
+      });
+      expect(patchRes.statusCode).toBe(200);
+      const patched = patchRes.json();
+
+      expect(patched.industry).toBe('Commercial & Advertising');
+      expect(patched.companyName).toBe('Acme Media Labs');
+      // Omitted fields remain intact
+      expect(patched.bio).toBe('Independent storytelling and documentary production.');
+      expect(patched.websiteUrl).toBe('https://acmemedia.example.com');
+      expect(patched.companySize).toBe('11-50');
+    });
+
+    it('preserves omitted fields when performing partial updates on PODCASTER profile', async () => {
+      // 1. Initial setup
+      const initialRes = await app.inject({
+        method: 'PUT',
+        url: '/api/v1/profiles/podcaster',
+        headers: { authorization: `Bearer ${podcasterToken}` },
+        payload: {
+          podcastName: 'The Creative Frontier',
+          description: 'Weekly deep dives with top creators.',
+          rssFeedUrl: 'https://feeds.example.com/creative-frontier',
+          guestGuidelines: 'Seeking tech and media visionaries.',
+          visibility: 'PUBLIC',
+        },
+      });
+      expect(initialRes.statusCode).toBe(200);
+      const initial = initialRes.json();
+      expect(initial.podcastName).toBe('The Creative Frontier');
+      expect(initial.rssFeedUrl).toBe('https://feeds.example.com/creative-frontier');
+
+      // 2. Partial update: only description
+      const patchRes = await app.inject({
+        method: 'PUT',
+        url: '/api/v1/profiles/podcaster',
+        headers: { authorization: `Bearer ${podcasterToken}` },
+        payload: {
+          podcastName: 'The Creative Frontier',
+          description: 'Updated weekly deep dive descriptions.',
+        },
+      });
+      expect(patchRes.statusCode).toBe(200);
+      const patched = patchRes.json();
+
+      expect(patched.description).toBe('Updated weekly deep dive descriptions.');
+      // Omitted fields remain intact
+      expect(patched.rssFeedUrl).toBe('https://feeds.example.com/creative-frontier');
+      expect(patched.guestGuidelines).toBe('Seeking tech and media visionaries.');
+    });
   });
 });

@@ -27,4 +27,21 @@ describe('Web Shell Foundation & Design System Integration', () => {
 
     expect(cn('p-2', 'p-4')).toBe('p-4');
   });
+
+  it('correctly configures API rewrites to proxy /api requests to Fastify backend', async () => {
+    const nextConfig = (await import('../../next.config.mjs')).default;
+    expect(typeof nextConfig.rewrites).toBe('function');
+    if (!nextConfig.rewrites) {
+      throw new Error('nextConfig.rewrites is not defined');
+    }
+    const rewrites = await nextConfig.rewrites();
+    expect(rewrites).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: '/api/:path*',
+          destination: expect.stringMatching(/\/api\/:path\*$/),
+        }),
+      ]),
+    );
+  });
 });

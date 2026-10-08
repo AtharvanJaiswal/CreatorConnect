@@ -73,6 +73,129 @@ services:
     networks:
       - creatorconnect-network
 
+  migration-seed:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: creatorconnect-migration-seed
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres_local_password@postgres:5432/creatorconnect_dev?schema=public
+    command: >
+      sh -c "
+      pnpm --filter @creatorconnect/database db:migrate &&
+      pnpm --filter @creatorconnect/database db:seed
+      "
+    networks:
+      - creatorconnect-network
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: creatorconnect-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migration-seed:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      LOG_LEVEL: info
+      DATABASE_URL: postgresql://postgres:postgres_local_password@postgres:5432/creatorconnect_dev?schema=public
+      REDIS_URL: redis://:redis_local_password@redis:6379/0
+      S3_ENDPOINT: http://minio:9000
+      AWS_ACCESS_KEY_ID: minio_local_user
+      AWS_SECRET_ACCESS_KEY: minio_local_password
+      R2_BUCKET_NAME: creatorconnect-dev-media
+      SUPABASE_JWT_ISSUER: https://localhost.supabase.co/auth/v1
+      CORS_ORIGIN: http://localhost:3000,http://localhost:3001,http://localhost:3002
+    ports:
+      - '3000:3000'
+    networks:
+      - creatorconnect-network
+
+  realtime:
+    build:
+      context: .
+      dockerfile: apps/realtime/Dockerfile
+    container_name: creatorconnect-realtime
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      HOST: 0.0.0.0
+      LOG_LEVEL: info
+      REDIS_URL: redis://:redis_local_password@redis:6379/0
+      CORS_ORIGIN: http://localhost:3000,http://localhost:3001,http://localhost:3002
+    ports:
+      - '3001:3001'
+    networks:
+      - creatorconnect-network
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: creatorconnect-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      migration-seed:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: info
+      DATABASE_URL: postgresql://postgres:postgres_local_password@postgres:5432/creatorconnect_dev?schema=public
+      REDIS_URL: redis://:redis_local_password@redis:6379/0
+      S3_ENDPOINT: http://minio:9000
+      AWS_ACCESS_KEY_ID: minio_local_user
+      AWS_SECRET_ACCESS_KEY: minio_local_password
+      R2_BUCKET_NAME: creatorconnect-dev-media
+    networks:
+      - creatorconnect-network
+
+  web-shell:
+    build:
+      context: .
+      dockerfile: apps/web-shell/Dockerfile
+      args:
+        API_URL: ${API_URL:-http://api:3000}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+    container_name: creatorconnect-web-shell
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      API_URL: http://api:3000
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    ports:
+      - '3002:3002'
+    networks:
+      - creatorconnect-network
+
 networks:
   creatorconnect-network:
     driver: bridge

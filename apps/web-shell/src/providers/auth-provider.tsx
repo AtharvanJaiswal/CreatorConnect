@@ -62,6 +62,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    // Supported test auth strategy: check test access token injected by test environment
+    const testToken =
+      typeof window !== 'undefined'
+        ? (window as any).__TEST_ACCESS_TOKEN__ ||
+          localStorage.getItem('creatorconnect_test_access_token')
+        : null;
+
+    if (testToken) {
+      setAccessToken(testToken);
+      fetchUserProfile(testToken).finally(() => {
+        setIsLoading(false);
+      });
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
       setSession(initialSession);
       if (initialSession?.access_token) {

@@ -206,4 +206,85 @@ describe('Portfolio Domain Integration Tests', () => {
     });
     expect(deleteRes.statusCode).toBe(403);
   });
+
+  it('rejects cross-portfolio media reorder attempts and prevents partial mutation (Phase E)', async () => {
+    // 1. User A (creator) creates Portfolio A and attaches MediaLink A
+    const itemARes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/portfolio/items',
+      headers: { authorization: `Bearer ${creatorToken}` },
+      payload: { title: 'Portfolio A' },
+    });
+    const portfolioAId = itemARes.json().id;
+
+    const mediaLinkARes = await app.inject({
+      method: 'POST',
+      url: `/api/v1/portfolio/items/${portfolioAId}/media`,
+      headers: { authorization: `Bearer ${creatorToken}` },
+      payload: { mediaAssetId: activeAssetId, displayOrder: 0, caption: 'Media A' },
+    });
+    const mediaLinkAId = mediaLinkARes.json().id;
+
+    // 2. User B (otherUser) creates an active asset, Portfolio B, and attaches MediaLink B
+    const assetBId = generateUuidV7();
+    await prisma.mediaAsset.create({
+      data: {
+        id: assetBId,
+        userId: otherUserId,
+        storageKey: `public-assets/${otherUserId}/${assetBId}.png`,
+        originalName: 'other.png',
+        mimeType: 'image/png',
+        byteSize: 300,
+        mediaType: 'IMAGE',
+        status: 'ACTIVE',
+      },
+    });
+
+    const itemBRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/portfolio/items',
+      headers: { authorization: `Bearer ${otherToken}` },
+      payload: { title: 'Portfolio B' },
+    });
+    const portfolioBId = itemBRes.json().id;
+
+    const mediaLinkBRes = await app.inject({
+      method: 'POST',
+      url: `/api/v1/portfolio/items/${portfolioBId}/media`,
+      headers: { authorization: `Bearer ${otherToken}` },
+      payload: { mediaAssetId: assetBId, displayOrder: 0, caption: 'Media B' },
+    });
+    const mediaLinkBId = mediaLinkBRes.json().id;
+
+    // 3. User A attempts to reorder Portfolio A while maliciously including MediaLink B from Portfolio B
+    const attackRes = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/portfolio/items/${portfolioAId}/media/reorder`,
+      headers: { authorization: `Bearer ${creatorToken}` },
+      payload: {
+        items: [
+          { id: mediaLinkAId, displayOrder: 10 },
+          { id: mediaLinkBId, displayOrder: 20 },
+        ],
+      },
+    });
+
+    // Must be rejected
+    expect(attackRes.statusCode).toBe(403);
+
+    // Verify Portfolio B remains completely unchanged in DB
+    const linkBInDb = await prisma.portfolioMedia.findUnique({
+      where: { id: mediaLinkBId },
+    });
+    expect(linkBInDb).not.toBeNull();
+    expect(linkBInDb!.displayOrder).toBe(0);
+    expect(linkBInDb!.portfolioItemId).toBe(portfolioBId);
+
+    // Verify Portfolio A did NOT suffer partial mutation (atomic rollback)
+    const linkAInDb = await prisma.portfolioMedia.findUnique({
+      where: { id: mediaLinkAId },
+    });
+    expect(linkAInDb).not.toBeNull();
+    expect(linkAInDb!.displayOrder).toBe(0);
+  });
 });

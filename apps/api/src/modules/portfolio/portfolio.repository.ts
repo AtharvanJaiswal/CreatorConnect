@@ -1,4 +1,5 @@
 import { getPrismaClient, type Prisma } from '@creatorconnect/database';
+import { ForbiddenError } from '../../errors/app-error.js';
 
 export class PortfolioRepository {
   constructor(private prisma = getPrismaClient()) {}
@@ -78,13 +79,41 @@ export class PortfolioRepository {
     });
   }
 
-  async reorderMedia(items: Array<{ id: string; displayOrder: number }>) {
+  async reorderMedia(portfolioItemId: string, items: Array<{ id: string; displayOrder: number }>) {
     return this.prisma.$transaction(async (tx) => {
+      if (items.length === 0) return;
+
+      // 1. Strict ownership verification: all submitted IDs must belong to portfolioItemId
+      const itemIds = items.map((i) => i.id);
+      const ownedLinks = await tx.portfolioMedia.findMany({
+        where: {
+          id: { in: itemIds },
+          portfolioItemId,
+        },
+        select: { id: true },
+      });
+
+      if (ownedLinks.length !== items.length) {
+        throw new ForbiddenError(
+          'One or more media items do not belong to the authorized portfolio item.',
+        );
+      }
+
+      // 2. Perform scoped conditional updates where portfolioItemId is enforced in DB predicate
       for (const item of items) {
-        await tx.portfolioMedia.update({
-          where: { id: item.id },
+        const updateRes = await tx.portfolioMedia.updateMany({
+          where: {
+            id: item.id,
+            portfolioItemId,
+          },
           data: { displayOrder: item.displayOrder },
         });
+
+        if (updateRes.count !== 1) {
+          throw new ForbiddenError(
+            'Failed to update media item order: item not found or does not belong to this portfolio.',
+          );
+        }
       }
     });
   }

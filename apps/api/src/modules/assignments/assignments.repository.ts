@@ -67,9 +67,22 @@ export class AssignmentsRepository {
     id: string,
     expectedVersion: number,
     status: AssignmentStatus,
+    expectedStatus?: AssignmentStatus | AssignmentStatus[],
   ): Promise<number> {
+    const whereClause: Prisma.AssignmentWhereInput = {
+      id,
+      version: expectedVersion,
+    };
+    if (expectedStatus) {
+      if (Array.isArray(expectedStatus)) {
+        whereClause.status = { in: expectedStatus };
+      } else {
+        whereClause.status = expectedStatus;
+      }
+    }
+
     const res = await this.prisma.assignment.updateMany({
-      where: { id, version: expectedVersion },
+      where: whereClause,
       data: {
         status,
         version: { increment: 1 },

@@ -153,6 +153,10 @@ export class AssignmentsService {
     if (input.isRemote !== undefined) updateData.isRemote = input.isRemote;
     if (input.location !== undefined) updateData.location = input.location ?? null;
 
+    if (assignment.status === 'CLOSED' || assignment.status === 'COMPLETED') {
+      throw new BadRequestError(`Cannot edit assignment in ${assignment.status} status.`);
+    }
+
     const count = await this.repo.updateOptimistic(id, input.version, updateData);
 
     if (count === 0) {
@@ -179,10 +183,19 @@ export class AssignmentsService {
       throw new ForbiddenError('You do not own this assignment.');
     }
 
-    const count = await this.repo.updateStatusOptimistic(id, version, 'PUBLISHED');
+    // Invariant: Only DRAFT assignments may be published.
+    // Illegal transitions: IN_PROGRESS -> PUBLISHED, CLOSED -> PUBLISHED, etc.
+    if (assignment.status !== 'DRAFT') {
+      throw new BadRequestError(
+        `Cannot publish assignment in status ${assignment.status}. Only DRAFT assignments may be published.`,
+      );
+    }
+
+    // Conditional DB mutation: enforces expected previous status 'DRAFT' atomically
+    const count = await this.repo.updateStatusOptimistic(id, version, 'PUBLISHED', 'DRAFT');
     if (count === 0) {
       throw new OptimisticLockConflictError(
-        'Assignment was modified concurrently. Please reload and retry.',
+        'Assignment was modified concurrently or is no longer in DRAFT status. Please reload and retry.',
       );
     }
 
@@ -200,10 +213,20 @@ export class AssignmentsService {
       throw new ForbiddenError('You do not own this assignment.');
     }
 
-    const count = await this.repo.updateStatusOptimistic(id, version, 'CLOSED');
+    // Invariant: Terminal status cannot be transitioned
+    if (assignment.status === 'CLOSED') {
+      throw new BadRequestError(`Assignment is already in terminal status ${assignment.status}.`);
+    }
+
+    const count = await this.repo.updateStatusOptimistic(id, version, 'CLOSED', [
+      'DRAFT',
+      'PUBLISHED',
+      'IN_PROGRESS',
+      'COMPLETED',
+    ]);
     if (count === 0) {
       throw new OptimisticLockConflictError(
-        'Assignment was modified concurrently. Please reload and retry.',
+        'Assignment was modified concurrently or is already closed. Please reload and retry.',
       );
     }
 

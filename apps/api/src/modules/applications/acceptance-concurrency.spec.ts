@@ -430,4 +430,96 @@ describe('Atomic Hiring Acceptance & Concurrency-Safe Rejection Tests', () => {
     expect(finalApp?.version).toBe(2);
     expect(finalApp?.history.some((h) => h.toStatus === 'SHORTLISTED')).toBe(false);
   });
+
+  it('guarantees invariant under concurrent updateStatus vs acceptApplication race (Phase G)', async () => {
+    const candidateA = await createCandidate('winner');
+    const candidateB = await createCandidate('competitor');
+
+    const assignmentId = generateUuidV7();
+    await prisma.assignment.create({
+      data: {
+        id: assignmentId,
+        brandId: brandProfileId,
+        title: 'Concurrent Accept vs Status Race',
+        description: 'Testing transaction synchronization',
+        budgetMin: 40000,
+        budgetMax: 80000,
+        deadline: new Date(Date.now() + 86400000),
+        status: 'PUBLISHED',
+        version: 1,
+      },
+    });
+
+    const appAId = generateUuidV7();
+    await prisma.application.create({
+      data: {
+        id: appAId,
+        assignmentId,
+        applicantId: candidateA.userId,
+        coverLetter: 'Winning Proposal',
+        proposedRate: 50000,
+        status: 'SHORTLISTED',
+        version: 1,
+      },
+    });
+
+    const appBId = generateUuidV7();
+    await prisma.application.create({
+      data: {
+        id: appBId,
+        assignmentId,
+        applicantId: candidateB.userId,
+        coverLetter: 'Competing Proposal',
+        proposedRate: 55000,
+        status: 'UNDER_REVIEW',
+        version: 1,
+      },
+    });
+
+    // Launch concurrent acceptApplication(A) and updateStatus(B -> SHORTLISTED)
+    const [acceptRes, updateRes] = await Promise.all([
+      app.inject({
+        method: 'POST',
+        url: `/api/v1/assignments/${assignmentId}/accept`,
+        headers: { authorization: `Bearer ${brandToken}` },
+        payload: {
+          applicationId: appAId,
+          expectedVersion: 1,
+          expectedApplicationVersion: 1,
+        },
+      }),
+      app.inject({
+        method: 'POST',
+        url: `/api/v1/applications/${appBId}/status`,
+        headers: { authorization: `Bearer ${brandToken}` },
+        payload: {
+          status: 'SHORTLISTED',
+          reason: 'Reviewing candidate B concurrently',
+        },
+      }),
+    ]);
+
+    // Primary acceptance succeeds
+    expect(acceptRes.statusCode).toBe(200);
+
+    // Verify Invariants in PostgreSQL:
+    // 1. Assignment is IN_PROGRESS
+    const assignmentInDb = await prisma.assignment.findUniqueOrThrow({
+      where: { id: assignmentId },
+    });
+    expect(assignmentInDb.status).toBe('IN_PROGRESS');
+
+    // 2. Candidate A is ACCEPTED
+    const appAInDb = await prisma.application.findUniqueOrThrow({
+      where: { id: appAId },
+    });
+    expect(appAInDb.status).toBe('ACCEPTED');
+
+    // 3. Candidate B is NEVER left in an active proposal status (cannot be SUBMITTED, UNDER_REVIEW, or SHORTLISTED)
+    const appBInDb = await prisma.application.findUniqueOrThrow({
+      where: { id: appBId },
+    });
+    expect(appBInDb.status).toBe('REJECTED');
+    expect(['SUBMITTED', 'UNDER_REVIEW', 'SHORTLISTED']).not.toContain(appBInDb.status);
+  });
 });

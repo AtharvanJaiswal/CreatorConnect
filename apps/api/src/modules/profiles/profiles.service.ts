@@ -65,42 +65,65 @@ export class ProfilesService {
       }
     }
 
+    const existing = await this.repo.findCreatorProfileByUserId(userId);
+
+    // Compute completion score based on merged fields (PATCH semantics)
+    const mergedTagline = input.tagline !== undefined ? input.tagline : existing?.tagline;
+    const mergedBio = input.bio !== undefined ? input.bio : existing?.bio;
+    const mergedCountry =
+      input.locationCountry !== undefined ? input.locationCountry : existing?.locationCountry;
+    const mergedCity =
+      input.locationCity !== undefined ? input.locationCity : existing?.locationCity;
+    const mergedStartingRate =
+      input.startingRate !== undefined ? input.startingRate : existing?.startingRate;
+    const hasCategories =
+      input.categoryIds !== undefined
+        ? input.categoryIds.length > 0
+        : (existing?.categories?.length ?? 0) > 0;
+
     let completionScore = 0;
-    if (input.tagline) completionScore += 20;
-    if (input.bio) completionScore += 20;
-    if (input.locationCountry && input.locationCity) completionScore += 20;
-    if (input.startingRate !== undefined && input.startingRate !== null) completionScore += 20;
-    if (input.categoryIds && input.categoryIds.length > 0) completionScore += 20;
+    if (mergedTagline) completionScore += 20;
+    if (mergedBio) completionScore += 20;
+    if (mergedCountry && mergedCity) completionScore += 20;
+    if (mergedStartingRate !== undefined && mergedStartingRate !== null) completionScore += 20;
+    if (hasCategories) completionScore += 20;
+
+    // PATCH semantics: only update fields explicitly passed in the request
+    const updateData: any = { completionScore };
+    if (input.tagline !== undefined) updateData.tagline = input.tagline;
+    if (input.bio !== undefined) updateData.bio = input.bio;
+    if (input.locationCountry !== undefined) updateData.locationCountry = input.locationCountry;
+    if (input.locationCity !== undefined) updateData.locationCity = input.locationCity;
+    if (input.isRemote !== undefined) updateData.isRemote = input.isRemote;
+    if (input.startingRate !== undefined) updateData.startingRate = input.startingRate;
+    if (input.currency !== undefined) updateData.currency = input.currency;
+    if (input.visibility !== undefined) updateData.visibility = input.visibility;
+    if (input.socialLinks !== undefined) {
+      updateData.socialLinks = input.socialLinks
+        ? JSON.parse(JSON.stringify(input.socialLinks))
+        : null;
+    }
 
     const id = generateUuidV7();
+    const createData = {
+      id,
+      userId,
+      tagline: input.tagline ?? null,
+      bio: input.bio ?? null,
+      locationCountry: input.locationCountry ?? null,
+      locationCity: input.locationCity ?? null,
+      isRemote: input.isRemote ?? true,
+      startingRate: input.startingRate ?? null,
+      currency: input.currency || 'INR',
+      visibility: input.visibility || 'PUBLIC',
+      socialLinks: input.socialLinks ? JSON.parse(JSON.stringify(input.socialLinks)) : undefined,
+      completionScore,
+    };
+
     const updated = await this.repo.upsertCreatorProfile(
       userId,
-      {
-        tagline: input.tagline ?? null,
-        bio: input.bio ?? null,
-        locationCountry: input.locationCountry ?? null,
-        locationCity: input.locationCity ?? null,
-        isRemote: input.isRemote ?? true,
-        startingRate: input.startingRate ?? null,
-        currency: input.currency || 'INR',
-        visibility: input.visibility || 'PUBLIC',
-        socialLinks: input.socialLinks ? JSON.parse(JSON.stringify(input.socialLinks)) : undefined,
-        completionScore,
-      },
-      {
-        id,
-        userId,
-        tagline: input.tagline ?? null,
-        bio: input.bio ?? null,
-        locationCountry: input.locationCountry ?? null,
-        locationCity: input.locationCity ?? null,
-        isRemote: input.isRemote ?? true,
-        startingRate: input.startingRate ?? null,
-        currency: input.currency || 'INR',
-        visibility: input.visibility || 'PUBLIC',
-        socialLinks: input.socialLinks ? JSON.parse(JSON.stringify(input.socialLinks)) : undefined,
-        completionScore,
-      },
+      updateData,
+      createData,
       input.categoryIds,
     );
 
@@ -141,36 +164,36 @@ export class ProfilesService {
       throw new AuthInsufficientRoleError('User does not have PROFESSIONAL role.');
     }
 
+    // PATCH semantics: only update fields explicitly passed in the request
+    const updateData: any = {};
+    if (input.headline !== undefined) updateData.headline = input.headline;
+    if (input.bio !== undefined) updateData.bio = input.bio;
+    if (input.yearsExperience !== undefined) updateData.yearsExperience = input.yearsExperience;
+    if (input.dayRate !== undefined) updateData.dayRate = input.dayRate;
+    if (input.currency !== undefined) updateData.currency = input.currency;
+    if (input.isAvailable !== undefined) updateData.isAvailable = input.isAvailable;
+    if (input.visibility !== undefined) updateData.visibility = input.visibility;
+    if (input.locationCountry !== undefined) updateData.locationCountry = input.locationCountry;
+    if (input.locationCity !== undefined) updateData.locationCity = input.locationCity;
+    if (input.equipmentList !== undefined) updateData.equipmentList = input.equipmentList;
+
     const id = generateUuidV7();
-    const updated = await this.repo.upsertProfessionalProfile(
+    const createData = {
+      id,
       userId,
-      {
-        headline: input.headline ?? null,
-        bio: input.bio ?? null,
-        yearsExperience: input.yearsExperience ?? null,
-        dayRate: input.dayRate ?? null,
-        currency: input.currency || 'INR',
-        isAvailable: input.isAvailable ?? true,
-        visibility: input.visibility || 'PUBLIC',
-        locationCountry: input.locationCountry ?? null,
-        locationCity: input.locationCity ?? null,
-        equipmentList: input.equipmentList || [],
-      },
-      {
-        id,
-        userId,
-        headline: input.headline ?? null,
-        bio: input.bio ?? null,
-        yearsExperience: input.yearsExperience ?? null,
-        dayRate: input.dayRate ?? null,
-        currency: input.currency || 'INR',
-        isAvailable: input.isAvailable ?? true,
-        visibility: input.visibility || 'PUBLIC',
-        locationCountry: input.locationCountry ?? null,
-        locationCity: input.locationCity ?? null,
-        equipmentList: input.equipmentList || [],
-      },
-    );
+      headline: input.headline ?? null,
+      bio: input.bio ?? null,
+      yearsExperience: input.yearsExperience ?? null,
+      dayRate: input.dayRate ?? null,
+      currency: input.currency || 'INR',
+      isAvailable: input.isAvailable ?? true,
+      visibility: input.visibility || 'PUBLIC',
+      locationCountry: input.locationCountry ?? null,
+      locationCity: input.locationCity ?? null,
+      equipmentList: input.equipmentList || [],
+    };
+
+    const updated = await this.repo.upsertProfessionalProfile(userId, updateData, createData);
 
     return this.mapProfessionalProfile(updated);
   }
@@ -209,28 +232,28 @@ export class ProfilesService {
       throw new AuthInsufficientRoleError('User does not have BRAND role.');
     }
 
+    // PATCH semantics: only update fields explicitly passed in the request
+    const updateData: any = {};
+    if (input.companyName !== undefined) updateData.companyName = input.companyName;
+    if (input.industry !== undefined) updateData.industry = input.industry;
+    if (input.websiteUrl !== undefined) updateData.websiteUrl = input.websiteUrl;
+    if (input.companySize !== undefined) updateData.companySize = input.companySize;
+    if (input.bio !== undefined) updateData.bio = input.bio;
+    if (input.visibility !== undefined) updateData.visibility = input.visibility;
+
     const id = generateUuidV7();
-    const updated = await this.repo.upsertBrandProfile(
+    const createData = {
+      id,
       userId,
-      {
-        companyName: input.companyName,
-        industry: input.industry ?? null,
-        websiteUrl: input.websiteUrl ?? null,
-        companySize: input.companySize ?? null,
-        bio: input.bio ?? null,
-        visibility: input.visibility || 'PUBLIC',
-      },
-      {
-        id,
-        userId,
-        companyName: input.companyName,
-        industry: input.industry ?? null,
-        websiteUrl: input.websiteUrl ?? null,
-        companySize: input.companySize ?? null,
-        bio: input.bio ?? null,
-        visibility: input.visibility || 'PUBLIC',
-      },
-    );
+      companyName: input.companyName,
+      industry: input.industry ?? null,
+      websiteUrl: input.websiteUrl ?? null,
+      companySize: input.companySize ?? null,
+      bio: input.bio ?? null,
+      visibility: input.visibility || 'PUBLIC',
+    };
+
+    const updated = await this.repo.upsertBrandProfile(userId, updateData, createData);
 
     return this.mapBrandProfile(updated);
   }
@@ -269,26 +292,26 @@ export class ProfilesService {
       throw new AuthInsufficientRoleError('User does not have PODCASTER role.');
     }
 
+    // PATCH semantics: only update fields explicitly passed in the request
+    const updateData: any = {};
+    if (input.podcastName !== undefined) updateData.podcastName = input.podcastName;
+    if (input.description !== undefined) updateData.description = input.description;
+    if (input.rssFeedUrl !== undefined) updateData.rssFeedUrl = input.rssFeedUrl;
+    if (input.guestGuidelines !== undefined) updateData.guestGuidelines = input.guestGuidelines;
+    if (input.visibility !== undefined) updateData.visibility = input.visibility;
+
     const id = generateUuidV7();
-    const updated = await this.repo.upsertPodcasterProfile(
+    const createData = {
+      id,
       userId,
-      {
-        podcastName: input.podcastName,
-        description: input.description ?? null,
-        rssFeedUrl: input.rssFeedUrl ?? null,
-        guestGuidelines: input.guestGuidelines ?? null,
-        visibility: input.visibility || 'PUBLIC',
-      },
-      {
-        id,
-        userId,
-        podcastName: input.podcastName,
-        description: input.description ?? null,
-        rssFeedUrl: input.rssFeedUrl ?? null,
-        guestGuidelines: input.guestGuidelines ?? null,
-        visibility: input.visibility || 'PUBLIC',
-      },
-    );
+      podcastName: input.podcastName,
+      description: input.description ?? null,
+      rssFeedUrl: input.rssFeedUrl ?? null,
+      guestGuidelines: input.guestGuidelines ?? null,
+      visibility: input.visibility || 'PUBLIC',
+    };
+
+    const updated = await this.repo.upsertPodcasterProfile(userId, updateData, createData);
 
     return this.mapPodcasterProfile(updated);
   }

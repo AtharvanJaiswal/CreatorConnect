@@ -187,7 +187,7 @@ export class PortfolioService {
       throw new ForbiddenError('You do not own this portfolio item.');
     }
 
-    await this.repo.reorderMedia(input.items);
+    await this.repo.reorderMedia(portfolioItemId, input.items);
   }
 
   private async mapPortfolioItem(item: any): Promise<PortfolioItemResponse> {

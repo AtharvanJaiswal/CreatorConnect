@@ -191,4 +191,157 @@ describe('Assignments Domain Integration Tests', () => {
       }),
     ).rejects.toThrow();
   });
+
+  describe('Assignment Lifecycle State Machine (Phase F)', () => {
+    it('rejects publishing when assignment is in IN_PROGRESS status (IN_PROGRESS -> PUBLISHED)', async () => {
+      const brandProfile = await prisma.brandProfile.findUnique({ where: { userId: brandUserId } });
+      const assignmentId = generateUuidV7();
+
+      // Create an assignment directly in IN_PROGRESS
+      await prisma.assignment.create({
+        data: {
+          id: assignmentId,
+          brandId: brandProfile!.id,
+          title: 'In Progress Assignment',
+          description: 'Testing illegal publish transition',
+          budgetMin: 5000,
+          budgetMax: 10000,
+          status: 'IN_PROGRESS',
+          version: 1,
+          deadline: new Date(Date.now() + 86400000),
+        },
+      });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/assignments/${assignmentId}/publish`,
+        headers: { authorization: `Bearer ${brandToken}` },
+        payload: { version: 1 },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().detail).toMatch(/Cannot publish assignment in status IN_PROGRESS/i);
+
+      // Verify DB status remained IN_PROGRESS
+      const inDb = await prisma.assignment.findUnique({ where: { id: assignmentId } });
+      expect(inDb!.status).toBe('IN_PROGRESS');
+      expect(inDb!.version).toBe(1);
+    });
+
+    it('rejects publishing when assignment is already PUBLISHED (PUBLISHED -> PUBLISHED)', async () => {
+      const brandProfile = await prisma.brandProfile.findUnique({ where: { userId: brandUserId } });
+      const assignmentId = generateUuidV7();
+
+      await prisma.assignment.create({
+        data: {
+          id: assignmentId,
+          brandId: brandProfile!.id,
+          title: 'Published Assignment',
+          description: 'Testing double publish transition',
+          budgetMin: 5000,
+          budgetMax: 10000,
+          status: 'PUBLISHED',
+          version: 1,
+          deadline: new Date(Date.now() + 86400000),
+        },
+      });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/assignments/${assignmentId}/publish`,
+        headers: { authorization: `Bearer ${brandToken}` },
+        payload: { version: 1 },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().detail).toMatch(/Only DRAFT assignments may be published/i);
+    });
+
+    it('rejects publishing when assignment is in terminal CLOSED status', async () => {
+      const brandProfile = await prisma.brandProfile.findUnique({ where: { userId: brandUserId } });
+      const assignmentId = generateUuidV7();
+
+      await prisma.assignment.create({
+        data: {
+          id: assignmentId,
+          brandId: brandProfile!.id,
+          title: 'Closed Assignment',
+          description: 'Testing terminal publish transition',
+          budgetMin: 5000,
+          budgetMax: 10000,
+          status: 'CLOSED',
+          version: 1,
+          deadline: new Date(Date.now() + 86400000),
+        },
+      });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/assignments/${assignmentId}/publish`,
+        headers: { authorization: `Bearer ${brandToken}` },
+        payload: { version: 1 },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().detail).toMatch(/Cannot publish assignment in status CLOSED/i);
+    });
+
+    it('rejects closing when assignment is already in terminal CLOSED status', async () => {
+      const brandProfile = await prisma.brandProfile.findUnique({ where: { userId: brandUserId } });
+      const assignmentId = generateUuidV7();
+
+      await prisma.assignment.create({
+        data: {
+          id: assignmentId,
+          brandId: brandProfile!.id,
+          title: 'Already Closed Assignment',
+          description: 'Testing double close transition',
+          budgetMin: 5000,
+          budgetMax: 10000,
+          status: 'CLOSED',
+          version: 1,
+          deadline: new Date(Date.now() + 86400000),
+        },
+      });
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/assignments/${assignmentId}/close`,
+        headers: { authorization: `Bearer ${brandToken}` },
+        payload: { version: 1 },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().detail).toMatch(/terminal status/i);
+    });
+
+    it('rejects editing assignment attributes when assignment is in terminal CLOSED status', async () => {
+      const brandProfile = await prisma.brandProfile.findUnique({ where: { userId: brandUserId } });
+      const assignmentId = generateUuidV7();
+
+      await prisma.assignment.create({
+        data: {
+          id: assignmentId,
+          brandId: brandProfile!.id,
+          title: 'Closed Immutable Assignment',
+          description: 'Testing edit on closed',
+          budgetMin: 5000,
+          budgetMax: 10000,
+          status: 'CLOSED',
+          version: 1,
+          deadline: new Date(Date.now() + 86400000),
+        },
+      });
+
+      const res = await app.inject({
+        method: 'PUT',
+        url: `/api/v1/assignments/${assignmentId}`,
+        headers: { authorization: `Bearer ${brandToken}` },
+        payload: { version: 1, title: 'Attempted Title Edit' },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().detail).toMatch(/Cannot edit assignment in CLOSED status/i);
+    });
+  });
 });

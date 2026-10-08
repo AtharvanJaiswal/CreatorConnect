@@ -25,8 +25,9 @@ export class JwtVerifier implements IAuthenticationProvider {
     // This ensures `new JwtVerifier({ issuer: '' })` is treated as "unconfigured" and fails
     // closed, rather than accidentally inheriting the env var's issuer value.
     const rawIssuer = 'issuer' in options ? options.issuer : process.env.SUPABASE_JWT_ISSUER;
-    // Normalize empty/whitespace to undefined so the fail-closed guard fires.
-    this.issuer = rawIssuer && rawIssuer.trim() ? rawIssuer.trim() : undefined;
+    // Normalize empty/whitespace and strip surrounding quotes so the fail-closed guard fires cleanly.
+    this.issuer =
+      rawIssuer && rawIssuer.trim() ? rawIssuer.trim().replace(/^["']|["']$/g, '') : undefined;
 
     this.audience = options.audience || 'authenticated';
     this.clockTolerance = options.clockTolerance ?? 60;
@@ -37,7 +38,9 @@ export class JwtVerifier implements IAuthenticationProvider {
       const jwksUrlStr =
         options.jwksUrl ||
         process.env.SUPABASE_JWKS_URL ||
-        'https://localhost.supabase.co/auth/v1/.well-known/jwks.json';
+        (this.issuer
+          ? `${this.issuer.replace(/\/$/, '')}/.well-known/jwks.json`
+          : 'https://localhost.supabase.co/auth/v1/.well-known/jwks.json');
 
       const jwksUrl = new URL(jwksUrlStr);
       this.getKeySet = jose.createRemoteJWKSet(jwksUrl, {
