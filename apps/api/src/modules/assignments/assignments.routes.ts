@@ -24,7 +24,15 @@ export const assignmentsRoutes: FastifyPluginAsync<AssignmentsRoutesOptions> = a
   fastify.post<{ Body: CreateAssignmentInput }>(
     '/api/v1/assignments',
     {
-      preHandler: [fastify.authenticate],
+      preHandler: [
+        fastify.authenticate,
+        fastify.rateLimit({
+          endpoint: 'expensive-mutation',
+          max: 30,
+          windowSeconds: 60,
+          onRedisFailure: 'fail-closed',
+        }),
+      ],
       schema: {
         description: 'Creates a new assignment (BRAND role required)',
         tags: ['Assignments'],

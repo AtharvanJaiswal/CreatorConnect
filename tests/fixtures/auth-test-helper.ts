@@ -61,14 +61,15 @@ export async function createTestJwt(
     email: payload.email || 'user@example.com',
     ...restPayload,
   })
-
     .setProtectedHeader({
       alg,
       ...(options.kid !== null ? { kid: options.kid || kid } : {}),
     })
     .setSubject(payload.sub)
     .setAudience(payload.aud || 'authenticated')
-    .setIssuer(payload.iss || 'https://localhost.supabase.co/auth/v1')
+    .setIssuer(
+      payload.iss || process.env.SUPABASE_JWT_ISSUER || 'https://auth.creatorconnect.local/auth/v1',
+    )
     .setIssuedAt();
 
   if (typeof payload.exp === 'number') {

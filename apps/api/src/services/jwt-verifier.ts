@@ -12,62 +12,76 @@ export interface JwtVerifierOptions {
 
 const ALLOWED_ALGORITHMS = ['ES256', 'RS256'];
 
-export const TEST_PUBLIC_KEY_JWK: jose.JWK = {
-  kty: 'EC',
-  x: 'qNPSXoEres5WqJm-dAQgayVZsh3roSw89tL8uQezp8A',
-  y: '3gVnJzNHCwaRJXqfttI7hpcWzDxa6rMrmKPaKoyv5YQ',
-  crv: 'P-256',
-  kid: 'test-key-01',
-};
-
-let cachedTestPubKey: jose.KeyLike | null = null;
-async function getTestPublicKey(): Promise<jose.KeyLike> {
-  if (!cachedTestPubKey) {
-    cachedTestPubKey = (await jose.importJWK(TEST_PUBLIC_KEY_JWK, 'ES256')) as jose.KeyLike;
-  }
-  return cachedTestPubKey;
-}
-
 export class JwtVerifier implements IAuthenticationProvider {
   private getKeySet: jose.JWTVerifyGetKey;
   private issuer: string | undefined;
   private audience: string;
   private clockTolerance: number;
+  private jwksUrlStr: string | undefined;
 
   constructor(options: JwtVerifierOptions = {}) {
-    // Determine raw issuer:
-    // - If options.issuer was explicitly provided (even as empty string), use it.
-    // - Only fall back to SUPABASE_JWT_ISSUER env var if issuer was NOT provided in options at all.
-    // This ensures `new JwtVerifier({ issuer: '' })` is treated as "unconfigured" and fails
-    // closed, rather than accidentally inheriting the env var's issuer value.
     const rawIssuer = 'issuer' in options ? options.issuer : process.env.SUPABASE_JWT_ISSUER;
-    // Normalize empty/whitespace and strip surrounding quotes so the fail-closed guard fires cleanly.
     this.issuer =
       rawIssuer && rawIssuer.trim() ? rawIssuer.trim().replace(/^["']|["']$/g, '') : undefined;
 
     this.audience = options.audience || 'authenticated';
     this.clockTolerance = options.clockTolerance ?? 60;
 
+    this.jwksUrlStr =
+      options.jwksUrl ||
+      process.env.SUPABASE_JWKS_URL ||
+      (this.issuer ? `${this.issuer.replace(/\/$/, '')}/.well-known/jwks.json` : undefined);
+
+    // Boot Guard: Enforce strict production configuration invariants
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (isProduction) {
+      if (!this.issuer) {
+        throw new Error(
+          'Production boot guard failure: SUPABASE_JWT_ISSUER is required in production mode.',
+        );
+      }
+      if (
+        !this.issuer.startsWith('https://') ||
+        this.issuer.includes('localhost') ||
+        this.issuer.includes('127.0.0.1')
+      ) {
+        throw new Error(
+          `Production boot guard failure: SUPABASE_JWT_ISSUER must be a valid HTTPS URL and cannot reference localhost. Received: ${this.issuer}`,
+        );
+      }
+      if (
+        this.jwksUrlStr &&
+        !process.env.ALLOW_HTTP_JWKS &&
+        (!this.jwksUrlStr.startsWith('https://') ||
+          this.jwksUrlStr.includes('localhost') ||
+          this.jwksUrlStr.includes('127.0.0.1'))
+      ) {
+        throw new Error(
+          `Production boot guard failure: SUPABASE_JWKS_URL must be a valid HTTPS URL and cannot reference localhost. Received: ${this.jwksUrlStr}`,
+        );
+      }
+    }
+
     if (options.localKeySet) {
       this.getKeySet = options.localKeySet;
     } else {
-      const jwksUrlStr =
-        options.jwksUrl ||
-        process.env.SUPABASE_JWKS_URL ||
-        (this.issuer
-          ? `${this.issuer.replace(/\/$/, '')}/.well-known/jwks.json`
-          : 'https://localhost.supabase.co/auth/v1/.well-known/jwks.json');
-
-      const jwksUrl = new URL(jwksUrlStr);
-      this.getKeySet = jose.createRemoteJWKSet(jwksUrl, {
-        cacheMaxAge: 10 * 60 * 1000, // 10 minutes
-        cooldownDuration: 30 * 1000, // 30 seconds between refreshes for unknown kid
-      });
+      if (!this.jwksUrlStr) {
+        // If neither JWKS URL nor issuer is provided, initialize a noop resolver that fails closed
+        this.getKeySet = async () => {
+          throw new AuthInvalidTokenError('JWKS key set is not configured.');
+        };
+      } else {
+        const jwksUrl = new URL(this.jwksUrlStr);
+        this.getKeySet = jose.createRemoteJWKSet(jwksUrl, {
+          cacheMaxAge: 10 * 60 * 1000, // 10 minutes
+          cooldownDuration: 30 * 1000, // 30 seconds between refreshes for unknown kid
+        });
+      }
     }
   }
 
   /**
-   * Sets a custom key set provider (used for test fixtures / offline mocking).
+   * Sets a custom key set provider (used for dependency injection / composition root).
    */
   public setKeySet(getKeySet: jose.JWTVerifyGetKey): void {
     this.getKeySet = getKeySet;
@@ -77,16 +91,14 @@ export class JwtVerifier implements IAuthenticationProvider {
    * Cryptographically verifies an incoming JWT token against trusted JWKS keys.
    *
    * SECURITY: Issuer validation is MANDATORY. If SUPABASE_JWT_ISSUER is not
-   * configured, verification FAILS CLOSED — no token is accepted. This prevents
-   * accepting tokens from arbitrary issuers due to misconfiguration.
+   * configured, verification FAILS CLOSED.
    */
   public async verifyToken(token: string): Promise<AuthTokenPayload> {
     if (!token || typeof token !== 'string') {
       throw new AuthInvalidTokenError('Authentication token missing or malformed.');
     }
 
-    // FAIL CLOSED: issuer must always be configured. A missing issuer is a
-    // configuration error — do NOT skip validation and accept all issuers.
+    // FAIL CLOSED: issuer must always be configured.
     if (!this.issuer) {
       throw new AuthInvalidTokenError(
         'JWT issuer is not configured. Token verification is disabled until issuer is provided.',
@@ -113,19 +125,18 @@ export class JwtVerifier implements IAuthenticationProvider {
       );
     }
 
+    // Ignore jku and x5u parameters — never allow token header to dictate key retrieval endpoint
+
     try {
       const verifyOptions: jose.JWTVerifyOptions = {
         algorithms: ALLOWED_ALGORITHMS,
         audience: this.audience,
         clockTolerance: this.clockTolerance,
-        // Issuer is always set — the fail-closed guard above ensures this.issuer is truthy.
+        // Exact match against configured issuer (never derived from token payload)
         issuer: this.issuer,
       };
 
-      const { payload } =
-        protectedHeader.kid === 'test-key-01' && this.issuer?.includes('localhost.supabase.co')
-          ? await jose.jwtVerify(token, await getTestPublicKey(), verifyOptions)
-          : await jose.jwtVerify(token, this.getKeySet, verifyOptions);
+      const { payload } = await jose.jwtVerify(token, this.getKeySet, verifyOptions);
 
       if (!payload.sub) {
         throw new AuthInvalidTokenError('Token payload is missing subject claim (sub).');

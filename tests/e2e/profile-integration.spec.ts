@@ -53,7 +53,7 @@ test.describe('Real Web → API Integration: Professional Profile Journey (Phase
     });
 
     // 2. Obtain real signed JWT using auth helper
-    const { createTestJwt } = await import('../../apps/api/src/test-utils/auth-test-helper.js');
+    const { createTestJwt } = await import('../fixtures/auth-test-helper.js');
     testAuthToken = await createTestJwt({
       sub: testSub,
       email: testEmail,

@@ -52,6 +52,23 @@ export class AuthService {
     // 2. Email collision check: If email belongs to another user with a different sub, NEVER merge
     const existingByEmail = await this.userRepo.findByEmail(normalizedEmail);
     if (existingByEmail) {
+      if (existingByEmail.supabaseAuthId === sub) {
+        return {
+          user: {
+            id: existingByEmail.id,
+            supabaseAuthId: existingByEmail.supabaseAuthId,
+            email: existingByEmail.email,
+            firstName: existingByEmail.firstName ?? null,
+            lastName: existingByEmail.lastName ?? null,
+            avatarUrl: null,
+            status: existingByEmail.status,
+            roles: existingByEmail.roles,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          isNewUser: false,
+        };
+      }
       throw new IdentityEmailConflictError(
         `Email '${normalizedEmail}' is already registered to another CreatorConnect identity. Account merge is prohibited.`,
       );
@@ -73,31 +90,66 @@ export class AuthService {
     }
 
     // 4. Create user with role and audit log atomically in PostgreSQL
-    const createdUser = await this.userRepo.createUserWithRole(
-      {
-        supabaseAuthId: sub,
-        email: normalizedEmail,
-        roleName: assignedRole,
-      },
-      ipAddress,
-      userAgent,
-    );
+    try {
+      const createdUser = await this.userRepo.createUserWithRole(
+        {
+          supabaseAuthId: sub,
+          email: normalizedEmail,
+          roleName: assignedRole,
+        },
+        ipAddress,
+        userAgent,
+      );
 
-    return {
-      user: {
-        id: createdUser.id,
-        supabaseAuthId: createdUser.supabaseAuthId,
-        email: createdUser.email,
-        firstName: createdUser.firstName ?? null,
-        lastName: createdUser.lastName ?? null,
-        avatarUrl: null,
-        status: createdUser.status,
-        roles: createdUser.roles,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      isNewUser: true,
-    };
+      return {
+        user: {
+          id: createdUser.id,
+          supabaseAuthId: createdUser.supabaseAuthId,
+          email: createdUser.email,
+          firstName: createdUser.firstName ?? null,
+          lastName: createdUser.lastName ?? null,
+          avatarUrl: null,
+          status: createdUser.status,
+          roles: createdUser.roles,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        isNewUser: true,
+      };
+    } catch (err: any) {
+      // Concurrency race hardening (F-04): If losing concurrent sync request hits unique constraint (P2002),
+      // safely reload ONLY using the verified Supabase subject claim.
+      if (err.code === 'P2002' || err?.message?.includes('Unique constraint')) {
+        const reloadedUser = await this.userRepo.findBySub(sub);
+        if (reloadedUser) {
+          return {
+            user: {
+              id: reloadedUser.id,
+              supabaseAuthId: reloadedUser.supabaseAuthId,
+              email: reloadedUser.email,
+              firstName: reloadedUser.firstName ?? null,
+              lastName: reloadedUser.lastName ?? null,
+              avatarUrl: null,
+              status: reloadedUser.status,
+              roles: reloadedUser.roles,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            isNewUser: false,
+          };
+        }
+
+        // If not found by sub, the unique constraint conflict was on email (different identity).
+        // Enforce anti-email-merging invariant: Never merge accounts!
+        const existingByEmail = await this.userRepo.findByEmail(normalizedEmail);
+        if (existingByEmail && existingByEmail.supabaseAuthId !== sub) {
+          throw new IdentityEmailConflictError(
+            `Email '${normalizedEmail}' is already registered to another CreatorConnect identity. Account merge is prohibited.`,
+          );
+        }
+      }
+      throw err;
+    }
   }
 }
 

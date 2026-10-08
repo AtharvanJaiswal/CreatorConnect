@@ -8,6 +8,8 @@ import { createProblemDetails } from '@creatorconnect/validation';
 import { loggerConfig } from './plugins/logger.js';
 import { errorHandler } from './plugins/error-handler.js';
 import { authPlugin } from './plugins/auth.js';
+import { rateLimiterPlugin } from './plugins/rate-limit.js';
+import { redisCache } from './services/redis-cache.js';
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { usersRoutes } from './modules/users/users.routes.js';
@@ -19,11 +21,20 @@ import { applicationsRoutes } from './modules/applications/applications.routes.j
 import { discoveryRoutes } from './modules/discovery/discovery.routes.js';
 
 export async function buildApp(opts: FastifyServerOptions = {}): Promise<FastifyInstance> {
+  const defaultTrustProxy = process.env.TRUST_PROXY
+    ? process.env.TRUST_PROXY === 'true'
+      ? true
+      : process.env.TRUST_PROXY === 'false'
+        ? false
+        : process.env.TRUST_PROXY.split(',').map((s) => s.trim())
+    : ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'];
+
   const app = fastify({
     logger: loggerConfig,
     disableRequestLogging: false,
     requestIdHeader: 'x-request-id',
     requestIdLogLabel: 'reqId',
+    trustProxy: opts.trustProxy !== undefined ? opts.trustProxy : defaultTrustProxy,
     ajv: {
       customOptions: {
         strict: false,
@@ -91,6 +102,12 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
 
   // Register Core Authentication & Identity Plugin
   await app.register(authPlugin);
+
+  // Connect Redis Cache and Rate Limiting Infrastructure
+  await redisCache.connect();
+
+  // Register Rate Limiting Plugin
+  await app.register(rateLimiterPlugin);
 
   app.setErrorHandler(errorHandler);
 

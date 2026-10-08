@@ -16,6 +16,33 @@ export class MediaRepository {
     return this.prisma.mediaAsset.findUnique({ where: { id } });
   }
 
+  async findByIdWithParents(id: string) {
+    return this.prisma.mediaAsset.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            status: true,
+            creatorProfile: { select: { deletedAt: true } },
+          },
+        },
+        portfolioMedia: {
+          include: {
+            portfolioItem: {
+              select: {
+                id: true,
+                userId: true,
+                visibility: true,
+                deletedAt: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
   async findByStorageKey(storageKey: string): Promise<MediaAsset | null> {
     return this.prisma.mediaAsset.findUnique({ where: { storageKey } });
   }

@@ -28,6 +28,15 @@ export const discoveryRoutes: FastifyPluginAsync<DiscoveryRoutesOptions> = async
   fastify.get<{ Querystring: SearchAssignmentsQuery }>(
     '/api/v1/discovery/assignments',
     {
+      preHandler: [
+        fastify.rateLimit({
+          endpoint: 'discovery-search',
+          max: 60,
+          windowSeconds: 60,
+          onRedisFailure: 'bounded-fallback',
+          fallbackMax: 20,
+        }),
+      ],
       schema: {
         description:
           'Searches published assignments using PostgreSQL FTS and trigram fuzzy matching',
@@ -55,6 +64,15 @@ export const discoveryRoutes: FastifyPluginAsync<DiscoveryRoutesOptions> = async
   fastify.get<{ Querystring: SearchCreatorsQuery }>(
     '/api/v1/discovery/creators',
     {
+      preHandler: [
+        fastify.rateLimit({
+          endpoint: 'discovery-search',
+          max: 60,
+          windowSeconds: 60,
+          onRedisFailure: 'bounded-fallback',
+          fallbackMax: 20,
+        }),
+      ],
       schema: {
         description:
           'Searches public creator profiles using PostgreSQL FTS and trigram fuzzy matching',

@@ -16,11 +16,7 @@ import {
   AuthInsufficientRoleError,
   AssignmentDeadlineExpiredError,
 } from '../../errors/app-error.js';
-
-import pino from 'pino';
-import { loggerConfig } from '../../plugins/logger.js';
-
-const logger = pino(loggerConfig);
+import { assertValidApplicationTransition } from './application-state-machine.js';
 
 export class ApplicationsService {
   constructor(
@@ -182,11 +178,8 @@ export class ApplicationsService {
     const currentStatus = app.status;
     const targetStatus = payload.status as ApplicationStatus;
 
-    if (currentStatus === 'ACCEPTED' || currentStatus === 'WITHDRAWN') {
-      throw new BadRequestError(
-        `Cannot transition application from terminal status ${currentStatus}.`,
-      );
-    }
+    // Explicit state machine transition enforcement (F-09)
+    assertValidApplicationTransition(currentStatus, targetStatus);
 
     await this.prisma.$transaction(async (tx) => {
       // Concurrency & Invariant Hardening: Lock parent assignment within transaction
@@ -251,15 +244,8 @@ export class ApplicationsService {
     }
 
     const currentStatus = app.status;
-    if (
-      currentStatus !== 'SUBMITTED' &&
-      currentStatus !== 'UNDER_REVIEW' &&
-      currentStatus !== 'SHORTLISTED'
-    ) {
-      throw new BadRequestError(
-        `Cannot withdraw application with status ${currentStatus}. Only active proposals can be withdrawn.`,
-      );
-    }
+    // Explicit state machine transition enforcement (F-09)
+    assertValidApplicationTransition(currentStatus, 'WITHDRAWN');
 
     await this.prisma.$transaction(async (tx) => {
       const updateRes = await tx.application.updateMany({
@@ -307,78 +293,101 @@ export class ApplicationsService {
     applicationId: string,
     payload: AcceptApplicationInput,
   ): Promise<ApplicationResponse> {
-    const assignment = await this.prisma.assignment.findUnique({
-      where: { id: assignmentId },
-      include: { brand: true },
-    });
+    return await this.prisma.$transaction(async (tx) => {
+      // 1. Lock parent assignment first within transaction using SELECT ... FOR UPDATE (F-08 / F-09)
+      const lockedAssignments = await tx.$queryRaw<
+        Array<{
+          id: string;
+          brand_id: string;
+          status: string;
+          deadline: Date;
+          version: number;
+          now: Date;
+        }>
+      >`
+        SELECT a.id, a.brand_id, a.status, a.deadline, a.version, NOW() as now
+        FROM assignments a
+        WHERE a.id = ${assignmentId}::uuid AND a.deleted_at IS NULL
+        FOR UPDATE
+      `;
 
-    if (!assignment || assignment.deletedAt) {
-      throw new NotFoundError('Assignment not found.');
-    }
+      const assignment = lockedAssignments[0];
+      if (!assignment) {
+        throw new NotFoundError('Assignment not found.');
+      }
 
-    if (assignment.brand.userId !== brandUserId && !isAdmin) {
-      throw new ForbiddenError('Only the assignment brand owner or admin can accept candidates.');
-    }
+      // 2. Ownership verification
+      const brandProfile = await tx.brandProfile.findUnique({
+        where: { id: assignment.brand_id },
+        select: { userId: true },
+      });
 
-    await this.prisma.$transaction(async (tx) => {
-      // 1. Conditional Atomic Update on Assignment (Must be PUBLISHED and match expectedVersion)
-      const assignmentUpdate = await tx.assignment.updateMany({
-        where: {
-          id: assignmentId,
-          status: 'PUBLISHED',
-          version: payload.expectedVersion,
-        },
+      if (!brandProfile || (brandProfile.userId !== brandUserId && !isAdmin)) {
+        throw new ForbiddenError('Only the assignment brand owner or admin can accept candidates.');
+      }
+
+      // 3. Status and version verification
+      if (assignment.version !== payload.expectedVersion || assignment.status !== 'PUBLISHED') {
+        throw new OptimisticLockConflictError(
+          `Assignment state conflict: assignment was modified concurrently (current status: ${assignment.status}, version: ${assignment.version}).`,
+        );
+      }
+
+      // 4. PostgreSQL database time deadline verification (F-08 Hardening)
+      // Acceptance does NOT depend on scheduler timing. If deadline <= database NOW(), reject immediately.
+      if (assignment.deadline && new Date(assignment.deadline) <= new Date(assignment.now)) {
+        throw new AssignmentDeadlineExpiredError(
+          'Assignment deadline has passed. Cannot accept applications for expired assignments.',
+        );
+      }
+
+      // 5. Lock and verify target application
+      const lockedApplications = await tx.$queryRaw<
+        Array<{
+          id: string;
+          status: string;
+          version: number;
+        }>
+      >`
+        SELECT id, status, version
+        FROM applications
+        WHERE id = ${applicationId}::uuid AND assignment_id = ${assignmentId}::uuid
+        FOR UPDATE
+      `;
+
+      const targetApp = lockedApplications[0];
+      if (!targetApp) {
+        throw new NotFoundError('Application not found.');
+      }
+
+      // State machine transition check: must be SHORTLISTED -> ACCEPTED
+      assertValidApplicationTransition(targetApp.status as ApplicationStatus, 'ACCEPTED');
+
+      if (targetApp.version !== payload.expectedApplicationVersion) {
+        throw new OptimisticLockConflictError(
+          'Application was modified concurrently. Please reload and retry.',
+        );
+      }
+
+      // 6. Transition Assignment to IN_PROGRESS
+      await tx.assignment.update({
+        where: { id: assignmentId },
         data: {
           status: 'IN_PROGRESS',
           version: { increment: 1 },
         },
       });
 
-      if (assignmentUpdate.count !== 1) {
-        logger.warn(
-          {
-            assignmentId,
-            expectedVersion: payload.expectedVersion,
-            metric: 'acceptance_assignment_conflict_total',
-          },
-          'Assignment optimistic lock conflict during candidate acceptance',
-        );
-        throw new OptimisticLockConflictError(
-          'Assignment is no longer in PUBLISHED status or was modified concurrently.',
-        );
-      }
-
-      // 2. Conditional Atomic Update on Target Application (Must be SHORTLISTED and match expectedApplicationVersion)
-      const applicationUpdate = await tx.application.updateMany({
-        where: {
-          id: applicationId,
-          assignmentId: assignmentId,
-          status: 'SHORTLISTED',
-          version: payload.expectedApplicationVersion,
-        },
+      // 7. Transition Target Application to ACCEPTED
+      await tx.application.update({
+        where: { id: applicationId },
         data: {
           status: 'ACCEPTED',
           version: { increment: 1 },
         },
       });
 
-      if (applicationUpdate.count !== 1) {
-        logger.warn(
-          {
-            applicationId,
-            assignmentId,
-            expectedApplicationVersion: payload.expectedApplicationVersion,
-            metric: 'acceptance_application_conflict_total',
-          },
-          'Target application optimistic lock conflict during candidate acceptance',
-        );
-        // Rollback entire transaction!
-        throw new OptimisticLockConflictError(
-          'Application is no longer in SHORTLISTED status or was modified concurrently.',
-        );
-      }
-
-      // 3. Concurrency-Safe Conditional Rejection of Competing Active Applications
+      // 8. Reject competing active applications with reason POSITION_FILLED
       const competingApps = await tx.application.findMany({
         where: {
           assignmentId,
@@ -391,7 +400,6 @@ export class ApplicationsService {
       });
 
       for (const compApp of competingApps) {
-        // Conditional update: only reject if the application is STILL in its observed status and version
         const rejectRes = await tx.application.updateMany({
           where: {
             id: compApp.id,
@@ -405,9 +413,6 @@ export class ApplicationsService {
           },
         });
 
-        // ONLY insert history if the conditional update count is exactly 1!
-        // If rejectRes.count === 0, competitor transitioned concurrently (e.g. WITHDRAWN).
-        // Their concurrent transition is preserved and never overwritten.
         if (rejectRes.count === 1) {
           await tx.applicationStatusHistory.create({
             data: {
@@ -422,21 +427,29 @@ export class ApplicationsService {
         }
       }
 
-      // 4. Record history for the accepted application
+      // 9. Record history for the accepted application
       await tx.applicationStatusHistory.create({
         data: {
           id: generateUuidV7(),
           applicationId,
-          fromStatus: 'SHORTLISTED',
+          fromStatus: targetApp.status as ApplicationStatus,
           toStatus: 'ACCEPTED',
           actorId: brandUserId,
           reason: 'CANDIDATE_HIRED',
         },
       });
-    });
 
-    const updated = (await this.repo.findById(applicationId))!;
-    return this.mapApplication(updated);
+      const updated = await tx.application.findUniqueOrThrow({
+        where: { id: applicationId },
+        include: {
+          assignment: { include: { brand: true } },
+          applicant: true,
+          history: { orderBy: { createdAt: 'desc' }, take: 10 },
+        },
+      });
+
+      return this.mapApplication(updated as any);
+    });
   }
 
   private mapApplication(app: any): ApplicationResponse {

@@ -55,6 +55,15 @@ export class RedisCacheService {
     }
   }
 
+  public getClient(): Redis | null {
+    return this.client;
+  }
+
+  public isRedisConnected(): boolean {
+    if (!this.client) return false;
+    return this.isConnected || this.client.status === 'ready' || this.client.status === 'connect';
+  }
+
   public getMetrics(): Readonly<CacheMetrics> {
     return { ...this.metrics };
   }

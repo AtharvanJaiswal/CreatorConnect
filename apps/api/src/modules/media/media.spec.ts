@@ -4,7 +4,7 @@ import { getPrismaClient } from '@creatorconnect/database';
 import { generateUuidV7 } from '@creatorconnect/utils';
 import { buildApp } from '../../app.js';
 import { defaultJwtVerifier } from '../../services/jwt-verifier.js';
-import { createTestJwt, createTestKeySet } from '../../test-utils/auth-test-helper.js';
+import { createTestJwt, createTestKeySet } from '../../../../../tests/fixtures/auth-test-helper.js';
 import { mediaService } from './media.service.js';
 import { MockStorageService } from './storage.service.js';
 
@@ -248,5 +248,313 @@ describe('Media Domain Integration Tests', () => {
     expect(aBody.url).toContain(`public-assets/${creatorUserId}/${aAssetId}.png`);
     expect(typeof aBody.thumbnailUrl).toBe('string');
     expect(typeof aBody.previewUrl).toBe('string');
+  });
+
+  describe('Media Authorization & Inheritance Policy (F-25)', () => {
+    let otherUserId: string;
+    let otherToken: string;
+
+    beforeAll(async () => {
+      otherUserId = generateUuidV7();
+      otherToken = await createTestJwt({
+        sub: `sub_other_${Date.now()}_${generateUuidV7()}`,
+        email: `other_${Date.now()}_${generateUuidV7()}@test.com`,
+      });
+      const decoded: any = await defaultJwtVerifier.verifyToken(otherToken);
+      await prisma.user.create({
+        data: {
+          id: otherUserId,
+          supabaseAuthId: decoded.sub,
+          email: decoded.email,
+          status: 'ACTIVE',
+          userRoles: {
+            create: {
+              id: generateUuidV7(),
+              role: {
+                connectOrCreate: {
+                  where: { name: 'CREATOR' },
+                  create: { id: generateUuidV7(), name: 'CREATOR' },
+                },
+              },
+            },
+          },
+        },
+      });
+    });
+
+    it('rejects unrelated user from accessing unattached active media (403 Forbidden)', async () => {
+      const assetId = generateUuidV7();
+      await prisma.mediaAsset.create({
+        data: {
+          id: assetId,
+          userId: creatorUserId,
+          storageKey: `public-assets/${creatorUserId}/${assetId}.png`,
+          originalName: 'unattached.png',
+          mimeType: 'image/png',
+          byteSize: 500,
+          mediaType: 'IMAGE',
+          status: 'ACTIVE',
+        },
+      });
+
+      // Unrelated user cannot access unattached active asset
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/media/${assetId}`,
+        headers: { authorization: `Bearer ${otherToken}` },
+      });
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('allows owner to access unattached active media with private signed URL', async () => {
+      const assetId = generateUuidV7();
+      await prisma.mediaAsset.create({
+        data: {
+          id: assetId,
+          userId: creatorUserId,
+          storageKey: `public-assets/${creatorUserId}/${assetId}.png`,
+          originalName: 'unattached_owner.png',
+          mimeType: 'image/png',
+          byteSize: 500,
+          mediaType: 'IMAGE',
+          status: 'ACTIVE',
+        },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/media/${assetId}`,
+        headers: { authorization: `Bearer ${creatorToken}` },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.url).toBeDefined();
+    });
+
+    it('allows unrelated user to view media attached to a PUBLIC portfolio item', async () => {
+      const assetId = generateUuidV7();
+      const portfolioItemId = generateUuidV7();
+
+      await prisma.mediaAsset.create({
+        data: {
+          id: assetId,
+          userId: creatorUserId,
+          storageKey: `public-assets/${creatorUserId}/${assetId}.png`,
+          originalName: 'public_work.png',
+          mimeType: 'image/png',
+          byteSize: 500,
+          mediaType: 'IMAGE',
+          status: 'ACTIVE',
+        },
+      });
+
+      await prisma.portfolioItem.create({
+        data: {
+          id: portfolioItemId,
+          userId: creatorUserId,
+          title: 'Public Artwork',
+          visibility: 'PUBLIC',
+          media: {
+            create: {
+              id: generateUuidV7(),
+              mediaAssetId: assetId,
+              displayOrder: 0,
+            },
+          },
+        },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/media/${assetId}`,
+        headers: { authorization: `Bearer ${otherToken}` },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.url).toBeDefined();
+    });
+
+    it('rejects unrelated user from viewing media attached to a PRIVATE portfolio item (403)', async () => {
+      const assetId = generateUuidV7();
+      const portfolioItemId = generateUuidV7();
+
+      await prisma.mediaAsset.create({
+        data: {
+          id: assetId,
+          userId: creatorUserId,
+          storageKey: `public-assets/${creatorUserId}/${assetId}.png`,
+          originalName: 'confidential_work.png',
+          mimeType: 'image/png',
+          byteSize: 500,
+          mediaType: 'IMAGE',
+          status: 'ACTIVE',
+        },
+      });
+
+      await prisma.portfolioItem.create({
+        data: {
+          id: portfolioItemId,
+          userId: creatorUserId,
+          title: 'Confidential Internal Artwork',
+          visibility: 'PRIVATE',
+          media: {
+            create: {
+              id: generateUuidV7(),
+              mediaAssetId: assetId,
+              displayOrder: 0,
+            },
+          },
+        },
+      });
+
+      // Unrelated user cannot view
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/media/${assetId}`,
+        headers: { authorization: `Bearer ${otherToken}` },
+      });
+      expect(res.statusCode).toBe(403);
+
+      // Owner CAN view
+      const ownerRes = await app.inject({
+        method: 'GET',
+        url: `/api/v1/media/${assetId}`,
+        headers: { authorization: `Bearer ${creatorToken}` },
+      });
+      expect(ownerRes.statusCode).toBe(200);
+      expect(ownerRes.json().url).toBeDefined();
+    });
+
+    it('allows unrelated user to view media attached to an UNLISTED portfolio item', async () => {
+      const assetId = generateUuidV7();
+      const portfolioItemId = generateUuidV7();
+
+      await prisma.mediaAsset.create({
+        data: {
+          id: assetId,
+          userId: creatorUserId,
+          storageKey: `public-assets/${creatorUserId}/${assetId}.png`,
+          originalName: 'unlisted_work.png',
+          mimeType: 'image/png',
+          byteSize: 500,
+          mediaType: 'IMAGE',
+          status: 'ACTIVE',
+        },
+      });
+
+      await prisma.portfolioItem.create({
+        data: {
+          id: portfolioItemId,
+          userId: creatorUserId,
+          title: 'Direct Link Unlisted Project',
+          visibility: 'UNLISTED',
+          media: {
+            create: {
+              id: generateUuidV7(),
+              mediaAssetId: assetId,
+              displayOrder: 0,
+            },
+          },
+        },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/media/${assetId}`,
+        headers: { authorization: `Bearer ${otherToken}` },
+      });
+      expect(res.statusCode).toBe(200);
+    });
+
+    it('rejects access when parent portfolio item is deleted (403 for non-owner)', async () => {
+      const assetId = generateUuidV7();
+      const portfolioItemId = generateUuidV7();
+
+      await prisma.mediaAsset.create({
+        data: {
+          id: assetId,
+          userId: creatorUserId,
+          storageKey: `public-assets/${creatorUserId}/${assetId}.png`,
+          originalName: 'deleted_parent_work.png',
+          mimeType: 'image/png',
+          byteSize: 500,
+          mediaType: 'IMAGE',
+          status: 'ACTIVE',
+        },
+      });
+
+      await prisma.portfolioItem.create({
+        data: {
+          id: portfolioItemId,
+          userId: creatorUserId,
+          title: 'Deleted Parent Project',
+          visibility: 'PUBLIC',
+          deletedAt: new Date(),
+          media: {
+            create: {
+              id: generateUuidV7(),
+              mediaAssetId: assetId,
+              displayOrder: 0,
+            },
+          },
+        },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/media/${assetId}`,
+        headers: { authorization: `Bearer ${otherToken}` },
+      });
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('rejects all access when owner user account is SUSPENDED (403)', async () => {
+      const suspendedUserId = generateUuidV7();
+      const suspendedToken = await createTestJwt({
+        sub: `sub_susp_${Date.now()}_${generateUuidV7()}`,
+        email: `susp_${Date.now()}_${generateUuidV7()}@test.com`,
+      });
+      const decoded: any = await defaultJwtVerifier.verifyToken(suspendedToken);
+      await prisma.user.create({
+        data: {
+          id: suspendedUserId,
+          supabaseAuthId: decoded.sub,
+          email: decoded.email,
+          status: 'SUSPENDED',
+          userRoles: {
+            create: {
+              id: generateUuidV7(),
+              role: {
+                connectOrCreate: {
+                  where: { name: 'CREATOR' },
+                  create: { id: generateUuidV7(), name: 'CREATOR' },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const assetId = generateUuidV7();
+      await prisma.mediaAsset.create({
+        data: {
+          id: assetId,
+          userId: suspendedUserId,
+          storageKey: `public-assets/${suspendedUserId}/${assetId}.png`,
+          originalName: 'suspended_asset.png',
+          mimeType: 'image/png',
+          byteSize: 500,
+          mediaType: 'IMAGE',
+          status: 'ACTIVE',
+        },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/media/${assetId}`,
+        headers: { authorization: `Bearer ${otherToken}` },
+      });
+      expect(res.statusCode).toBe(403);
+    });
   });
 });

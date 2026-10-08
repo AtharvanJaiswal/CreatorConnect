@@ -23,6 +23,10 @@ export function errorHandler(
       requestId: request.id,
     });
 
+    if ('retryAfterSeconds' in error && typeof (error as any).retryAfterSeconds === 'number') {
+      reply.header('Retry-After', (error as any).retryAfterSeconds);
+    }
+
     return reply.status(error.statusCode).type('application/problem+json').send(problem);
   }
 

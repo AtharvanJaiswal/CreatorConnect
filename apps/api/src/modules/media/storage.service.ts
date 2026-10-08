@@ -21,7 +21,7 @@ export interface IStorageService {
     expiresInSeconds?: number,
   ): Promise<string>;
   getHeadObject(key: string): Promise<StorageHeadResult | null>;
-  getDownloadUrl(key: string, expiresInSeconds?: number): Promise<string>;
+  getDownloadUrl(key: string, expiresInSeconds?: number, isPrivate?: boolean): Promise<string>;
   deleteObject(key: string): Promise<void>;
   copyObject(sourceKey: string, destinationKey: string): Promise<void>;
 }
@@ -100,9 +100,10 @@ export class S3StorageService implements IStorageService {
     }
   }
 
-  async getDownloadUrl(key: string, expiresInSeconds = 3600): Promise<string> {
+  async getDownloadUrl(key: string, expiresInSeconds = 3600, isPrivate = false): Promise<string> {
     const publicDomain = process.env.MEDIA_CDN_URL;
-    if (publicDomain && !key.startsWith('quarantine/')) {
+    // Private media NEVER receives a public CDN URL; only short-lived signed URLs
+    if (!isPrivate && publicDomain && !key.startsWith('quarantine/')) {
       return `${publicDomain.replace(/\/$/, '')}/${key.replace(/^\//, '')}`;
     }
     const command = new GetObjectCommand({
@@ -149,7 +150,10 @@ export class MockStorageService implements IStorageService {
     };
   }
 
-  async getDownloadUrl(key: string): Promise<string> {
+  async getDownloadUrl(key: string, expiresInSeconds = 3600, isPrivate = false): Promise<string> {
+    if (isPrivate) {
+      return `https://mock-storage.local/download/${key}?expires=${expiresInSeconds}&private=true`;
+    }
     return `https://mock-storage.local/download/${key}`;
   }
 

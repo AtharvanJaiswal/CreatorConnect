@@ -2,7 +2,7 @@ import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../../app.js';
 import { defaultJwtVerifier } from '../../services/jwt-verifier.js';
-import { createTestJwt, createTestKeySet } from '../../test-utils/auth-test-helper.js';
+import { createTestJwt, createTestKeySet } from '../../../../../tests/fixtures/auth-test-helper.js';
 import { getPrismaClient, UserStatus, RoleType } from '@creatorconnect/database';
 import { generateUuidV7 } from '@creatorconnect/utils';
 

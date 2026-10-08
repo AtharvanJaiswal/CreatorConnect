@@ -137,8 +137,26 @@ jobs:
       - name: Install Playwright Browsers
         run: pnpm exec playwright install --with-deps
 
-      - name: Run Playwright E2E Smoke Tests
+      - name: Start Ephemeral Application Stack
+        run: |
+          docker compose up -d postgres redis minio minio-create-buckets migration-seed jwks-stub api web-shell
+          # Wait for services to be ready
+          timeout 60 bash -c 'until docker compose exec -T api wget -qO- http://localhost:3000/health > /dev/null 2>&1; do sleep 2; done'
+          timeout 60 bash -c 'until docker compose exec -T web-shell wget -qO- http://localhost:3002 > /dev/null 2>&1; do sleep 2; done'
+        env:
+          SUPABASE_JWT_ISSUER: https://auth.creatorconnect.local/auth/v1
+          SUPABASE_JWKS_URL: http://jwks-stub:8080/.well-known/jwks.json
+          ALLOW_HTTP_JWKS: 'true'
+
+      - name: Run Playwright E2E Tests
         run: pnpm test:e2e
+        env:
+          DATABASE_URL: postgresql://postgres:postgres_local_password@localhost:5432/creatorconnect_dev?schema=public
+          SUPABASE_JWT_ISSUER: https://auth.creatorconnect.local/auth/v1
+
+      - name: Teardown Application Stack
+        if: always()
+        run: docker compose down -v
 
       - name: Upload Test Report Artifact
         if: failure()

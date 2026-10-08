@@ -59,7 +59,15 @@ export const profilesRoutes: FastifyPluginAsync<ProfilesRoutesOptions> = async (
   fastify.put<{ Body: UpdateCreatorProfileInput }>(
     '/api/v1/profiles/creator',
     {
-      preHandler: [fastify.authenticate],
+      preHandler: [
+        fastify.authenticate,
+        fastify.rateLimit({
+          endpoint: 'expensive-mutation',
+          max: 60,
+          windowSeconds: 60,
+          onRedisFailure: 'fail-closed',
+        }),
+      ],
       schema: {
         description: 'Creates or updates the authenticated user creator profile',
         tags: ['Profiles'],
@@ -112,7 +120,15 @@ export const profilesRoutes: FastifyPluginAsync<ProfilesRoutesOptions> = async (
   fastify.put<{ Body: UpdateProfessionalProfileInput }>(
     '/api/v1/profiles/professional',
     {
-      preHandler: [fastify.authenticate],
+      preHandler: [
+        fastify.authenticate,
+        fastify.rateLimit({
+          endpoint: 'expensive-mutation',
+          max: 60,
+          windowSeconds: 60,
+          onRedisFailure: 'fail-closed',
+        }),
+      ],
       schema: {
         description: 'Creates or updates the authenticated user professional profile',
         tags: ['Profiles'],

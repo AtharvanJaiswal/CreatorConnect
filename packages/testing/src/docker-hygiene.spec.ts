@@ -73,4 +73,37 @@ describe('Docker Secret Hygiene (Phase H)', () => {
       }
     }
   });
+
+  it('verifies apps/api/src is completely free of test-key-01, test private keys, and auth-test-helper (F-01)', () => {
+    const apiSrcDir = path.join(rootDir, 'apps/api/src');
+    expect(fs.existsSync(apiSrcDir)).toBe(true);
+
+    // Recursively walk apps/api/src
+    function walkDir(dir: string): string[] {
+      let results: string[] = [];
+      const list = fs.readdirSync(dir);
+      for (const file of list) {
+        const fullPath = path.join(dir, file);
+        const stat = fs.statSync(fullPath);
+        if (stat && stat.isDirectory()) {
+          results = results.concat(walkDir(fullPath));
+        } else {
+          results.push(fullPath);
+        }
+      }
+      return results;
+    }
+
+    const allFiles = walkDir(apiSrcDir);
+    const productionFiles = allFiles.filter((f) => !f.endsWith('.spec.ts'));
+
+    for (const file of productionFiles) {
+      expect(file).not.toContain('auth-test-helper');
+      expect(file).not.toContain('test-utils');
+
+      const content = fs.readFileSync(file, 'utf-8');
+      expect(content).not.toContain('test-key-01');
+      expect(content).not.toContain('JvnBOiPv86ekbSlrnAptpx8CGXN1gmrGotvhRVQbTFs');
+    }
+  });
 });

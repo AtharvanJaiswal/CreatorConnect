@@ -165,28 +165,110 @@ export class MediaService {
     return this.mapToResponse(updatedAsset);
   }
 
-  async getAsset(userId: string, assetId: string): Promise<MediaAssetResponse> {
-    const asset = await this.repo.findById(assetId);
+  async getAsset(
+    callerUserId: string,
+    assetId: string,
+    isAdmin = false,
+  ): Promise<MediaAssetResponse> {
+    const asset = await this.repo.findByIdWithParents(assetId);
     if (!asset) {
       throw new NotFoundError('Media asset not found.');
     }
 
-    // Only owner can view quarantined assets; active assets can be viewed
-    if (asset.status !== 'ACTIVE' && asset.userId !== userId) {
-      throw new ForbiddenError('Access to non-active media asset denied.');
+    const isOwnerOrAdmin = asset.userId === callerUserId || isAdmin;
+
+    // 1. Non-active media assets: ONLY owner/admin can view metadata; NO URL issued.
+    if (asset.status !== 'ACTIVE') {
+      if (!isOwnerOrAdmin) {
+        throw new ForbiddenError('Access to non-active media asset denied.');
+      }
+      return this.mapToResponse(asset, false);
     }
 
-    return this.mapToResponse(asset);
+    // 2. Owner account lifecycle governance:
+    // If owner account is SUSPENDED or DEACTIVATED, or creatorProfile is deleted, NO access/URL is issued.
+    if (asset.user) {
+      if (asset.user.status === 'SUSPENDED') {
+        throw new ForbiddenError('Owner account is suspended. Access denied.');
+      }
+      if (asset.user.status === 'DEACTIVATED') {
+        throw new ForbiddenError('Owner account is deactivated. Access denied.');
+      }
+      if (asset.user.creatorProfile?.deletedAt) {
+        throw new ForbiddenError('Owner profile has been deleted. Access denied.');
+      }
+    }
+
+    // 3. Parent visibility inheritance & Unattached asset policy:
+    // Unattached active media:
+    if (!asset.portfolioMedia || asset.portfolioMedia.length === 0) {
+      if (!isOwnerOrAdmin) {
+        throw new ForbiddenError(
+          'Access denied to unattached media asset. Only the owner can access unattached media.',
+        );
+      }
+      // Owner accessing unattached media: issued short-lived authorized URL (private)
+      return this.mapToResponse(asset, true, true);
+    }
+
+    // Attached to one or more PortfolioItems:
+    const activeParents = asset.portfolioMedia
+      .map((pm: any) => pm.portfolioItem)
+      .filter((pi: any) => !pi.deletedAt);
+
+    if (activeParents.length === 0) {
+      // All parent items are soft-deleted
+      if (!isOwnerOrAdmin) {
+        throw new ForbiddenError('Access denied. Parent portfolio item has been deleted.');
+      }
+      return this.mapToResponse(asset, true, true);
+    }
+
+    if (isOwnerOrAdmin) {
+      const hasPublicParent = activeParents.some(
+        (pi: any) => pi.visibility === 'PUBLIC' || pi.visibility === 'UNLISTED',
+      );
+      return this.mapToResponse(asset, true, !hasPublicParent);
+    }
+
+    // Unrelated caller:
+    const hasPublicParent = activeParents.some((pi: any) => pi.visibility === 'PUBLIC');
+    const hasUnlistedParent = activeParents.some((pi: any) => pi.visibility === 'UNLISTED');
+    const allPrivate = activeParents.every((pi: any) => pi.visibility === 'PRIVATE');
+
+    if (allPrivate) {
+      throw new ForbiddenError(
+        'Access to private media denied. Only the owner can view this asset.',
+      );
+    }
+
+    if (hasPublicParent || hasUnlistedParent) {
+      // Public / Unlisted parent grants access
+      return this.mapToResponse(asset, true, false);
+    }
+
+    throw new ForbiddenError('Access to media asset denied.');
   }
 
-  async mapToResponse(asset: any): Promise<MediaAssetResponse> {
+  async mapToResponse(
+    asset: any,
+    generateUrls = true,
+    isPrivate = false,
+  ): Promise<MediaAssetResponse> {
     const isActive = asset.status === 'ACTIVE';
 
-    const url = isActive ? await this.storage.getDownloadUrl(asset.storageKey) : null;
+    const url =
+      isActive && generateUrls
+        ? await this.storage.getDownloadUrl(asset.storageKey, 900, isPrivate)
+        : null;
     const thumbnailUrl =
-      isActive && asset.thumbnailKey ? await this.storage.getDownloadUrl(asset.thumbnailKey) : null;
+      isActive && generateUrls && asset.thumbnailKey
+        ? await this.storage.getDownloadUrl(asset.thumbnailKey, 900, isPrivate)
+        : null;
     const previewUrl =
-      isActive && asset.previewKey ? await this.storage.getDownloadUrl(asset.previewKey) : null;
+      isActive && generateUrls && asset.previewKey
+        ? await this.storage.getDownloadUrl(asset.previewKey, 900, isPrivate)
+        : null;
 
     return {
       id: asset.id,

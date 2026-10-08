@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../app.js';
 import { defaultJwtVerifier } from './jwt-verifier.js';
 import { redisCache } from './redis-cache.js';
-import { createTestJwt, createTestKeySet } from '../test-utils/auth-test-helper.js';
+import { createTestJwt, createTestKeySet } from '../../../../tests/fixtures/auth-test-helper.js';
 import { getPrismaClient, UserStatus } from '@creatorconnect/database';
 
 describe('Redis Cache Failure Resilience & Authoritative Status', () => {

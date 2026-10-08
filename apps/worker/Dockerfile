@@ -20,4 +20,5 @@ ENV NODE_ENV=production
 
 COPY --from=builder /app ./
 
+USER node
 CMD ["node", "apps/worker/dist/main.js"]

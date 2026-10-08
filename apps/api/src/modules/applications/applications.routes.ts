@@ -26,7 +26,15 @@ export const applicationsRoutes: FastifyPluginAsync<ApplicationsRoutesOptions> =
   fastify.post<{ Params: IdParam; Body: CreateApplicationInput }>(
     '/api/v1/assignments/:id/apply',
     {
-      preHandler: [fastify.authenticate],
+      preHandler: [
+        fastify.authenticate,
+        fastify.rateLimit({
+          endpoint: 'application-create',
+          max: 15,
+          windowSeconds: 60,
+          onRedisFailure: 'fail-closed',
+        }),
+      ],
       schema: {
         description: 'Submits a proposal for an active assignment with deadline row lock',
         tags: ['Applications'],
@@ -190,7 +198,15 @@ export const applicationsRoutes: FastifyPluginAsync<ApplicationsRoutesOptions> =
   fastify.post<{ Params: IdParam; Body: AcceptApplicationInput & { applicationId: string } }>(
     '/api/v1/assignments/:id/accept',
     {
-      preHandler: [fastify.authenticate],
+      preHandler: [
+        fastify.authenticate,
+        fastify.rateLimit({
+          endpoint: 'expensive-mutation',
+          max: 50,
+          windowSeconds: 60,
+          onRedisFailure: 'fail-closed',
+        }),
+      ],
       schema: {
         description:
           'Executes atomic hiring acceptance and concurrency-safe competitor auto-rejection',

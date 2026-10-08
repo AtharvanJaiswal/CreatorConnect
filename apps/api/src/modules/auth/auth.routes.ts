@@ -21,6 +21,15 @@ export const authRoutes: FastifyPluginAsync<AuthRoutesOptions> = async (fastify,
   fastify.post<{ Body: SyncUserRequest }>(
     '/api/v1/auth/sync',
     {
+      preHandler: [
+        fastify.rateLimit({
+          endpoint: 'auth-sync',
+          max: 50,
+          windowSeconds: 60,
+          onRedisFailure: 'bounded-fallback',
+          fallbackMax: 30,
+        }),
+      ],
       schema: {
         description:
           'Synchronizes external Supabase identity to internal CreatorConnect profile and assigns initial persona role',

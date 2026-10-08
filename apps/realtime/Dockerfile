@@ -23,4 +23,5 @@ COPY --from=builder /app ./
 
 EXPOSE 3001
 
+USER node
 CMD ["node", "apps/realtime/dist/main.js"]

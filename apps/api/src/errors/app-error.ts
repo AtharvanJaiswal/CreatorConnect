@@ -137,3 +137,20 @@ export class InvalidMediaStateError extends AppError {
     super(400, 'INVALID_MEDIA_STATE', 'Invalid Media State', detail);
   }
 }
+
+export class RateLimitExceededError extends AppError {
+  public readonly retryAfterSeconds: number;
+
+  constructor(retryAfterSeconds: number, detail = 'Too many requests. Please try again later.') {
+    super(429, 'RATE_LIMIT_EXCEEDED', 'Rate Limit Exceeded', detail);
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
+export class RateLimiterDegradedError extends AppError {
+  constructor(
+    detail = 'Security-sensitive operation unavailable due to rate limiter infrastructure outage.',
+  ) {
+    super(503, 'RATE_LIMIT_UNAVAILABLE', 'Service Unavailable', detail);
+  }
+}

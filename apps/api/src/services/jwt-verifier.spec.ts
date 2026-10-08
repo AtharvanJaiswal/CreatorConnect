@@ -5,7 +5,7 @@ import {
   createTestJwt,
   createTestKeySet,
   getOrCreateTestAuthKeys,
-} from '../test-utils/auth-test-helper.js';
+} from '../../../../tests/fixtures/auth-test-helper.js';
 
 describe('JwtVerifier', () => {
   let verifier: JwtVerifier;
@@ -174,5 +174,134 @@ describe('JwtVerifier', () => {
     await expect(noIssuerVerifier.verifyToken(token)).rejects.toThrow(
       /JWT issuer is not configured/,
     );
+  });
+
+  describe('F-01 Production Hardening & Algorithm Governance', () => {
+    it('enforces production boot guard: rejects non-HTTPS issuer when NODE_ENV=production', () => {
+      const origEnv = process.env.NODE_ENV;
+      try {
+        process.env.NODE_ENV = 'production';
+        expect(
+          () =>
+            new JwtVerifier({
+              issuer: 'http://insecure.supabase.co/auth/v1',
+            }),
+        ).toThrow(/Production boot guard failure: SUPABASE_JWT_ISSUER must be a valid HTTPS URL/);
+      } finally {
+        process.env.NODE_ENV = origEnv;
+      }
+    });
+
+    it('enforces production boot guard: rejects localhost issuer when NODE_ENV=production', () => {
+      const origEnv = process.env.NODE_ENV;
+      try {
+        process.env.NODE_ENV = 'production';
+        expect(
+          () =>
+            new JwtVerifier({
+              issuer: 'https://localhost.supabase.co/auth/v1',
+            }),
+        ).toThrow(/cannot reference localhost/);
+      } finally {
+        process.env.NODE_ENV = origEnv;
+      }
+    });
+
+    it('rejects algorithm "none" explicitly', async () => {
+      // Craft an unverified token with alg: none
+      const header = Buffer.from(
+        JSON.stringify({ alg: 'none', typ: 'JWT', kid: 'test-key-01' }),
+      ).toString('base64url');
+      const payload = Buffer.from(
+        JSON.stringify({
+          sub: 'hacker_123',
+          iss: 'https://localhost.supabase.co/auth/v1',
+          aud: 'authenticated',
+          exp: Math.floor(Date.now() / 1000) + 3600,
+        }),
+      ).toString('base64url');
+      const unsignedToken = `${header}.${payload}.`;
+
+      await expect(verifier.verifyToken(unsignedToken)).rejects.toThrow(
+        /Algorithm 'none' is not permitted/,
+      );
+    });
+
+    it('rejects symmetric HMAC algorithms (HS256) explicitly', async () => {
+      const secret = new TextEncoder().encode('super-secret-hmac-key-at-least-32-chars-long');
+      const hsToken = await new jose.SignJWT({
+        sub: 'hmac_user',
+        iss: 'https://localhost.supabase.co/auth/v1',
+        aud: 'authenticated',
+      })
+        .setProtectedHeader({ alg: 'HS256', kid: 'test-key-01' })
+        .setExpirationTime('1h')
+        .sign(secret);
+
+      await expect(verifier.verifyToken(hsToken)).rejects.toThrow(
+        /Algorithm 'HS256' is not permitted/,
+      );
+    });
+
+    it('ignores untrusted jku header parameter and does not fetch keys from it', async () => {
+      // Token specifies a fake jku pointing to an attacker server
+      const { privateKey } = await getOrCreateTestAuthKeys();
+      const maliciousToken = await new jose.SignJWT({
+        sub: 'jku_user',
+        iss: 'https://localhost.supabase.co/auth/v1',
+        aud: 'authenticated',
+      })
+        .setProtectedHeader({
+          alg: 'ES256',
+          kid: 'test-key-01',
+          jku: 'https://attacker.evil.com/jwks.json',
+        })
+        .setExpirationTime('1h')
+        .sign(privateKey);
+
+      // Verifier still verifies with its own configured key set, not the jku!
+      const decoded = await verifier.verifyToken(maliciousToken);
+      expect(decoded.sub).toBe('jku_user');
+    });
+
+    it('ignores untrusted x5u header parameter', async () => {
+      const { privateKey } = await getOrCreateTestAuthKeys();
+      const maliciousToken = await new jose.SignJWT({
+        sub: 'x5u_user',
+        iss: 'https://localhost.supabase.co/auth/v1',
+        aud: 'authenticated',
+      })
+        .setProtectedHeader({
+          alg: 'ES256',
+          kid: 'test-key-01',
+          x5u: 'https://attacker.evil.com/cert.pem',
+        })
+        .setExpirationTime('1h')
+        .sign(privateKey);
+
+      const decoded = await verifier.verifyToken(maliciousToken);
+      expect(decoded.sub).toBe('x5u_user');
+    });
+
+    it('rejects fixture token when verifier is configured against remote production JWKS endpoint', async () => {
+      // In production mode, verifier queries remote JWKS (which does not contain test-key-01)
+      const emptyRemoteVerifier = new JwtVerifier({
+        jwksUrl: 'https://production.supabase.co/auth/v1/.well-known/jwks.json',
+        issuer: 'https://production.supabase.co/auth/v1',
+        // Mock remote resolver to return empty keys
+        localKeySet: async () => {
+          throw new Error('Key not found in remote JWKS');
+        },
+      });
+
+      const fixtureToken = await createTestJwt({
+        sub: 'fixture_user',
+        iss: 'https://production.supabase.co/auth/v1',
+      });
+
+      await expect(emptyRemoteVerifier.verifyToken(fixtureToken)).rejects.toThrow(
+        /Token verification failed/,
+      );
+    });
   });
 });

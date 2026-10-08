@@ -4,7 +4,7 @@ import { getPrismaClient } from '@creatorconnect/database';
 import { generateUuidV7 } from '@creatorconnect/utils';
 import { buildApp } from '../../app.js';
 import { defaultJwtVerifier } from '../../services/jwt-verifier.js';
-import { createTestJwt, createTestKeySet } from '../../test-utils/auth-test-helper.js';
+import { createTestJwt, createTestKeySet } from '../../../../../tests/fixtures/auth-test-helper.js';
 
 describe('Portfolio Domain Integration Tests', () => {
   let app: FastifyInstance;

@@ -21,7 +21,15 @@ export const mediaRoutes: FastifyPluginAsync<MediaRoutesOptions> = async (fastif
   fastify.post<{ Body: RequestUploadUrlInput }>(
     '/api/v1/media/upload-url',
     {
-      preHandler: [fastify.authenticate],
+      preHandler: [
+        fastify.authenticate,
+        fastify.rateLimit({
+          endpoint: 'upload-url',
+          max: 20,
+          windowSeconds: 60,
+          onRedisFailure: 'fail-closed',
+        }),
+      ],
       schema: {
         description: 'Generates a presigned S3/R2 PUT URL for uploading a media binary',
         tags: ['Media'],
@@ -85,7 +93,8 @@ export const mediaRoutes: FastifyPluginAsync<MediaRoutesOptions> = async (fastif
       },
     },
     async (request, reply) => {
-      const result = await service.getAsset(request.user.id, request.params.id);
+      const isAdmin = request.user.roles.includes('ADMIN');
+      const result = await service.getAsset(request.user.id, request.params.id, isAdmin);
       return reply.status(200).send(result);
     },
   );
