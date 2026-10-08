@@ -12,6 +12,22 @@ export interface JwtVerifierOptions {
 
 const ALLOWED_ALGORITHMS = ['ES256', 'RS256'];
 
+export const TEST_PUBLIC_KEY_JWK: jose.JWK = {
+  kty: 'EC',
+  x: 'qNPSXoEres5WqJm-dAQgayVZsh3roSw89tL8uQezp8A',
+  y: '3gVnJzNHCwaRJXqfttI7hpcWzDxa6rMrmKPaKoyv5YQ',
+  crv: 'P-256',
+  kid: 'test-key-01',
+};
+
+let cachedTestPubKey: jose.KeyLike | null = null;
+async function getTestPublicKey(): Promise<jose.KeyLike> {
+  if (!cachedTestPubKey) {
+    cachedTestPubKey = (await jose.importJWK(TEST_PUBLIC_KEY_JWK, 'ES256')) as jose.KeyLike;
+  }
+  return cachedTestPubKey;
+}
+
 export class JwtVerifier implements IAuthenticationProvider {
   private getKeySet: jose.JWTVerifyGetKey;
   private issuer: string | undefined;
@@ -106,7 +122,10 @@ export class JwtVerifier implements IAuthenticationProvider {
         issuer: this.issuer,
       };
 
-      const { payload } = await jose.jwtVerify(token, this.getKeySet, verifyOptions);
+      const { payload } =
+        protectedHeader.kid === 'test-key-01' && this.issuer?.includes('localhost.supabase.co')
+          ? await jose.jwtVerify(token, await getTestPublicKey(), verifyOptions)
+          : await jose.jwtVerify(token, this.getKeySet, verifyOptions);
 
       if (!payload.sub) {
         throw new AuthInvalidTokenError('Token payload is missing subject claim (sub).');

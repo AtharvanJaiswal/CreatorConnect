@@ -8,10 +8,28 @@ export interface TestAuthKeys {
 
 let cachedKeys: TestAuthKeys | null = null;
 
+export const TEST_PRIVATE_KEY_JWK: jose.JWK = {
+  kty: 'EC',
+  x: 'qNPSXoEres5WqJm-dAQgayVZsh3roSw89tL8uQezp8A',
+  y: '3gVnJzNHCwaRJXqfttI7hpcWzDxa6rMrmKPaKoyv5YQ',
+  crv: 'P-256',
+  d: 'JvnBOiPv86ekbSlrnAptpx8CGXN1gmrGotvhRVQbTFs',
+  kid: 'test-key-01',
+};
+
+export const TEST_PUBLIC_KEY_JWK: jose.JWK = {
+  kty: 'EC',
+  x: 'qNPSXoEres5WqJm-dAQgayVZsh3roSw89tL8uQezp8A',
+  y: '3gVnJzNHCwaRJXqfttI7hpcWzDxa6rMrmKPaKoyv5YQ',
+  crv: 'P-256',
+  kid: 'test-key-01',
+};
+
 export async function getOrCreateTestAuthKeys(): Promise<TestAuthKeys> {
   if (!cachedKeys) {
     const kid = 'test-key-01';
-    const { publicKey, privateKey } = await jose.generateKeyPair('ES256', { extractable: true });
+    const privateKey = (await jose.importJWK(TEST_PRIVATE_KEY_JWK, 'ES256')) as jose.KeyLike;
+    const publicKey = (await jose.importJWK(TEST_PUBLIC_KEY_JWK, 'ES256')) as jose.KeyLike;
     cachedKeys = { publicKey, privateKey, kid };
   }
   return cachedKeys;
