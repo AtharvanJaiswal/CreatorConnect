@@ -12,6 +12,12 @@ importers:
 
   .:
     devDependencies:
+      '@creatorconnect/database':
+        specifier: workspace:*
+        version: link:packages/database
+      '@creatorconnect/utils':
+        specifier: workspace:*
+        version: link:packages/utils
       '@playwright/test':
         specifier: ^1.46.0
         version: 1.63.0
@@ -21,6 +27,9 @@ importers:
       husky:
         specifier: ^9.1.7
         version: 9.1.7
+      jose:
+        specifier: ^5.9.6
+        version: 5.10.0
       lint-staged:
         specifier: ^17.5.1
         version: 17.5.1

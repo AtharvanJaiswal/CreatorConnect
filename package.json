@@ -27,9 +27,12 @@
     ]
   },
   "devDependencies": {
+    "@creatorconnect/database": "workspace:*",
+    "@creatorconnect/utils": "workspace:*",
     "@playwright/test": "^1.46.0",
     "@types/node": "^20.14.12",
     "husky": "^9.1.7",
+    "jose": "^5.9.6",
     "lint-staged": "^17.5.1",
     "prettier": "^3.3.3",
     "turbo": "^2.1.2",
