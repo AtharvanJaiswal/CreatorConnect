@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import {
   Card,
   CardHeader,
@@ -35,6 +36,16 @@ export default function BrandPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/profiles/me?tab=brand">
+            <Button
+              variant="outline"
+              className="gap-2 shadow-sm font-semibold"
+              data-testid="edit-brand-profile-link"
+            >
+              <Building2 className="h-4 w-4 text-primary" />
+              <span>Edit Brand Profile</span>
+            </Button>
+          </Link>
           <Button className="gap-2 shadow-sm">
             <Plus className="h-4 w-4" />
             <span>Launch Campaign</span>

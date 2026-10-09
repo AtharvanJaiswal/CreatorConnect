@@ -21,6 +21,7 @@ import {
   Video,
   Loader2,
   ShieldCheck,
+  Building2,
 } from 'lucide-react';
 import type {
   UpdateCreatorProfileInput,
@@ -29,10 +30,36 @@ import type {
   CreatorProfileResponse,
 } from '@creatorconnect/contracts';
 import { useAuth } from '../../../providers/auth-provider';
+import { BrandProfileForm } from '../../../components/brand-profile-form';
 
 export default function MyProfilePage() {
   const { user, accessToken } = useAuth();
-  const [activeTab, setActiveTab] = useState<'creator' | 'professional' | 'media'>('creator');
+  const hasBrandRole = user?.roles?.includes('BRAND') ?? false;
+  const isBrandOnly =
+    hasBrandRole && !user?.roles?.includes('CREATOR') && !user?.roles?.includes('PROFESSIONAL');
+
+  const [activeTab, setActiveTab] = useState<'creator' | 'professional' | 'brand' | 'media'>(
+    'creator',
+  );
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (
+        tabParam === 'brand' ||
+        tabParam === 'creator' ||
+        tabParam === 'professional' ||
+        tabParam === 'media'
+      ) {
+        setActiveTab(tabParam);
+        return;
+      }
+    }
+    if (isBrandOnly) {
+      setActiveTab('brand');
+    }
+  }, [isBrandOnly]);
 
   // Creator profile state
   const [tagline, setTagline] = useState('Senior Tech & Documentary Video Creator');
@@ -359,6 +386,16 @@ export default function MyProfilePage() {
             <Briefcase className="h-3.5 w-3.5" />
             <span>Professional Profile</span>
           </TabsTrigger>
+          {hasBrandRole && (
+            <TabsTrigger
+              value="brand"
+              className="gap-2 rounded-lg text-xs font-semibold"
+              data-testid="tab-brand"
+            >
+              <Building2 className="h-3.5 w-3.5" />
+              <span>Brand Profile</span>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="media" className="gap-2 rounded-lg text-xs font-semibold">
             <Upload className="h-3.5 w-3.5" />
             <span>Media & Portfolio</span>
@@ -625,6 +662,11 @@ export default function MyProfilePage() {
               </Button>
             </form>
           </Card>
+        </TabsContent>
+
+        {/* Brand Profile Tab */}
+        <TabsContent value="brand">
+          <BrandProfileForm />
         </TabsContent>
 
         {/* Media Upload Tab */}
