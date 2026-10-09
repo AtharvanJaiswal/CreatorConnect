@@ -24,7 +24,7 @@ COPY --from=builder /app ./
 EXPOSE 3000
 
 HEALTHCHECK --interval=15s --timeout=5s --retries=3 --start-period=10s \
-  CMD curl -f http://localhost:3000/health || exit 1
+  CMD curl -f http://127.0.0.1:3000/health || exit 1
 
 USER node
 CMD ["node", "apps/api/dist/main.js"]

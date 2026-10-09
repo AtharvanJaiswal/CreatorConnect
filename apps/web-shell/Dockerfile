@@ -34,6 +34,6 @@ COPY --from=builder /app ./
 EXPOSE 3002
 
 HEALTHCHECK --interval=15s --timeout=5s --retries=3 --start-period=15s \
-  CMD curl -f http://localhost:3002/ || exit 1
+  CMD curl -f http://127.0.0.1:3002/ || exit 1
 
 CMD ["pnpm", "--filter", "@creatorconnect/web-shell", "start"]

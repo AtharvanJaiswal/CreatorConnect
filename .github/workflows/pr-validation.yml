@@ -148,19 +148,19 @@ jobs:
         run: |
           docker compose up -d postgres redis minio minio-create-buckets migration-seed jwks-stub api web-shell
           # Wait for services to be ready
-          echo "Waiting for API service to be healthy (http://localhost:3000/health)..."
-          timeout 60 bash -c 'until docker compose exec -T api wget -qO- http://localhost:3000/health > /dev/null 2>&1; do sleep 2; done' || {
+          echo "Waiting for API service to be healthy (http://127.0.0.1:3000/health)..."
+          timeout 60 bash -c 'until docker compose exec -T api wget -qO- http://127.0.0.1:3000/health > /dev/null 2>&1; do sleep 2; done' || {
             echo "::error::API readiness check failed within 60s!"
             echo "=== API Health Probe Output ==="
-            docker compose exec -T api wget -S -O - http://localhost:3000/health 2>&1 || true
+            docker compose exec -T api wget -S -O - http://127.0.0.1:3000/health 2>&1 || true
             exit 1
           }
           echo "API service is ready."
 
-          echo "Waiting for web-shell service to be ready (http://localhost:3002/)..."
+          echo "Waiting for web-shell service to be ready (http://127.0.0.1:3002/)..."
           timeout 60 bash -c '
             attempt=0
-            until docker compose exec -T web-shell wget -q -O /dev/null http://localhost:3002/ > /dev/null 2>&1; do
+            until docker compose exec -T web-shell wget -q -O /dev/null http://127.0.0.1:3002/ > /dev/null 2>&1; do
               attempt=$((attempt + 1))
               sleep 2
             done
@@ -168,9 +168,9 @@ jobs:
           ' || {
             echo "::error::Web-shell readiness poll timed out after 60s!"
             echo "=== Internal Probe (from web-shell container) ==="
-            docker compose exec -T web-shell wget -S -O - http://localhost:3002/ 2>&1 || true
+            docker compose exec -T web-shell wget -S -O - http://127.0.0.1:3002/ 2>&1 || true
             echo "=== Host Probe (from runner to port 3002) ==="
-            curl -sv http://localhost:3002/ 2>&1 || true
+            curl -sv http://127.0.0.1:3002/ 2>&1 || true
             exit 1
           }
 
@@ -184,6 +184,14 @@ jobs:
           echo "CONTAINER STATUS (docker compose ps -a)"
           echo "=================================================="
           docker compose ps -a
+          echo "=================================================="
+          echo "API CONTAINER HEALTH STATUS"
+          echo "=================================================="
+          docker inspect --format='{{json .State.Health}}' creatorconnect-api 2>&1 || true
+          echo "=================================================="
+          echo "WEB-SHELL CONTAINER HEALTH STATUS"
+          echo "=================================================="
+          docker inspect --format='{{json .State.Health}}' creatorconnect-web-shell 2>&1 || true
           echo "=================================================="
           echo "WEB-SHELL CONTAINER LOGS"
           echo "=================================================="
