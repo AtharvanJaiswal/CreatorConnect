@@ -116,7 +116,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      NODE_ENV: development
       DATABASE_URL: postgresql://postgres:postgres_local_password@localhost:5432/creatorconnect_dev?schema=public
       SUPABASE_JWT_ISSUER: https://auth.creatorconnect.local/auth/v1
       SUPABASE_JWKS_URL: http://jwks-stub:8080/.well-known/jwks.json
@@ -149,11 +148,54 @@ jobs:
         run: |
           docker compose up -d postgres redis minio minio-create-buckets migration-seed jwks-stub api web-shell
           # Wait for services to be ready
-          timeout 60 bash -c 'until docker compose exec -T api wget -qO- http://localhost:3000/health > /dev/null 2>&1; do sleep 2; done'
-          timeout 60 bash -c 'until docker compose exec -T web-shell wget -qO- http://localhost:3002 > /dev/null 2>&1; do sleep 2; done'
+          echo "Waiting for API service to be healthy (http://localhost:3000/health)..."
+          timeout 60 bash -c 'until docker compose exec -T api wget -qO- http://localhost:3000/health > /dev/null 2>&1; do sleep 2; done' || {
+            echo "::error::API readiness check failed within 60s!"
+            echo "=== API Health Probe Output ==="
+            docker compose exec -T api wget -S -O - http://localhost:3000/health 2>&1 || true
+            exit 1
+          }
+          echo "API service is ready."
+
+          echo "Waiting for web-shell service to be ready (http://localhost:3002/)..."
+          timeout 60 bash -c '
+            attempt=0
+            until docker compose exec -T web-shell wget -q -O /dev/null http://localhost:3002/ > /dev/null 2>&1; do
+              attempt=$((attempt + 1))
+              sleep 2
+            done
+            echo "Web-shell is ready (probes succeeded after ${attempt} retries)."
+          ' || {
+            echo "::error::Web-shell readiness poll timed out after 60s!"
+            echo "=== Internal Probe (from web-shell container) ==="
+            docker compose exec -T web-shell wget -S -O - http://localhost:3002/ 2>&1 || true
+            echo "=== Host Probe (from runner to port 3002) ==="
+            curl -sv http://localhost:3002/ 2>&1 || true
+            exit 1
+          }
 
       - name: Run Playwright E2E Tests
         run: pnpm test:e2e
+
+      - name: Dump Ephemeral Stack Diagnostics on Failure
+        if: failure()
+        run: |
+          echo "=================================================="
+          echo "CONTAINER STATUS (docker compose ps -a)"
+          echo "=================================================="
+          docker compose ps -a
+          echo "=================================================="
+          echo "WEB-SHELL CONTAINER LOGS"
+          echo "=================================================="
+          docker compose logs --tail 200 web-shell
+          echo "=================================================="
+          echo "API CONTAINER LOGS"
+          echo "=================================================="
+          docker compose logs --tail 200 api
+          echo "=================================================="
+          echo "MIGRATION SEED LOGS"
+          echo "=================================================="
+          docker compose logs --tail 50 migration-seed
 
       - name: Teardown Application Stack
         if: always()
