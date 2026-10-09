@@ -6,11 +6,19 @@ on:
   push:
     branches: [dev]
 
+env:
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
 jobs:
   validate:
     name: Lint, Typecheck, Test, Build & Security Scan
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://postgres:postgres_local_password@localhost:5432/creatorconnect_dev?schema=public
+      REDIS_URL: redis://:redis_local_password@localhost:6379/0
+      SUPABASE_JWT_ISSUER: https://localhost.supabase.co/auth/v1
 
     services:
       postgres:
@@ -73,22 +81,12 @@ jobs:
         run: |
           pnpm --filter @creatorconnect/database db:migrate
           pnpm --filter @creatorconnect/database db:seed
-        env:
-          DATABASE_URL: postgresql://postgres:postgres_local_password@localhost:5432/creatorconnect_dev?schema=public
 
       - name: Unit & Integration Tests
         run: pnpm test:unit
-        env:
-          DATABASE_URL: postgresql://postgres:postgres_local_password@localhost:5432/creatorconnect_dev?schema=public
-          REDIS_URL: redis://:redis_local_password@localhost:6379/0
-          SUPABASE_JWT_ISSUER: https://localhost.supabase.co/auth/v1
 
       - name: Build All Workspaces
         run: pnpm build
-        env:
-          DATABASE_URL: postgresql://postgres:postgres_local_password@localhost:5432/creatorconnect_dev?schema=public
-          REDIS_URL: redis://:redis_local_password@localhost:6379/0
-          SUPABASE_JWT_ISSUER: https://localhost.supabase.co/auth/v1
 
       - name: Secret Scanning (Gitleaks)
         uses: gitleaks/gitleaks-action@v2
@@ -115,6 +113,12 @@ jobs:
     name: Playwright E2E Smoke Tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres_local_password@localhost:5432/creatorconnect_dev?schema=public
+      SUPABASE_JWT_ISSUER: https://auth.creatorconnect.local/auth/v1
+      SUPABASE_JWKS_URL: http://jwks-stub:8080/.well-known/jwks.json
+      ALLOW_HTTP_JWKS: 'true'
 
     steps:
       - name: Checkout Code
@@ -143,17 +147,9 @@ jobs:
           # Wait for services to be ready
           timeout 60 bash -c 'until docker compose exec -T api wget -qO- http://localhost:3000/health > /dev/null 2>&1; do sleep 2; done'
           timeout 60 bash -c 'until docker compose exec -T web-shell wget -qO- http://localhost:3002 > /dev/null 2>&1; do sleep 2; done'
-        env:
-          NODE_ENV: development
-          SUPABASE_JWT_ISSUER: https://auth.creatorconnect.local/auth/v1
-          SUPABASE_JWKS_URL: http://jwks-stub:8080/.well-known/jwks.json
-          ALLOW_HTTP_JWKS: 'true'
 
       - name: Run Playwright E2E Tests
         run: pnpm test:e2e
-        env:
-          DATABASE_URL: postgresql://postgres:postgres_local_password@localhost:5432/creatorconnect_dev?schema=public
-          SUPABASE_JWT_ISSUER: https://auth.creatorconnect.local/auth/v1
 
       - name: Teardown Application Stack
         if: always()

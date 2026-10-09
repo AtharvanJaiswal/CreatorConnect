@@ -37,7 +37,7 @@ services:
       - creatorconnect-network
 
   minio:
-    image: quay.io/minio/minio:latest
+    image: ${MINIO_IMAGE:-cgr.dev/chainguard/minio:latest}
     container_name: creatorconnect-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -50,7 +50,11 @@ services:
     volumes:
       - minio-data:/data
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      test:
+        [
+          'CMD-SHELL',
+          'curl -f http://localhost:9000/minio/health/live 2>/dev/null || (echo > /dev/tcp/localhost/9000) 2>/dev/null || exit 1',
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -58,18 +62,22 @@ services:
       - creatorconnect-network
 
   minio-create-buckets:
-    image: quay.io/minio/mc:latest
+    image: ${MINIO_IMAGE:-cgr.dev/chainguard/minio:latest}
     container_name: creatorconnect-minio-create-buckets
     depends_on:
       minio:
         condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      /usr/bin/mc alias set myminio http://minio:9000 minio_local_user minio_local_password;
-      /usr/bin/mc mb -p myminio/creatorconnect-dev-media;
-      /usr/bin/mc mb -p myminio/creatorconnect-media;
-      exit 0;
-      "
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        until /usr/bin/mc alias set myminio http://minio:9000 minio_local_user minio_local_password; do
+          sleep 1;
+        done;
+        /usr/bin/mc mb -p myminio/creatorconnect-dev-media;
+        /usr/bin/mc mb -p myminio/creatorconnect-media;
+        echo 'MinIO buckets initialized successfully';
+        exit 0;
     networks:
       - creatorconnect-network
 
