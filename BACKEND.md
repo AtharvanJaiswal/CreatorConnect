@@ -24,12 +24,13 @@ The CreatorConnect backend powers an enterprise-grade, multi-sided creator econo
 - **Phase 5**: Realtime Socket.IO WebSockets cluster, `@socket.io/redis-adapter`, monotonic message sequencing, client idempotency, transactional outbox relay, ClamAV antivirus scanning, and trust/moderation (**COMPLETED & PROMOTED** to `dev` and `main`).
 - **Phase 5 Operational Verification**: Evaluated Gates A–D. Gate A (isolated DB restore drill PASS: RTO 1.4s, RPO 0.4s, SHA-256 match) and Gate D (CI PASS & promoted to dev/main). Gate B (external alert delivery NOT_VERIFIED) and Gate C (production secrets BLOCKED) remain pending external production credentials; production deployment is NOT authorized.
 - **Phase 6 (Increment 1)**: Projects & Deliverable Escrow Foundation (**IMPLEMENTED & LOCALLY VERIFIED** on branch `feature/phase-6-projects-deliverables`). Execution contract lifecycle for accepted proposals, milestone deliverables, submit/review workflows, optimistic concurrency locking, and transactional outbox events (`project.created.v1`, `project.deliverable.submitted.v1`, `project.deliverable.revision_requested.v1`, `project.deliverable.approved.v1`).
+- **Phase 6 (Increment 2)**: Payments, Ledger & Escrow Foundation (**IMPLEMENTED & LOCALLY VERIFIED** on branch `feature/phase-6-payments-ledger`). Immutable double-entry balanced ledger ($\sum \text{debits} \equiv \sum \text{credits}$), integer minor units (paisa), idempotent payment intent lifecycle with SHA-256 payload hash verification, provider abstraction (Sandbox Mock & Razorpay Orders/Route compliance for Indian market), HMAC SHA-256 signed webhook ingestion with event deduplication, and transactional outbox events (`payment.intent.created.v1`, `payment.intent.succeeded.v1`, `ledger.transaction.posted.v1`, `escrow.released.v1`). Live payouts and real-money nodal escrow remain strictly simulated in sandbox mode pending RBI Payment Aggregator compliance and production nodal onboarding.
 
 ### Core Technologies & Runtimes:
 
 - **Language / Runtime**: Node.js 20 LTS + TypeScript 5.5+
 - **HTTP Engine**: Fastify v4.x (High throughput, native TypeBox JSON Schema compilation)
-- **Database**: PostgreSQL 16 managed with Prisma ORM 5.18 (34 models, 5 applied migrations)
+- **Database**: PostgreSQL 16 managed with Prisma ORM 5.18 (40 models, 6 applied migrations)
 - **In-Memory Cache & Broker**: Redis 7
 - **Asynchronous Task Queues**: BullMQ v5.x
 - **Realtime Gateway**: Socket.IO v4.x with `@socket.io/redis-adapter`
@@ -56,6 +57,7 @@ f:\CreatorConnect/
 │   │   │   │   ├── assignments/ # Brand briefs, requirements, budget bounds
 │   │   │   │   ├── applications/# Proposal submissions & atomic hiring state machine
 │   │   │   │   ├── projects/    # Project contracts & milestone deliverables (/api/v1/projects)
+│   │   │   │   ├── payments/    # Double-entry ledger, payment intents & escrow (/api/v1/payments)
 │   │   │   │   ├── discovery/   # PostgreSQL tsvector FTS + pg_trgm fuzzy matching
 │   │   │   │   ├── messaging/   # Direct chat threads, message history, read receipts
 │   │   │   │   └── notifications/# User notification preference management
