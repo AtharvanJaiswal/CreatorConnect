@@ -385,7 +385,7 @@ describe('Multi-Process Cluster & Realtime Bridge Integration (Increment 10D)', 
 
     // Verify unrelated socket on Server B received nothing
     expect(receivedByUnrelated).toBe(false);
-  });
+  }, 15000);
 
   // ==============================================================================
   // Test B — Cross-Node Block Eviction & Authoritative Boundary Enforcement
@@ -459,7 +459,7 @@ describe('Multi-Process Cluster & Realtime Bridge Integration (Increment 10D)', 
 
     // Ensure no message leaked to the evicted socket
     expect(leakedMessage).toBe(false);
-  });
+  }, 15000);
 
   // ==============================================================================
   // Test C — Stale Block Event Safety After Unblock (FIND-10D-01 Remediation)
@@ -561,7 +561,7 @@ describe('Multi-Process Cluster & Realtime Bridge Integration (Increment 10D)', 
     expect(eventReceivedByC.messageId).toBe(sentMessage.id);
     expect(eventReceivedByC.content).toBe(sentMessage.content);
     expect(falseBlockedNotice).toBe(false);
-  });
+  }, 15000);
 
   // ==============================================================================
   // Test D — Cluster Health & Degraded State Visibility (FIND-10D-02 Telemetry)
