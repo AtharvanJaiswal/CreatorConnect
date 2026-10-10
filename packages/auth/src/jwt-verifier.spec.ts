@@ -408,14 +408,23 @@ describe('JwtVerifier in @creatorconnect/auth', () => {
 
   describe('JWKS Failures & Cache Behavior', () => {
     it('initializes a fail-closed resolver when neither JWKS URL nor issuer is provided', async () => {
-      const noKeySetVerifier = new JwtVerifier({
-        // no localKeySet, no jwksUrl, no issuer
-      });
+      const origIssuer = process.env.SUPABASE_JWT_ISSUER;
+      const origJwks = process.env.SUPABASE_JWKS_URL;
+      delete process.env.SUPABASE_JWT_ISSUER;
+      delete process.env.SUPABASE_JWKS_URL;
+      try {
+        const noKeySetVerifier = new JwtVerifier({
+          // no localKeySet, no jwksUrl, no issuer
+        });
 
-      // Calling the underlying key set directly fails closed
-      await expect(
-        (noKeySetVerifier as any).getKeySet({ alg: 'ES256', kid: 'any' }),
-      ).rejects.toThrow(/JWKS key set is not configured/);
+        // Calling the underlying key set directly fails closed
+        await expect(
+          (noKeySetVerifier as any).getKeySet({ alg: 'ES256', kid: 'any' }),
+        ).rejects.toThrow(/JWKS key set is not configured/);
+      } finally {
+        if (origIssuer) process.env.SUPABASE_JWT_ISSUER = origIssuer;
+        if (origJwks) process.env.SUPABASE_JWKS_URL = origJwks;
+      }
     });
 
     it('handles remote JWKS HTTP error responses by failing closed', async () => {
