@@ -11,7 +11,7 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "test:unit": "vitest run --workspace=vitest.workspace.ts",
-    "test:e2e": "playwright test",
+    "test:e2e": "turbo build --filter=@creatorconnect/database... && playwright test",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "docker:up": "docker compose up -d",

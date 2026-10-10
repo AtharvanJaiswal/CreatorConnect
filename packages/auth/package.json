@@ -9,7 +9,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
@@ -21,7 +22,8 @@
     "@casl/ability": "^6.7.1",
     "@creatorconnect/contracts": "workspace:*",
     "@creatorconnect/utils": "workspace:*",
-    "@creatorconnect/validation": "workspace:*"
+    "@creatorconnect/validation": "workspace:*",
+    "jose": "^5.9.6"
   },
   "devDependencies": {
     "@creatorconnect/config": "workspace:*",

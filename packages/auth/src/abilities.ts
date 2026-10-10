@@ -31,6 +31,8 @@ export type AppSubject =
   | 'MediaAsset'
   | 'Assignment'
   | 'Application'
+  | 'Conversation'
+  | 'Message'
   | 'all'
   | any;
 
@@ -127,6 +129,10 @@ export function defineAbilitiesFor(user: UserIdentity): AppAbility {
   }
   can('read', 'Application', { assignmentBrandUserId: user.id });
   can(['shortlist', 'reject', 'accept'], 'Application', { assignmentBrandUserId: user.id });
+
+  // Phase 5 Messaging & Conversations
+  can(['read', 'create'], 'Conversation');
+  can(['read', 'create'], 'Message');
 
   return build({ conditionsMatcher: lambdaMatcher });
 }

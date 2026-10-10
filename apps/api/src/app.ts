@@ -19,6 +19,8 @@ import { mediaRoutes } from './modules/media/media.routes.js';
 import { assignmentsRoutes } from './modules/assignments/assignments.routes.js';
 import { applicationsRoutes } from './modules/applications/applications.routes.js';
 import { discoveryRoutes } from './modules/discovery/discovery.routes.js';
+import { messagingRoutes } from './modules/messaging/messaging.routes.js';
+import { notificationsRoutes } from './modules/notifications/notifications.routes.js';
 
 export async function buildApp(opts: FastifyServerOptions = {}): Promise<FastifyInstance> {
   const defaultTrustProxy = process.env.TRUST_PROXY
@@ -176,6 +178,8 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
   await app.register(assignmentsRoutes);
   await app.register(applicationsRoutes);
   await app.register(discoveryRoutes);
+  await app.register(messagingRoutes);
+  await app.register(notificationsRoutes);
 
   return app;
 }

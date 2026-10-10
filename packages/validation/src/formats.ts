@@ -69,3 +69,10 @@ export const HttpsUrlSchema = Type.String({
   maxLength: 512,
   description: 'Strict HTTPS URL without embedded credentials',
 });
+
+export const SequenceStringSchema = Type.String({
+  pattern: '^[0-9]+$',
+  minLength: 1,
+  maxLength: 20,
+  description: 'Monotonic sequence number represented as a decimal string',
+});
