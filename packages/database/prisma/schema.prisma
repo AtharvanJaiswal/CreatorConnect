@@ -137,6 +137,34 @@ enum NotificationType {
   APPLICATION_REJECTED
   ASSIGNMENT_OFFER
   SYSTEM_ANNOUNCEMENT
+
+  // Phase 6 Notification Types
+  PROJECT_CREATED
+  DELIVERABLE_SUBMITTED
+  DELIVERABLE_APPROVED
+  REVISION_REQUESTED
+}
+
+// ==============================================================================
+// Phase 6 Enums: Projects & Deliverables
+// ==============================================================================
+
+enum ProjectStatus {
+  IN_PROGRESS
+  SUBMITTED
+  REVISION_REQUESTED
+  APPROVED
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum DeliverableStatus {
+  PENDING
+  SUBMITTED
+  IN_REVIEW
+  APPROVED
+  REVISION_REQUESTED
 }
 
 model User {
@@ -173,6 +201,10 @@ model User {
   moderationActionsReceived ModerationAction[]        @relation("ModerationActionsReceived")
   notifications             Notification[]
   notificationPreferences   NotificationPreference[]
+
+  // Phase 6 Relations
+  clientProjects            Project[]                 @relation("ClientProjects")
+  talentProjects            Project[]                 @relation("TalentProjects")
 
   @@index([email])
   @@index([supabaseAuthId])
@@ -436,6 +468,7 @@ model MediaAsset {
   user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   portfolioMedia     PortfolioMedia[]
   messageAttachments MessageAttachment[]
+  deliverables       ProjectDeliverable[]
 
   @@index([userId])
   @@index([status])
@@ -470,6 +503,7 @@ model Assignment {
   requirements  AssignmentRequirement[]
   applications  Application[]
   conversations Conversation[]
+  projects      Project[]
 
   @@index([status, deletedAt, createdAt])
   @@index([brandId])
@@ -512,6 +546,7 @@ model Application {
   applicant     User                       @relation(fields: [applicantId], references: [id], onDelete: Restrict)
   history       ApplicationStatusHistory[]
   conversations Conversation[]
+  project       Project?
 
   @@unique([assignmentId, applicantId])
   @@index([assignmentId, status])
@@ -747,4 +782,63 @@ model NotificationPreference {
   @@unique([userId, type, channel])
   @@index([userId])
   @@map("notification_preferences")
+}
+
+// ==============================================================================
+// Phase 6 Models: Projects & Deliverables
+// ==============================================================================
+
+model Project {
+  id            String        @id @db.Uuid
+  assignmentId  String        @map("assignment_id") @db.Uuid
+  applicationId String        @unique @map("application_id") @db.Uuid
+  clientId      String        @map("client_id") @db.Uuid
+  talentId      String        @map("talent_id") @db.Uuid
+  title         String        @db.VarChar(200)
+  description   String?       @db.Text
+  totalAmount   Int           @map("total_amount")
+  currency      String        @default("INR") @db.VarChar(3)
+  status        ProjectStatus @default(IN_PROGRESS)
+  version       Int           @default(1)
+  startedAt     DateTime      @default(now()) @map("started_at")
+  completedAt   DateTime?     @map("completed_at")
+  cancelledAt   DateTime?     @map("cancelled_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  assignment   Assignment           @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  application  Application          @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  client       User                 @relation("ClientProjects", fields: [clientId], references: [id], onDelete: Restrict)
+  talent       User                 @relation("TalentProjects", fields: [talentId], references: [id], onDelete: Restrict)
+  deliverables ProjectDeliverable[]
+
+  @@index([clientId, status])
+  @@index([talentId, status])
+  @@index([assignmentId])
+  @@map("projects")
+}
+
+model ProjectDeliverable {
+  id               String            @id @db.Uuid
+  projectId        String            @map("project_id") @db.Uuid
+  title            String            @db.VarChar(150)
+  description      String?           @db.Text
+  amount           Int
+  dueDate          DateTime?         @map("due_date") @db.Timestamptz(3)
+  status           DeliverableStatus @default(PENDING)
+  version          Int               @default(1)
+  submittedAssetId String?           @map("submitted_asset_id") @db.Uuid
+  submissionNotes  String?           @map("submission_notes") @db.Text
+  revisionNotes    String?           @map("revision_notes") @db.Text
+  submittedAt      DateTime?         @map("submitted_at")
+  approvedAt       DateTime?         @map("approved_at")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  project        Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  submittedAsset MediaAsset? @relation(fields: [submittedAssetId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, status])
+  @@index([submittedAssetId])
+  @@map("project_deliverables")
 }

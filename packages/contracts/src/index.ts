@@ -6,6 +6,7 @@ export * from './portfolio.js';
 export * from './media.js';
 export * from './assignments.js';
 export * from './applications.js';
+export * from './projects.js';
 export * from './discovery.js';
 export * from './messaging.js';
 export * from './notifications.js';
