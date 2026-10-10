@@ -19,6 +19,7 @@ export interface OperationalGateResult {
 
 export interface BackupMetadata {
   backupId: string;
+  targetDatabase?: string;
   databaseName?: string;
   storagePath?: string;
   completedAt?: string;
