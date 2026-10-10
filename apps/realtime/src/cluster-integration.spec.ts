@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { spawn, type ChildProcess } from 'node:child_process';
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 import { io as createClient, type Socket as ClientSocket } from 'socket.io-client';
 import {
@@ -9,7 +11,7 @@ import {
   messagingRepository,
   UserBlockedError,
 } from '@creatorconnect/database';
-import { createTestJwt } from '../../../tests/fixtures/auth-test-helper.js';
+import { createTestJwt, TEST_PUBLIC_KEY_JWK } from '../../../tests/fixtures/auth-test-helper.js';
 import { generateUuidV7 } from '@creatorconnect/utils';
 import { Redis } from 'ioredis';
 
@@ -49,6 +51,10 @@ describe('Multi-Process Cluster & Realtime Bridge Integration (Increment 10D)', 
   let userC: { id: string; sub: string; email: string };
   let conversationId: string;
 
+  let jwksServer: http.Server;
+  let jwksUrl: string;
+  let jwksIssuer: string;
+
   beforeAll(async () => {
     // Resolve paths reliably relative to __dirname
     const realtimeDist = path.resolve(__dirname, '../dist/main.js');
@@ -56,6 +62,20 @@ describe('Multi-Process Cluster & Realtime Bridge Integration (Increment 10D)', 
     const rootDir = path.resolve(__dirname, '../../..');
 
     const redisUrl = process.env.REDIS_URL || 'redis://:redis_local_password@localhost:6379/0';
+
+    // Start isolated ephemeral JWKS HTTP server for child realtime processes
+    await new Promise<void>((resolve) => {
+      jwksServer = http.createServer((_req, res) => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ keys: [TEST_PUBLIC_KEY_JWK] }));
+      });
+      jwksServer.listen(0, '127.0.0.1', () => {
+        const addr = jwksServer.address() as AddressInfo;
+        jwksUrl = `http://127.0.0.1:${addr.port}/auth/v1/.well-known/jwks.json`;
+        jwksIssuer = `http://127.0.0.1:${addr.port}/auth/v1`;
+        resolve();
+      });
+    });
 
     // 1. Spawn Realtime Instance A in independent process
     serverProcessA = spawn(process.execPath, [realtimeDist], {
@@ -66,8 +86,8 @@ describe('Multi-Process Cluster & Realtime Bridge Integration (Increment 10D)', 
         HOST: '127.0.0.1',
         REDIS_URL: redisUrl,
         NODE_ENV: 'development',
-        SUPABASE_JWT_ISSUER: 'http://localhost:8080/auth/v1',
-        SUPABASE_JWKS_URL: 'http://localhost:8080/auth/v1/.well-known/jwks.json',
+        SUPABASE_JWT_ISSUER: jwksIssuer,
+        SUPABASE_JWKS_URL: jwksUrl,
         ALLOW_HTTP_JWKS: 'true',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -83,8 +103,8 @@ describe('Multi-Process Cluster & Realtime Bridge Integration (Increment 10D)', 
         HOST: '127.0.0.1',
         REDIS_URL: redisUrl,
         NODE_ENV: 'development',
-        SUPABASE_JWT_ISSUER: 'http://localhost:8080/auth/v1',
-        SUPABASE_JWKS_URL: 'http://localhost:8080/auth/v1/.well-known/jwks.json',
+        SUPABASE_JWT_ISSUER: jwksIssuer,
+        SUPABASE_JWKS_URL: jwksUrl,
         ALLOW_HTTP_JWKS: 'true',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -205,6 +225,9 @@ describe('Multi-Process Cluster & Realtime Bridge Integration (Increment 10D)', 
     if (serverProcessB && !serverProcessB.killed) {
       serverProcessB.kill('SIGTERM');
     }
+    if (jwksServer) {
+      await new Promise<void>((resolve) => jwksServer.close(() => resolve()));
+    }
 
     // Cleanup test records
     try {
@@ -250,7 +273,7 @@ describe('Multi-Process Cluster & Realtime Bridge Integration (Increment 10D)', 
       sub: user.sub,
       email: user.email,
       role: 'authenticated',
-      iss: process.env.SUPABASE_JWT_ISSUER || 'http://localhost:8080/auth/v1',
+      iss: jwksIssuer,
       aud: 'authenticated',
     });
 
