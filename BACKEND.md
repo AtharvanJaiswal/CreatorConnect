@@ -22,7 +22,7 @@ The CreatorConnect backend powers an enterprise-grade, multi-sided creator econo
 - **Phase 0–3**: Foundation, authentication, JWKS JWT verification, 3-tier RBAC & CASL authorization (**COMPLETED**).
 - **Phase 4**: Profiles, portfolio CRUD, brand assignments, atomic hiring acceptance, and PostgreSQL FTS + `pg_trgm` search (**COMPLETED**).
 - **Phase 5**: Realtime Socket.IO WebSockets cluster, `@socket.io/redis-adapter`, monotonic message sequencing, client idempotency, transactional outbox relay, ClamAV antivirus scanning, and trust/moderation (**COMPLETED & PROMOTED** to `dev` and `main`).
-- **Phase 5 Operational Verification**: Isolated database backup and restore drill (RTO 1.4s, RPO 0.4s, SHA-256 match), health probes (`/health`, `/ready`), alert delivery validation, and zero-disclosure production secret validation (**VERIFIED**).
+- **Phase 5 Operational Verification**: Evaluated Gates A–D. Gate A (isolated DB restore drill PASS: RTO 1.4s, RPO 0.4s, SHA-256 match) and Gate D (CI PASS & promoted to dev/main). Gate B (external alert delivery NOT_VERIFIED) and Gate C (production secrets BLOCKED) remain pending external production credentials; production deployment is NOT authorized.
 
 ### Core Technologies & Runtimes:
 
@@ -315,10 +315,10 @@ pnpm build
 
 ## 12. Backend Changelog
 
-| Phase           | Release Commit | Summary                                                               | Database Changes      | Operational Status         |
-| :-------------- | :------------- | :-------------------------------------------------------------------- | :-------------------- | :------------------------- |
-| **Phase 0**     | `c6080c4`      | Product & Architecture Lock, ADRs, canonical data model               | Greenfield design     | Approved                   |
-| **Phase 1–3**   | `aba599b`      | Monorepo setup, Fastify engine, Supabase Auth, JWKS, RBAC             | Migrations 0001       | Verified in CI             |
-| **Phase 4**     | `b42ffdb`      | Profiles, portfolio CRUD, assignments, atomic hiring, FTS             | 15 models             | Verified in CI             |
-| **Phase 5**     | `58e8ae0`      | Realtime Socket.IO, Outbox relay, ClamAV scanning, Moderation         | 32 models (0001–0004) | Promoted to `dev` & `main` |
-| **Stage 5 Ops** | Working Tree   | Operational verification: Restore drill (RTO 1.4s), Telemetry, Config | Verified              | **Gates Evaluated**        |
+| Phase           | Release Commit | Summary                                                                                                       | Database Changes      | Operational Status                 |
+| :-------------- | :------------- | :------------------------------------------------------------------------------------------------------------ | :-------------------- | :--------------------------------- |
+| **Phase 0**     | `c6080c4`      | Product & Architecture Lock, ADRs, canonical data model                                                       | Greenfield design     | Approved                           |
+| **Phase 1–3**   | `aba599b`      | Monorepo setup, Fastify engine, Supabase Auth, JWKS, RBAC                                                     | Migrations 0001       | Verified in CI                     |
+| **Phase 4**     | `b42ffdb`      | Profiles, portfolio CRUD, assignments, atomic hiring, FTS                                                     | 15 models             | Verified in CI                     |
+| **Phase 5**     | `58e8ae0`      | Realtime Socket.IO, Outbox relay, ClamAV scanning, Moderation                                                 | 32 models (0001–0004) | Promoted to `dev` & `main`         |
+| **Stage 5 Ops** | Working Tree   | Operational verification: Restore drill PASS, Probes PASS, External alerts NOT_VERIFIED, Prod secrets BLOCKED | 32 models (verified)  | **Gates Evaluated (Prod Blocked)** |
