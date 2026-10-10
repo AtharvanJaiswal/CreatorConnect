@@ -7,4 +7,6 @@ export * from './media.js';
 export * from './assignments.js';
 export * from './applications.js';
 export * from './discovery.js';
+export * from './messaging.js';
+export * from './notifications.js';
 export * from '@creatorconnect/validation';

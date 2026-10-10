@@ -5,7 +5,7 @@ import {
   type SyncUserRequest,
 } from '@creatorconnect/contracts';
 import { ProblemDetailsSchema } from '@creatorconnect/validation';
-import { defaultJwtVerifier, JwtVerifier } from '../../services/jwt-verifier.js';
+import { defaultJwtVerifier, JwtVerifier } from '@creatorconnect/auth';
 import { authService, AuthService } from './auth.service.js';
 import { AuthInvalidTokenError } from '../../errors/app-error.js';
 

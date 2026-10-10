@@ -1,38 +1,18 @@
+import {
+  AuthError,
+  AuthInvalidTokenError,
+  AuthTokenExpiredError,
+  AuthInsufficientRoleError,
+} from '@creatorconnect/auth';
+
+export { AuthError, AuthInvalidTokenError, AuthTokenExpiredError, AuthInsufficientRoleError };
+
 /**
  * Base Application Error adhering to RFC 7807 problem details fields.
  */
-export class AppError extends Error {
-  public readonly statusCode: number;
-  public readonly code: string;
-  public readonly title: string;
-  public readonly detail: string;
-
+export class AppError extends AuthError {
   constructor(statusCode: number, code: string, title: string, detail: string) {
-    super(detail);
-    this.name = this.constructor.name;
-    this.statusCode = statusCode;
-    this.code = code;
-    this.title = title;
-    this.detail = detail;
-    Error.captureStackTrace(this, this.constructor);
-  }
-}
-
-export class AuthInvalidTokenError extends AppError {
-  constructor(detail = 'Invalid or malformed authentication token.') {
-    super(401, 'AUTH_INVALID_TOKEN', 'Invalid Authentication Token', detail);
-  }
-}
-
-export class AuthTokenExpiredError extends AppError {
-  constructor(detail = 'Authentication token has expired.') {
-    super(401, 'AUTH_TOKEN_EXPIRED', 'Authentication Token Expired', detail);
-  }
-}
-
-export class AuthInsufficientRoleError extends AppError {
-  constructor(detail = 'You do not have the required permissions to access this resource.') {
-    super(403, 'AUTH_INSUFFICIENT_ROLE', 'Insufficient Permissions', detail);
+    super(statusCode, code, title, detail);
   }
 }
 
@@ -154,3 +134,56 @@ export class RateLimiterDegradedError extends AppError {
     super(503, 'RATE_LIMIT_UNAVAILABLE', 'Service Unavailable', detail);
   }
 }
+
+// ==============================================================================
+// Phase 5 Messaging & Moderation Domain Errors
+// ==============================================================================
+// Phase 5 Messaging Errors (Re-exported from @creatorconnect/database)
+// ==============================================================================
+
+export {
+  MessagingError,
+  ConversationNotFoundError,
+  NotConversationParticipantError,
+  DuplicateClientMessageIdError,
+  UserBlockedError,
+  AttachmentNotFoundError,
+  AttachmentNotActiveError,
+  AttachmentLimitExceededError,
+  SelfMessagingNotAllowedError,
+  SelfBlockNotAllowedError,
+  InvalidMessageCursorError,
+  UserNotFoundError,
+} from '@creatorconnect/database';
+
+export class SelfReportNotAllowedError extends AppError {
+  constructor(detail = 'You cannot submit an abuse report against yourself.') {
+    super(400, 'SELF_REPORT_NOT_ALLOWED', 'Self Report Not Allowed', detail);
+  }
+}
+
+export class MessageNotFoundError extends AppError {
+  constructor(detail = 'The requested message was not found.') {
+    super(404, 'MESSAGE_NOT_FOUND', 'Message Not Found', detail);
+  }
+}
+
+export class MessageNotEditableError extends AppError {
+  constructor(detail = 'Message cannot be edited (edit window expired or message deleted).') {
+    super(400, 'MESSAGE_NOT_EDITABLE', 'Message Not Editable', detail);
+  }
+}
+
+export class MessageDeletedError extends AppError {
+  constructor(detail = 'The message has been deleted.') {
+    super(410, 'MESSAGE_DELETED', 'Message Deleted', detail);
+  }
+}
+
+export {
+  NotificationError,
+  NotificationNotFoundError,
+  InvalidNotificationCursorError,
+  NotificationAccessDeniedError,
+  InvalidNotificationPreferenceError,
+} from '@creatorconnect/database';

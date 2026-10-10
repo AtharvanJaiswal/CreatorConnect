@@ -23,6 +23,7 @@
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@creatorconnect/contracts": "workspace:*",
     "@creatorconnect/utils": "workspace:*",
     "@prisma/client": "^5.18.0",
     "dotenv": "^16.4.5"

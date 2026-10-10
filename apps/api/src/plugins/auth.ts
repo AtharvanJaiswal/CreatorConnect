@@ -1,8 +1,13 @@
 import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import fp from 'fastify-plugin';
 import type { RoleType } from '@creatorconnect/contracts';
-import { defineAbilitiesFor, type AppAbility, type UserIdentity } from '@creatorconnect/auth';
-import { defaultJwtVerifier, JwtVerifier } from '../services/jwt-verifier.js';
+import {
+  defineAbilitiesFor,
+  type AppAbility,
+  type UserIdentity,
+  defaultJwtVerifier,
+  JwtVerifier,
+} from '@creatorconnect/auth';
 import { redisCache, RedisCacheService } from '../services/redis-cache.js';
 import { userRepository, IUserRepository } from '../repositories/user.repository.js';
 import {

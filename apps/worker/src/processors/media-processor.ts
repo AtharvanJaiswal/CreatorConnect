@@ -12,6 +12,11 @@ import { PDFDocument } from 'pdf-lib';
 import { getPrismaClient } from '@creatorconnect/database';
 import type { Job } from 'bullmq';
 import type { Logger } from 'pino';
+import {
+  type IMalwareScanner,
+  MockMalwareScanner,
+  ClamAvDaemonScanner,
+} from '../scanners/malware-scanner.js';
 
 export interface MediaJobData {
   assetId: string;
@@ -26,8 +31,16 @@ export class MediaProcessor {
   private s3: S3Client;
   private bucket: string;
   private prisma = getPrismaClient();
+  private scanner: IMalwareScanner;
 
-  constructor(private logger: Logger) {
+  constructor(
+    private logger: Logger,
+    scanner?: IMalwareScanner,
+  ) {
+    this.scanner =
+      scanner ||
+      (process.env.NODE_ENV === 'test' ? new MockMalwareScanner() : new ClamAvDaemonScanner());
+
     const endpoint = process.env.R2_ENDPOINT || process.env.S3_ENDPOINT;
     const region = process.env.AWS_REGION || 'auto';
     const accessKeyId = process.env.R2_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID || 'mock_key';
@@ -75,7 +88,37 @@ export class MediaProcessor {
       return { success: false, status: 'REJECTED_INVALID' };
     }
 
-    // 2. Magic-byte signature verification via file-type
+    // 2. Antivirus malware scan (ClamAV / IMalwareScanner)
+    const scanResult = await this.scanner.scanBuffer(buffer);
+    if (scanResult.verdict === 'INFECTED') {
+      this.logger.error(
+        { assetId, userId, virusName: scanResult.virusName },
+        'MALWARE DETECTED: ClamAV positive match. Rejecting asset and purging from storage.',
+      );
+      await this.prisma.mediaAsset.update({
+        where: { id: assetId },
+        data: { status: 'REJECTED_INVALID' },
+      });
+      await this.s3
+        .send(new DeleteObjectCommand({ Bucket: this.bucket, Key: storageKey }))
+        .catch(() => {});
+      return { success: false, status: 'REJECTED_INVALID' };
+    }
+
+    if (scanResult.verdict === 'TIMEOUT' || scanResult.verdict === 'ERROR') {
+      this.logger.warn(
+        { assetId, verdict: scanResult.verdict, details: scanResult.details },
+        'Antivirus scan failed or timed out. Asset remains quarantined.',
+      );
+      // Fail closed: asset remains QUARANTINED; throw error to trigger BullMQ retry with backoff
+      throw new Error(
+        `Antivirus scan failure: ${scanResult.verdict} - ${scanResult.details || 'unknown error'}`,
+      );
+    }
+
+    this.logger.info({ assetId }, 'ClamAV malware scan passed clean');
+
+    // 3. Magic-byte signature verification via file-type
     const detected = await fileTypeFromBuffer(buffer);
     if (!detected && mediaType !== 'DOCUMENT') {
       this.logger.warn({ assetId, mimeType }, 'Could not identify magic bytes for file');

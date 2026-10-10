@@ -15,9 +15,11 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1132.0",
+    "@creatorconnect/contracts": "workspace:*",
     "@creatorconnect/database": "workspace:^",
     "@creatorconnect/utils": "workspace:*",
     "@creatorconnect/validation": "workspace:*",
+    "@socket.io/redis-emitter": "^5.1.0",
     "bullmq": "^5.8.6",
     "dotenv": "^16.4.5",
     "file-type": "^22.1.0",

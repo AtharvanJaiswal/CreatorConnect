@@ -1,13 +1,18 @@
 import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 import { createProblemDetails } from '@creatorconnect/validation';
-import { AppError } from '../errors/app-error.js';
+import { AppError, AuthError, MessagingError, NotificationError } from '../errors/app-error.js';
 
 export function errorHandler(
-  error: FastifyError | AppError,
+  error: FastifyError | AppError | AuthError | MessagingError | NotificationError,
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
-  if (error instanceof AppError) {
+  if (
+    error instanceof AppError ||
+    error instanceof AuthError ||
+    error instanceof MessagingError ||
+    error instanceof NotificationError
+  ) {
     request.log.warn(
       { code: error.code, statusCode: error.statusCode, reqId: request.id, detail: error.detail },
       'Application Security/Domain Rejection',

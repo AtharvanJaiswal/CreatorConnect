@@ -72,16 +72,83 @@ enum SkillProficiency {
   EXPERT
 }
 
+// ==============================================================================
+// Phase 5 Enums
+// ==============================================================================
+
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
+enum ParticipantRole {
+  MEMBER
+  ADMIN
+}
+
+enum MessageStatus {
+  SENT
+  EDITED
+  DELETED
+}
+
+enum ReportCategory {
+  SPAM
+  HARASSMENT
+  ABUSE
+  SCAM
+  INAPPROPRIATE_CONTENT
+  MALICIOUS_FILE
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+enum ModerationActionType {
+  WARN
+  MUTE
+  SUSPEND
+  BAN
+  CONTENT_REMOVED
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  PUBLISHED
+  FAILED
+  DEAD_LETTER
+}
+
+enum NotificationChannel {
+  IN_APP
+  PUSH
+  EMAIL
+}
+
+enum NotificationType {
+  MESSAGE_RECEIVED
+  APPLICATION_ACCEPTED
+  APPLICATION_REJECTED
+  ASSIGNMENT_OFFER
+  SYSTEM_ANNOUNCEMENT
+}
+
 model User {
-  id             String      @id @db.Uuid
-  supabaseAuthId String      @unique @map("supabase_auth_id") @db.VarChar(64)
-  email          String      @unique @db.VarChar(255)
-  firstName      String?     @map("first_name") @db.VarChar(100)
-  lastName       String?     @map("last_name") @db.VarChar(100)
-  avatarUrl      String?     @map("avatar_url") @db.VarChar(512)
-  status         UserStatus  @default(ACTIVE)
-  createdAt      DateTime    @default(now()) @map("created_at")
-  updatedAt      DateTime    @updatedAt @map("updated_at")
+  id             String     @id @db.Uuid
+  supabaseAuthId String     @unique @map("supabase_auth_id") @db.VarChar(64)
+  email          String     @unique @db.VarChar(255)
+  firstName      String?    @map("first_name") @db.VarChar(100)
+  lastName       String?    @map("last_name") @db.VarChar(100)
+  avatarUrl      String?    @map("avatar_url") @db.VarChar(512)
+  status         UserStatus @default(ACTIVE)
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
 
   userRoles           UserRole[]
   auditLogs           AuditLog[]
@@ -95,18 +162,30 @@ model User {
   applications        Application[]
   statusHistories     ApplicationStatusHistory[]
 
+  // Phase 5 Relations
+  conversationParticipants  ConversationParticipant[]
+  sentMessages              Message[]
+  messageReactions          MessageReaction[]
+  blocksInitiated           UserBlock[]               @relation("UserBlocksInitiated")
+  blocksReceived            UserBlock[]               @relation("UserBlocksReceived")
+  reports                   Report[]
+  moderationActionsTaken    ModerationAction[]        @relation("ModerationActionsTaken")
+  moderationActionsReceived ModerationAction[]        @relation("ModerationActionsReceived")
+  notifications             Notification[]
+  notificationPreferences   NotificationPreference[]
+
   @@index([email])
   @@index([supabaseAuthId])
   @@map("users")
 }
 
 model Role {
-  id          String     @id @db.Uuid
-  name        RoleType   @unique
-  description String?    @db.VarChar(255)
-  createdAt   DateTime   @default(now()) @map("created_at")
+  id          String   @id @db.Uuid
+  name        RoleType @unique
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  userRoles   UserRole[]
+  userRoles UserRole[]
 
   @@map("roles")
 }
@@ -117,8 +196,8 @@ model UserRole {
   roleId    String   @map("role_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId])
   @@index([userId])
@@ -127,17 +206,17 @@ model UserRole {
 }
 
 model AuditLog {
-  id         String   @id @db.Uuid
-  userId     String?  @map("user_id") @db.Uuid
-  action     String   @db.VarChar(100)
-  entity     String   @db.VarChar(100)
-  entityId   String?  @map("entity_id") @db.VarChar(64)
-  ipAddress  String?  @map("ip_address") @db.VarChar(45)
-  userAgent  String?  @map("user_agent") @db.VarChar(512)
-  metadata   Json?    @db.JsonB
-  createdAt  DateTime @default(now()) @map("created_at")
+  id        String   @id @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  action    String   @db.VarChar(100)
+  entity    String   @db.VarChar(100)
+  entityId  String?  @map("entity_id") @db.VarChar(64)
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  userAgent String?  @map("user_agent") @db.VarChar(512)
+  metadata  Json?    @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at")
 
-  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([action])
@@ -164,11 +243,11 @@ model Category {
 }
 
 model Skill {
-  id        String      @id @db.Uuid
-  slug      String      @unique @db.VarChar(64)
-  name      String      @db.VarChar(100)
-  isActive  Boolean     @default(true) @map("is_active")
-  createdAt DateTime    @default(now()) @map("created_at")
+  id        String   @id @db.Uuid
+  slug      String   @unique @db.VarChar(64)
+  name      String   @db.VarChar(100)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
 
   userSkills UserSkill[]
 
@@ -182,8 +261,8 @@ model UserSkill {
   proficiency SkillProficiency @default(INTERMEDIATE)
   createdAt   DateTime         @default(now()) @map("created_at")
 
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  skill       Skill            @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
 
   @@unique([userId, skillId])
   @@index([userId])
@@ -196,25 +275,25 @@ model UserSkill {
 // ==============================================================================
 
 model CreatorProfile {
-  id              String                   @id @db.Uuid
-  userId          String                   @unique @map("user_id") @db.Uuid
-  tagline         String?                  @db.VarChar(160)
-  bio             String?                  @db.Text
-  locationCountry String?                  @map("location_country") @db.VarChar(2)
-  locationCity    String?                  @map("location_city") @db.VarChar(100)
-  isRemote        Boolean                  @default(true) @map("is_remote")
-  startingRate    Int?                     @map("starting_rate")
-  currency        String                   @default("INR") @db.VarChar(3)
-  visibility      ProfileVisibility        @default(PUBLIC)
-  isVerified      Boolean                  @default(false) @map("is_verified")
-  socialLinks     Json?                    @map("social_links") @db.JsonB
-  completionScore Int                      @default(0) @map("completion_score")
-  deletedAt       DateTime?                @map("deleted_at")
-  createdAt       DateTime                 @default(now()) @map("created_at")
-  updatedAt       DateTime                 @updatedAt @map("updated_at")
+  id              String            @id @db.Uuid
+  userId          String            @unique @map("user_id") @db.Uuid
+  tagline         String?           @db.VarChar(160)
+  bio             String?           @db.Text
+  locationCountry String?           @map("location_country") @db.VarChar(2)
+  locationCity    String?           @map("location_city") @db.VarChar(100)
+  isRemote        Boolean           @default(true) @map("is_remote")
+  startingRate    Int?              @map("starting_rate")
+  currency        String            @default("INR") @db.VarChar(3)
+  visibility      ProfileVisibility @default(PUBLIC)
+  isVerified      Boolean           @default(false) @map("is_verified")
+  socialLinks     Json?             @map("social_links") @db.JsonB
+  completionScore Int               @default(0) @map("completion_score")
+  deletedAt       DateTime?         @map("deleted_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
 
-  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  categories      CreatorProfileCategory[]
+  user       User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categories CreatorProfileCategory[]
 
   @@index([visibility, deletedAt])
   @@index([locationCountry, locationCity])
@@ -222,11 +301,11 @@ model CreatorProfile {
 }
 
 model CreatorProfileCategory {
-  creatorProfileId String         @map("creator_profile_id") @db.Uuid
-  categoryId       String         @map("category_id") @db.Uuid
+  creatorProfileId String @map("creator_profile_id") @db.Uuid
+  categoryId       String @map("category_id") @db.Uuid
 
-  creatorProfile   CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
-  category         Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  creatorProfile CreatorProfile @relation(fields: [creatorProfileId], references: [id], onDelete: Cascade)
+  category       Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@id([creatorProfileId, categoryId])
   @@map("creator_profile_categories")
@@ -249,7 +328,7 @@ model ProfessionalProfile {
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
-  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([visibility, deletedAt])
   @@index([isAvailable])
@@ -257,21 +336,21 @@ model ProfessionalProfile {
 }
 
 model BrandProfile {
-  id              String            @id @db.Uuid
-  userId          String            @unique @map("user_id") @db.Uuid
-  companyName     String            @map("company_name") @db.VarChar(150)
-  industry        String?           @db.VarChar(100)
-  websiteUrl      String?           @map("website_url") @db.VarChar(512)
-  companySize     String?           @map("company_size") @db.VarChar(32)
-  bio             String?           @db.Text
-  isVerified      Boolean           @default(false) @map("is_verified")
-  visibility      ProfileVisibility @default(PUBLIC)
-  deletedAt       DateTime?         @map("deleted_at")
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
+  id          String            @id @db.Uuid
+  userId      String            @unique @map("user_id") @db.Uuid
+  companyName String            @map("company_name") @db.VarChar(150)
+  industry    String?           @db.VarChar(100)
+  websiteUrl  String?           @map("website_url") @db.VarChar(512)
+  companySize String?           @map("company_size") @db.VarChar(32)
+  bio         String?           @db.Text
+  isVerified  Boolean           @default(false) @map("is_verified")
+  visibility  ProfileVisibility @default(PUBLIC)
+  deletedAt   DateTime?         @map("deleted_at")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
 
-  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assignments     Assignment[]
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
 
   @@index([visibility, deletedAt])
   @@map("brand_profiles")
@@ -289,7 +368,7 @@ model PodcasterProfile {
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
-  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([visibility, deletedAt])
   @@map("podcaster_profiles")
@@ -312,8 +391,8 @@ model PortfolioItem {
   createdAt    DateTime          @default(now()) @map("created_at")
   updatedAt    DateTime          @updatedAt @map("updated_at")
 
-  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  media        PortfolioMedia[]
+  user  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media PortfolioMedia[]
 
   @@index([userId, displayOrder])
   @@index([visibility, deletedAt])
@@ -321,15 +400,15 @@ model PortfolioItem {
 }
 
 model PortfolioMedia {
-  id              String        @id @db.Uuid
-  portfolioItemId String        @map("portfolio_item_id") @db.Uuid
-  mediaAssetId    String        @map("media_asset_id") @db.Uuid
-  displayOrder    Int           @default(0) @map("display_order")
-  caption         String?       @db.VarChar(255)
-  createdAt       DateTime      @default(now()) @map("created_at")
+  id              String   @id @db.Uuid
+  portfolioItemId String   @map("portfolio_item_id") @db.Uuid
+  mediaAssetId    String   @map("media_asset_id") @db.Uuid
+  displayOrder    Int      @default(0) @map("display_order")
+  caption         String?  @db.VarChar(255)
+  createdAt       DateTime @default(now()) @map("created_at")
 
-  portfolioItem   PortfolioItem @relation(fields: [portfolioItemId], references: [id], onDelete: Cascade)
-  mediaAsset      MediaAsset    @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
+  portfolioItem PortfolioItem @relation(fields: [portfolioItemId], references: [id], onDelete: Cascade)
+  mediaAsset    MediaAsset    @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
 
   @@unique([portfolioItemId, mediaAssetId])
   @@index([portfolioItemId, displayOrder])
@@ -354,8 +433,9 @@ model MediaAsset {
   createdAt    DateTime         @default(now()) @map("created_at")
   updatedAt    DateTime         @updatedAt @map("updated_at")
 
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  portfolioMedia PortfolioMedia[]
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portfolioMedia     PortfolioMedia[]
+  messageAttachments MessageAttachment[]
 
   @@index([userId])
   @@index([status])
@@ -367,28 +447,29 @@ model MediaAsset {
 // ==============================================================================
 
 model Assignment {
-  id           String           @id @db.Uuid
-  brandId      String           @map("brand_id") @db.Uuid
-  categoryId   String?          @map("category_id") @db.Uuid
-  title        String           @db.VarChar(200)
-  description  String           @db.Text
-  budgetType   BudgetType       @default(FIXED) @map("budget_type")
-  budgetMin    Int              @map("budget_min")
-  budgetMax    Int              @map("budget_max")
-  currency     String           @default("INR") @db.VarChar(3)
-  deadline     DateTime         @db.Timestamptz(3)
-  isRemote     Boolean          @default(true) @map("is_remote")
-  location     String?          @db.VarChar(150)
-  status       AssignmentStatus @default(DRAFT)
-  version      Int              @default(1)
-  deletedAt    DateTime?        @map("deleted_at")
-  createdAt    DateTime         @default(now()) @map("created_at")
-  updatedAt    DateTime         @updatedAt @map("updated_at")
+  id          String           @id @db.Uuid
+  brandId     String           @map("brand_id") @db.Uuid
+  categoryId  String?          @map("category_id") @db.Uuid
+  title       String           @db.VarChar(200)
+  description String           @db.Text
+  budgetType  BudgetType       @default(FIXED) @map("budget_type")
+  budgetMin   Int              @map("budget_min")
+  budgetMax   Int              @map("budget_max")
+  currency    String           @default("INR") @db.VarChar(3)
+  deadline    DateTime         @db.Timestamptz(3)
+  isRemote    Boolean          @default(true) @map("is_remote")
+  location    String?          @db.VarChar(150)
+  status      AssignmentStatus @default(DRAFT)
+  version     Int              @default(1)
+  deletedAt   DateTime?        @map("deleted_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
 
-  brand        BrandProfile     @relation(fields: [brandId], references: [id], onDelete: Restrict)
-  category     Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  requirements AssignmentRequirement[]
-  applications Application[]
+  brand         BrandProfile            @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  category      Category?               @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  requirements  AssignmentRequirement[]
+  applications  Application[]
+  conversations Conversation[]
 
   @@index([status, deletedAt, createdAt])
   @@index([brandId])
@@ -398,13 +479,13 @@ model Assignment {
 }
 
 model AssignmentRequirement {
-  id           String     @id @db.Uuid
-  assignmentId String     @map("assignment_id") @db.Uuid
-  title        String     @db.VarChar(150)
-  isMandatory  Boolean    @default(true) @map("is_mandatory")
-  createdAt    DateTime   @default(now()) @map("created_at")
+  id           String   @id @db.Uuid
+  assignmentId String   @map("assignment_id") @db.Uuid
+  title        String   @db.VarChar(150)
+  isMandatory  Boolean  @default(true) @map("is_mandatory")
+  createdAt    DateTime @default(now()) @map("created_at")
 
-  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
 
   @@index([assignmentId])
   @@map("assignment_requirements")
@@ -427,9 +508,10 @@ model Application {
   createdAt    DateTime          @default(now()) @map("created_at")
   updatedAt    DateTime          @updatedAt @map("updated_at")
 
-  assignment   Assignment        @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
-  applicant    User              @relation(fields: [applicantId], references: [id], onDelete: Restrict)
-  history      ApplicationStatusHistory[]
+  assignment    Assignment                 @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  applicant     User                       @relation(fields: [applicantId], references: [id], onDelete: Restrict)
+  history       ApplicationStatusHistory[]
+  conversations Conversation[]
 
   @@unique([assignmentId, applicantId])
   @@index([assignmentId, status])
@@ -446,10 +528,223 @@ model ApplicationStatusHistory {
   reason        String?           @db.VarChar(255)
   createdAt     DateTime          @default(now()) @map("created_at")
 
-  application   Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  actor         User              @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  actor       User        @relation(fields: [actorId], references: [id], onDelete: Restrict)
 
   @@index([applicationId, createdAt])
   @@index([actorId])
   @@map("application_status_history")
+}
+
+// ==============================================================================
+// Phase 5 Models
+// ==============================================================================
+
+model Conversation {
+  id              String           @id @db.Uuid
+  type            ConversationType @default(DIRECT)
+  title           String?          @db.VarChar(150)
+  assignmentId    String?          @map("assignment_id") @db.Uuid
+  applicationId   String?          @map("application_id") @db.Uuid
+  currentSequence BigInt           @default(0) @map("current_sequence")
+  deletedAt       DateTime?        @map("deleted_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  assignment   Assignment?               @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  application  Application?              @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([deletedAt, createdAt])
+  @@index([assignmentId])
+  @@index([applicationId])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id               String          @id @db.Uuid
+  conversationId   String          @map("conversation_id") @db.Uuid
+  userId           String          @map("user_id") @db.Uuid
+  role             ParticipantRole @default(MEMBER)
+  lastReadSequence BigInt          @default(0) @map("last_read_sequence")
+  mutedUntil       DateTime?       @map("muted_until")
+  leftAt           DateTime?       @map("left_at")
+  joinedAt         DateTime        @default(now()) @map("joined_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId, leftAt])
+  @@index([conversationId, lastReadSequence])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id              String        @id @db.Uuid
+  conversationId  String        @map("conversation_id") @db.Uuid
+  senderId        String        @map("sender_id") @db.Uuid
+  sequence        BigInt
+  clientMessageId String        @map("client_message_id") @db.VarChar(64)
+  content         String        @db.Text
+  status          MessageStatus @default(SENT)
+  deletedAt       DateTime?     @map("deleted_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  conversation Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User                @relation(fields: [senderId], references: [id], onDelete: Restrict)
+  attachments  MessageAttachment[]
+  reactions    MessageReaction[]
+
+  @@unique([conversationId, sequence])
+  @@unique([senderId, conversationId, clientMessageId])
+  @@index([conversationId, sequence(sort: Desc)])
+  @@index([senderId, createdAt])
+  @@map("messages")
+}
+
+model MessageAttachment {
+  id           String   @id @db.Uuid
+  messageId    String   @map("message_id") @db.Uuid
+  mediaAssetId String   @map("media_asset_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  message    Message    @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  mediaAsset MediaAsset @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
+
+  @@unique([messageId, mediaAssetId])
+  @@index([mediaAssetId])
+  @@map("message_attachments")
+}
+
+model MessageReaction {
+  id        String   @id @db.Uuid
+  messageId String   @map("message_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  emoji     String   @db.VarChar(16)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+  @@map("message_reactions")
+}
+
+model UserBlock {
+  id        String   @id @db.Uuid
+  blockerId String   @map("blocker_id") @db.Uuid
+  blockedId String   @map("blocked_id") @db.Uuid
+  reason    String?  @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  blocker User @relation("UserBlocksInitiated", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("UserBlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+  @@map("user_blocks")
+}
+
+model Report {
+  id         String         @id @db.Uuid
+  reporterId String         @map("reporter_id") @db.Uuid
+  targetType String         @map("target_type") @db.VarChar(32) // USER, MESSAGE, ASSIGNMENT
+  targetId   String         @map("target_id") @db.Uuid
+  category   ReportCategory
+  details    String         @db.Text
+  status     ReportStatus   @default(PENDING)
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
+
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+  @@index([reporterId])
+  @@map("reports")
+}
+
+model ModerationAction {
+  id           String               @id @db.Uuid
+  moderatorId  String               @map("moderator_id") @db.Uuid
+  targetUserId String               @map("target_user_id") @db.Uuid
+  actionType   ModerationActionType @map("action_type")
+  reason       String               @db.Text
+  expiresAt    DateTime?            @map("expires_at")
+  createdAt    DateTime             @default(now()) @map("created_at")
+
+  moderator  User @relation("ModerationActionsTaken", fields: [moderatorId], references: [id], onDelete: Restrict)
+  targetUser User @relation("ModerationActionsReceived", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@index([targetUserId, createdAt])
+  @@index([moderatorId])
+  @@map("moderation_actions")
+}
+
+model OutboxEvent {
+  id            String       @id @db.Uuid
+  eventType     String       @map("event_type") @db.VarChar(100)
+  aggregateType String       @map("aggregate_type") @db.VarChar(64)
+  aggregateId   String       @map("aggregate_id") @db.Uuid
+  payload       Json         @db.JsonB
+  status        OutboxStatus @default(PENDING)
+  attempts      Int          @default(0)
+  nextAttemptAt DateTime     @default(now()) @map("next_attempt_at")
+  lastError     String?      @map("last_error") @db.Text
+  publishedAt   DateTime?    @map("published_at")
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  @@index([status, nextAttemptAt])
+  @@index([createdAt])
+  @@map("outbox_events")
+}
+
+model ProcessedEvent {
+  eventId      String   @map("event_id") @db.Uuid
+  consumerName String   @map("consumer_name") @db.VarChar(64)
+  processedAt  DateTime @default(now()) @map("processed_at")
+
+  @@id([eventId, consumerName])
+  @@index([processedAt])
+  @@map("processed_events")
+}
+
+model Notification {
+  id        String           @id @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  eventId   String?          @map("event_id") @db.Uuid
+  type      NotificationType
+  title     String           @db.VarChar(150)
+  body      String           @db.Text
+  data      Json?            @db.JsonB
+  readAt    DateTime?        @map("read_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+  @@index([userId, readAt, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([eventId])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id      String              @id @db.Uuid
+  userId  String              @map("user_id") @db.Uuid
+  type    NotificationType
+  channel NotificationChannel
+  enabled Boolean             @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, channel])
+  @@index([userId])
+  @@map("notification_preferences")
 }

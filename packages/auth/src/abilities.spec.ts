@@ -106,4 +106,18 @@ describe('Pure CASL Authorization Abilities', () => {
       brandAbility.can('accept', subject('Application', { assignmentBrandUserId: 'other-brand' })),
     ).toBe(false);
   });
+
+  it('allows active users to read and create conversations and messages (Phase 5)', () => {
+    const creatorAbility = defineAbilitiesFor(creatorUser);
+    const proAbility = defineAbilitiesFor(proUser);
+    const brandAbility = defineAbilitiesFor(brandUser);
+
+    for (const ability of [creatorAbility, proAbility, brandAbility]) {
+      expect(ability.can('create', 'Conversation')).toBe(true);
+      expect(ability.can('read', 'Conversation')).toBe(true);
+      expect(ability.can('create', 'Message')).toBe(true);
+      expect(ability.can('read', 'Message')).toBe(true);
+      expect(ability.can('delete', 'Conversation')).toBe(false);
+    }
+  });
 });

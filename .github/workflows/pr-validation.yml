@@ -84,11 +84,11 @@ jobs:
           pnpm --filter @creatorconnect/database db:migrate
           pnpm --filter @creatorconnect/database db:seed
 
-      - name: Unit & Integration Tests
-        run: pnpm test:unit
-
       - name: Build All Workspaces
         run: pnpm build
+
+      - name: Unit & Integration Tests
+        run: pnpm test:unit
 
       - name: Secret Scanning (Gitleaks)
         uses: gitleaks/gitleaks-action@v2
