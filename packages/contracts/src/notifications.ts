@@ -40,6 +40,7 @@ export interface DecodedNotificationCursor {
 
 /**
  * Encodes a composite (createdAt, id) tuple into an opaque base64url string.
+ * Uses native Node.js base64url encoding to ensure bounded O(n) execution without regexes.
  */
 export function encodeNotificationCursor(createdAt: Date | string, id: string): string {
   const dateObj = typeof createdAt === 'string' ? new Date(createdAt) : createdAt;
@@ -55,16 +56,13 @@ export function encodeNotificationCursor(createdAt: Date | string, id: string): 
     i: id,
   });
 
-  return Buffer.from(payload, 'utf-8')
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
+  return Buffer.from(payload, 'utf-8').toString('base64url');
 }
 
 /**
  * Decodes and deterministically validates an opaque base64url notification cursor.
  * Returns null for malformed, oversized, or unparseable input.
+ * Bounded by maximum input length (512 chars) with linear O(n) character validation.
  */
 export function decodeNotificationCursor(cursor: string): DecodedNotificationCursor | null {
   if (!cursor || typeof cursor !== 'string' || cursor.length > 512) {
@@ -72,9 +70,39 @@ export function decodeNotificationCursor(cursor: string): DecodedNotificationCur
   }
 
   try {
-    const base64 = cursor.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
-    const jsonStr = Buffer.from(padded, 'base64').toString('utf-8');
+    // Linear O(n) character validation: accept base64url ([A-Za-z0-9_-]) and optional standard base64 ([+/=])
+    for (let i = 0; i < cursor.length; i++) {
+      const code = cursor.charCodeAt(i);
+      if (!(
+        (code >= 65 && code <= 90) || // A-Z
+        (code >= 97 && code <= 122) || // a-z
+        (code >= 48 && code <= 57) || // 0-9
+        code === 45 || // -
+        code === 95 || // _
+        code === 43 || // +
+        code === 47 || // /
+        code === 61 // =
+      )) {
+        return null;
+      }
+    }
+
+    // RFC 4648 padding invariant: '=' is only permitted at the end, maximum 2 padding characters
+    const firstEquals = cursor.indexOf('=');
+    if (firstEquals !== -1) {
+      if (firstEquals < cursor.length - 2) {
+        return null;
+      }
+      if (cursor.slice(firstEquals) !== '='.repeat(cursor.length - firstEquals)) {
+        return null;
+      }
+    }
+
+    const jsonStr =
+      cursor.includes('+') || cursor.includes('/') || cursor.includes('=')
+        ? Buffer.from(cursor, 'base64').toString('utf-8')
+        : Buffer.from(cursor, 'base64url').toString('utf-8');
+
     const parsed = JSON.parse(jsonStr);
 
     if (!parsed || typeof parsed !== 'object') {
