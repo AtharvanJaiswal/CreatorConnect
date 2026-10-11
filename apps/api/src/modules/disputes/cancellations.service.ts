@@ -122,6 +122,19 @@ export class CancellationsService {
       );
     }
 
+    if (cancellation.project.status === 'DISPUTED') {
+      throw new ProjectNotDisputableError(
+        'Cannot decide cancellation while project has an active dispute.',
+      );
+    }
+
+    const cancellableStatuses = ['IN_PROGRESS', 'SUBMITTED', 'REVISION_REQUESTED'];
+    if (!cancellableStatuses.includes(cancellation.project.status)) {
+      throw new CancellationStateError(
+        `Cannot decide cancellation for project in '${cancellation.project.status}' status.`,
+      );
+    }
+
     // Mutual consent check:
     // If client requested -> talent must decide (or Admin)
     // If talent requested -> client must decide (or Admin)

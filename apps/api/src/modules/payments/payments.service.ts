@@ -489,7 +489,9 @@ export class PaymentsService {
             },
           });
 
-          const feeReversal = Math.floor(refundAmount * 0.1);
+          // Calculate transaction-specific fee reversal dynamically rather than assuming universal 90/10 split
+          const feeReversal =
+            intent.amount > 0 ? Math.floor((refundAmount * intent.platformFee) / intent.amount) : 0;
           const escrowReversal = refundAmount - feeReversal;
 
           await this.ledger.postTransaction(
@@ -600,6 +602,13 @@ export class PaymentsService {
 
     if (project.clientId !== callerUserId && !isAdmin) {
       throw new ForbiddenError('Only the project client can release escrow funds.');
+    }
+
+    if (project.status === 'DISPUTED') {
+      throw new BadRequestError('Cannot release escrow funds while project has an active dispute.');
+    }
+    if (project.status === 'CANCELLED') {
+      throw new BadRequestError('Cannot release escrow funds for a cancelled project.');
     }
 
     const currentEscrowBalance = await this.ledger.getProjectEscrowBalance(projectId);
@@ -733,8 +742,9 @@ export class PaymentsService {
       );
     }
 
-    const feeRatio = 0.1;
-    const feeReversal = Math.floor(input.amount * feeRatio);
+    // Calculate transaction-specific fee reversal dynamically rather than assuming universal 90/10 split
+    const feeReversal =
+      intent.amount > 0 ? Math.floor((input.amount * intent.platformFee) / intent.amount) : 0;
     const escrowReversal = input.amount - feeReversal;
     const currentEscrow = await this.ledger.getProjectEscrowBalance(intent.projectId);
 
@@ -781,132 +791,181 @@ export class PaymentsService {
       throw new PaymentProviderError(`Payment provider rejected refund: ${err.message}`);
     }
 
-    // 4. Atomic Database Transaction
-    return await this.prisma.$transaction(async (tx) => {
-      const isSucceeded = providerRefundResult.status === 'succeeded';
-      const status: RefundStatus = isSucceeded ? 'SUCCEEDED' : 'PROCESSING';
-      const now = new Date();
-
-      const refund = await tx.refund.create({
-        data: {
-          id: refundId,
-          paymentIntentId,
-          projectId: intent.projectId,
-          refundedById: callerUserId,
-          amount: input.amount,
-          currency: intent.currency,
-          reason: input.reason,
-          status,
-          provider: intent.provider,
-          providerRefundId: providerRefundResult.providerRefundId,
-          idempotencyKey: input.idempotencyKey ?? null,
-          processedAt: isSucceeded ? now : null,
-        },
-      });
-
-      if (isSucceeded) {
-        // Compensating balanced double-entry ledger entries
-        await this.ledger.postTransaction(
-          {
+    // 4. Atomic Database Transaction with Concurrent Protection and Recovery
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        // Re-verify inside atomic transaction to prevent concurrent race conditions from over-refunding
+        const aggregateInTx = await tx.refund.aggregate({
+          where: {
             paymentIntentId,
-            type: 'PAYMENT_REFUNDED',
-            description: `Compensating refund entry for payment intent ${paymentIntentId}`,
-            entries: [
-              {
-                accountCode: `LIABILITIES:ESCROW_HOLDING:${intent.projectId}`,
-                accountName: `Project Escrow Holding for ${intent.projectId}`,
-                accountType: 'LIABILITY',
-                direction: 'DEBIT',
-                amount: escrowReversal,
-                currency: intent.currency,
+            status: { in: ['SUCCEEDED', 'PROCESSING'] },
+          },
+          _sum: { amount: true },
+        });
+        const alreadyRefundedInTx = aggregateInTx._sum.amount ?? 0;
+        if (alreadyRefundedInTx + input.amount > intent.amount) {
+          throw new RefundExceedsCapturableAmountError(
+            `Concurrent refund request exceeded total capturable amount. Already processed/processing: ${alreadyRefundedInTx}, requested: ${input.amount}, total captured: ${intent.amount}.`,
+          );
+        }
+
+        // Re-verify escrow balance inside atomic transaction
+        const escrowInTx = await this.ledger.getProjectEscrowBalance(intent.projectId, tx);
+        if (escrowInTx < escrowReversal) {
+          throw new RefundExceedsCapturableAmountError(
+            `Insufficient escrow balance (${escrowInTx}) to process refund (requires ${escrowReversal} from escrow). Milestone funds may have already been released.`,
+          );
+        }
+
+        const isSucceeded = providerRefundResult.status === 'succeeded';
+        const status: RefundStatus = isSucceeded ? 'SUCCEEDED' : 'PROCESSING';
+        const now = new Date();
+
+        const refund = await tx.refund.create({
+          data: {
+            id: refundId,
+            paymentIntentId,
+            projectId: intent.projectId,
+            refundedById: callerUserId,
+            amount: input.amount,
+            currency: intent.currency,
+            reason: input.reason,
+            status,
+            provider: intent.provider,
+            providerRefundId: providerRefundResult.providerRefundId,
+            idempotencyKey: input.idempotencyKey ?? null,
+            processedAt: isSucceeded ? now : null,
+          },
+        });
+
+        if (isSucceeded) {
+          // Compensating balanced double-entry ledger entries
+          await this.ledger.postTransaction(
+            {
+              paymentIntentId,
+              type: 'PAYMENT_REFUNDED',
+              description: `Compensating refund entry for payment intent ${paymentIntentId}`,
+              entries: [
+                {
+                  accountCode: `LIABILITIES:ESCROW_HOLDING:${intent.projectId}`,
+                  accountName: `Project Escrow Holding for ${intent.projectId}`,
+                  accountType: 'LIABILITY',
+                  direction: 'DEBIT',
+                  amount: escrowReversal,
+                  currency: intent.currency,
+                  projectId: intent.projectId,
+                },
+                {
+                  accountCode: 'REVENUE:PLATFORM_FEE',
+                  accountName: 'CreatorConnect Platform Take Rate',
+                  accountType: 'REVENUE',
+                  direction: 'DEBIT',
+                  amount: feeReversal,
+                  currency: intent.currency,
+                },
+                {
+                  accountCode: `ASSETS:PROCESSOR_CLEARING:${intent.provider}`,
+                  accountName: `${intent.provider} Settlement Clearing`,
+                  accountType: 'ASSET',
+                  direction: 'CREDIT',
+                  amount: input.amount,
+                  currency: intent.currency,
+                },
+              ],
+            },
+            tx,
+          );
+
+          const newTotalRefunded = alreadyRefunded + input.amount;
+          const isFullyRefunded = newTotalRefunded >= intent.amount;
+
+          await tx.paymentIntent.update({
+            where: { id: paymentIntentId },
+            data: {
+              status: isFullyRefunded ? 'REFUNDED' : 'PARTIALLY_REFUNDED',
+              version: { increment: 1 },
+            },
+          });
+
+          await tx.outboxEvent.create({
+            data: {
+              id: generateUuidV7(),
+              eventType: 'refund.succeeded.v1',
+              aggregateType: 'Refund',
+              aggregateId: refundId,
+              payload: {
+                refundId,
+                paymentIntentId,
                 projectId: intent.projectId,
-              },
-              {
-                accountCode: 'REVENUE:PLATFORM_FEE',
-                accountName: 'CreatorConnect Platform Take Rate',
-                accountType: 'REVENUE',
-                direction: 'DEBIT',
-                amount: feeReversal,
-                currency: intent.currency,
-              },
-              {
-                accountCode: `ASSETS:PROCESSOR_CLEARING:${intent.provider}`,
-                accountName: `${intent.provider} Settlement Clearing`,
-                accountType: 'ASSET',
-                direction: 'CREDIT',
                 amount: input.amount,
                 currency: intent.currency,
+                providerRefundId: providerRefundResult.providerRefundId,
+                processedAt: now.toISOString(),
               },
-            ],
-          },
-          tx,
-        );
-
-        const newTotalRefunded = alreadyRefunded + input.amount;
-        const isFullyRefunded = newTotalRefunded >= intent.amount;
-
-        await tx.paymentIntent.update({
-          where: { id: paymentIntentId },
-          data: {
-            status: isFullyRefunded ? 'REFUNDED' : 'PARTIALLY_REFUNDED',
-            version: { increment: 1 },
-          },
-        });
-
-        await tx.outboxEvent.create({
-          data: {
-            id: generateUuidV7(),
-            eventType: 'refund.succeeded.v1',
-            aggregateType: 'Refund',
-            aggregateId: refundId,
-            payload: {
-              refundId,
-              paymentIntentId,
-              projectId: intent.projectId,
-              amount: input.amount,
-              currency: intent.currency,
-              providerRefundId: providerRefundResult.providerRefundId,
-              processedAt: now.toISOString(),
+              status: 'PENDING',
             },
-            status: 'PENDING',
-          },
-        });
-      } else {
-        await tx.outboxEvent.create({
-          data: {
-            id: generateUuidV7(),
-            eventType: 'refund.processing.v1',
-            aggregateType: 'Refund',
-            aggregateId: refundId,
-            payload: {
-              refundId,
-              paymentIntentId,
-              projectId: intent.projectId,
-              amount: input.amount,
-              providerRefundId: providerRefundResult.providerRefundId,
+          });
+        } else {
+          await tx.outboxEvent.create({
+            data: {
+              id: generateUuidV7(),
+              eventType: 'refund.processing.v1',
+              aggregateType: 'Refund',
+              aggregateId: refundId,
+              payload: {
+                refundId,
+                paymentIntentId,
+                projectId: intent.projectId,
+                amount: input.amount,
+                providerRefundId: providerRefundResult.providerRefundId,
+              },
+              status: 'PENDING',
             },
-            status: 'PENDING',
+          });
+        }
+
+        const mapped = this.mapRefund(refund);
+
+        if (input.idempotencyKey) {
+          await this.idempotency.record(
+            scope,
+            input.idempotencyKey,
+            input,
+            201,
+            mapped,
+            refundId,
+            24,
+            tx,
+          );
+        }
+
+        return mapped;
+      });
+    } catch (dbErr: any) {
+      // Provider succeeded, but DB transaction failed.
+      // Persist refund in recoverable PROCESSING state so it can be reconciled without duplicate money movement.
+      try {
+        await this.prisma.refund.create({
+          data: {
+            id: refundId,
+            paymentIntentId,
+            projectId: intent.projectId,
+            refundedById: callerUserId,
+            amount: input.amount,
+            currency: intent.currency,
+            reason: input.reason,
+            status: 'PROCESSING',
+            provider: intent.provider,
+            providerRefundId: providerRefundResult.providerRefundId,
+            idempotencyKey: input.idempotencyKey ?? null,
+            errorMessage: `Provider refund succeeded (${providerRefundResult.providerRefundId}) but local database transaction failed: ${dbErr.message}`,
           },
         });
+      } catch {
+        // Non-fatal if fallback create also fails; error continues to bubble
       }
-
-      const mapped = this.mapRefund(refund);
-
-      if (input.idempotencyKey) {
-        await this.idempotency.record(
-          scope,
-          input.idempotencyKey,
-          input,
-          201,
-          mapped,
-          refundId,
-          24,
-          tx,
-        );
-      }
-
-      return mapped;
-    });
+      throw dbErr;
+    }
   }
 
   async getRefund(
@@ -978,7 +1037,9 @@ export class PaymentsService {
         },
       });
 
-      const feeReversal = Math.floor(refund.amount * 0.1);
+      // Transaction-specific proportional fee reversal from actual intent records
+      const feeReversal =
+        intent.amount > 0 ? Math.floor((refund.amount * intent.platformFee) / intent.amount) : 0;
       const escrowReversal = refund.amount - feeReversal;
 
       await this.ledger.postTransaction(

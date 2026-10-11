@@ -18,10 +18,10 @@ describe('DatabaseRestoreDrillRunner Integration', () => {
     expect(report.backupMetadata.sizeBytes).toBeGreaterThan(0);
 
     // Verify metrics
-    expect(report.drillMetrics.tablesVerified).toBeGreaterThanOrEqual(32);
+    expect(report.drillMetrics.tablesVerified).toBeGreaterThanOrEqual(48);
     expect(report.drillMetrics.indexesVerified).toBeGreaterThan(50);
     expect(report.drillMetrics.foreignKeysVerified).toBeGreaterThan(20);
-    expect(report.drillMetrics.migrationsVerified).toBeGreaterThanOrEqual(4);
+    expect(report.drillMetrics.migrationsVerified).toBeGreaterThanOrEqual(8);
 
     // Verify recovery objectives
     expect(report.drillMetrics.rtoSeconds).toBeLessThan(900); // Well under 15m SLA

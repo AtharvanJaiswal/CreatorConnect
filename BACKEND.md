@@ -406,5 +406,26 @@ pnpm build
 | **Stage 5 Ops**   | Working Tree   | Operational verification: Restore drill PASS, Probes PASS, External alerts NOT_VERIFIED, Prod secrets BLOCKED | 32 models (verified)  | **Gates Evaluated (Prod Blocked)**             |
 | **Phase 6 Inc 1** | `13264ff`      | Projects & Deliverables: contract milestones, submission review workflows, optimistic concurrency             | 37 models (0005)      | Branch `feature/phase-6-projects-deliverables` |
 | **Phase 6 Inc 2** | `8f1bacf`      | Payments, Ledger & Escrow Foundation: immutable double-entry ledger, payment intents, webhooks                | 40 models (0006)      | Branch `feature/phase-6-payments-ledger`       |
-| **Phase 6 Inc 3** | `56e16af`      | Disputes, Cancellations, Refunds & Financial Recovery: state machines, compensating ledger, outbox events     | 45 models (0007)      | Branch `feature/phase-6-disputes-refunds`      |
-| **Phase 6 Inc 4** | Working Tree   | Reviews, Reputation Scoring & Governance: verified reviews, Bayesian scoring, 48h edit window, moderation     | 48 models (0008)      | Branch `feature/phase-6-reviews-governance`    |
+| **Phase 6 Inc 4** | `0bdfe08`      | Reviews, Reputation Scoring & Governance: verified reviews, Bayesian scoring, 48h edit window, moderation     | 48 models (0008)      | Branch `feature/phase-6-reviews-governance`    |
+| **Phase 6 Inc 5** | Working Tree   | Release Hardening, Financial Reconciliation & Release Integration: dynamic fee allocation, E2E suite, drills  | 48 models (0001–0008) | Branch `feature/phase-6-release-hardening`     |
+
+---
+
+## 14. Phase 6 Release Candidate Verification Matrix & Production Gates
+
+### 14.1 Verification Breakdown
+
+| Verification Dimension              | Scope & Evidence                                                                                                                                                                                                                                                 | Status       |
+| :---------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------- |
+| **Implemented Functionality**       | Increments 1–5 (Projects, Deliverables, Payments Ledger, Disputes, Refunds, Reviews, Reputation, E2E Integration)                                                                                                                                                | **Complete** |
+| **Locally Verified Functionality**  | Unit/integration test suites (67 test files, 585 tests PASS), clean database migrations (0001–0008 applied sequentially), isolated container restore drill (RTO 5.6s, RPO 0.4s, SHA-256 match, 48 tables verified), `format:check`, `lint`, `typecheck`, `build` | **Verified** |
+| **Remotely Verified Functionality** | PR status on remote feature branches (`feature/phase-6-projects-deliverables`, `feature/phase-6-payments-ledger`) passing GitHub Actions workflows                                                                                                               | **Verified** |
+| **External Production Gates**       | Production payment gateway credentials (Razorpay Live Key ID/Secret), AWS Secrets Manager / KMS envelope encryption, External Alert Delivery (PagerDuty/Slack webhook dispatch), Bank KYC / RBI Escrow nodal compliance                                          | **BLOCKED**  |
+
+### 14.2 Known Limitations & Policy Invariants
+
+1. **Transaction-Specific Platform Fee**: Proportional fee reversals are calculated dynamically from original `PaymentIntent` records (`intent.platformFee` and `intent.amount`) rather than assuming a universal 90/10 split.
+2. **Double-Entry Ledger Invariance**: Every posted ledger transaction strictly enforces $\sum \text{debits} \equiv \sum \text{credits}$.
+3. **Escrow Lock During Active Disputes**: Projects in `DISPUTED` status reject deliverable submissions, reviews, mutual cancellations, and escrow release.
+4. **Idempotency Guarantees**: Payment intents and refunds cache identical idempotency payloads for 24 hours, rejecting parameter alterations with RFC 7807 409 Conflict.
+5. **Deterministic Bayesian Reputation**: Prior mean $m = 4.0$, prior weight $C = 5.0$. Scores are mathematically deterministic and rebuildable from immutable review records.

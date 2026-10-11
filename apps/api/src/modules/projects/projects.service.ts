@@ -171,6 +171,13 @@ export class ProjectsService {
       throw new ForbiddenError('Only the assigned talent can submit deliverables.');
     }
 
+    if (deliverable.project.status === 'DISPUTED') {
+      throw new BadRequestError('Cannot submit deliverables while project is in DISPUTED status.');
+    }
+    if (deliverable.project.status === 'CANCELLED') {
+      throw new BadRequestError('Cannot submit deliverables for a cancelled project.');
+    }
+
     if (deliverable.status !== 'PENDING' && deliverable.status !== 'REVISION_REQUESTED') {
       throw new BadRequestError(
         `Cannot submit deliverable in '${deliverable.status}' status. Only PENDING or REVISION_REQUESTED can be submitted.`,
@@ -236,6 +243,13 @@ export class ProjectsService {
 
     if (deliverable.project.clientId !== clientUserId) {
       throw new ForbiddenError('Only the project client can review deliverables.');
+    }
+
+    if (deliverable.project.status === 'DISPUTED') {
+      throw new BadRequestError('Cannot review deliverables while project is in DISPUTED status.');
+    }
+    if (deliverable.project.status === 'CANCELLED') {
+      throw new BadRequestError('Cannot review deliverables for a cancelled project.');
     }
 
     if (deliverable.status !== 'SUBMITTED' && deliverable.status !== 'IN_REVIEW') {
