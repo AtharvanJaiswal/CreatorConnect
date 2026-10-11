@@ -187,6 +187,19 @@ export class ProjectsService {
     const now = new Date();
 
     return await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "projects" WHERE id = ${projectId}::uuid FOR UPDATE`;
+      const currentProject = await tx.project.findUniqueOrThrow({
+        where: { id: projectId },
+      });
+      if (currentProject.status === 'DISPUTED') {
+        throw new BadRequestError(
+          'Cannot submit deliverables while project is in DISPUTED status.',
+        );
+      }
+      if (currentProject.status === 'CANCELLED') {
+        throw new BadRequestError('Cannot submit deliverables for a cancelled project.');
+      }
+
       const updatedDeliverable = await tx.projectDeliverable.update({
         where: { id: deliverableId },
         data: {
@@ -261,6 +274,18 @@ export class ProjectsService {
     const now = new Date();
 
     return await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "projects" WHERE id = ${projectId}::uuid FOR UPDATE`;
+      const currentProject = await tx.project.findUniqueOrThrow({
+        where: { id: projectId },
+      });
+      if (currentProject.status === 'DISPUTED') {
+        throw new BadRequestError(
+          'Cannot review deliverables while project is in DISPUTED status.',
+        );
+      }
+      if (currentProject.status === 'CANCELLED') {
+        throw new BadRequestError('Cannot review deliverables for a cancelled project.');
+      }
       if (input.action === 'APPROVE') {
         const updatedDeliverable = await tx.projectDeliverable.update({
           where: { id: deliverableId },

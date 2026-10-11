@@ -102,6 +102,23 @@ export class DisputesService {
     const now = new Date();
 
     return await this.prisma.$transaction(async (tx) => {
+      // Row lock project to serialize dispute creation against concurrent escrow release, approvals, or cancellations
+      await tx.$queryRaw`SELECT id FROM "projects" WHERE id = ${input.projectId}::uuid FOR UPDATE`;
+      const currentProject = await tx.project.findUniqueOrThrow({
+        where: { id: input.projectId },
+      });
+      if (currentProject.status === 'DISPUTED') {
+        throw new DisputeAlreadyOpenError(
+          'An active dispute is already in progress for this project.',
+        );
+      }
+      const eligibleStatuses = ['IN_PROGRESS', 'SUBMITTED', 'REVISION_REQUESTED', 'APPROVED'];
+      if (!eligibleStatuses.includes(currentProject.status)) {
+        throw new ProjectNotDisputableError(
+          `Cannot open dispute on project in '${currentProject.status}' status. Only active projects can be disputed.`,
+        );
+      }
+
       // 1. Create Dispute
       await tx.dispute.create({
         data: {

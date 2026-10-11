@@ -887,4 +887,272 @@ describe('Phase 6 Increment 5: Final Hardening, Financial Reconciliation & Relea
     expect(debits.reduce((sum, e) => sum + e.amount, 0)).toBe(30000);
     expect(credits.reduce((sum, e) => sum + e.amount, 0)).toBe(30000);
   });
+
+  // ============================================================================
+  // Section E: Multi-Step Partial Refund Cumulative Fee Allocation & Zero Residue
+  // ============================================================================
+
+  it('guarantees zero residual fee or escrow leakage across multi-step partial refunds', async () => {
+    const { assignmentId, applicationId } = await createAcceptedApplication(
+      'Zero Residue Rounding Task',
+    );
+    const multiProjectId = generateUuidV7();
+    const multiIntentId = generateUuidV7();
+
+    // Intent: 10,000 paisa, 1,000 platform fee (10%), 9,000 escrow
+    await prisma.project.create({
+      data: {
+        id: multiProjectId,
+        assignmentId,
+        applicationId,
+        clientId: clientUserId,
+        talentId: talentUserId,
+        title: 'Multi-Refund Precision Contract',
+        totalAmount: 10000,
+        currency: 'INR',
+        status: 'IN_PROGRESS',
+        version: 1,
+      },
+    });
+
+    await prisma.paymentIntent.create({
+      data: {
+        id: multiIntentId,
+        projectId: multiProjectId,
+        clientId: clientUserId,
+        amount: 10000,
+        currency: 'INR',
+        platformFee: 1000,
+        status: 'SUCCEEDED',
+        provider: 'SANDBOX_MOCK',
+        providerPaymentId: `pay_multi_${generateUuidV7().replace(/-/g, '')}`,
+        version: 1,
+      },
+    });
+
+    // Capture payment in ledger
+    await ledgerService.postTransaction({
+      paymentIntentId: multiIntentId,
+      type: 'PAYMENT_CAPTURED',
+      description: 'Funding multi-refund contract',
+      entries: [
+        {
+          accountCode: 'ASSETS:PROCESSOR_CLEARING:SANDBOX_MOCK',
+          accountType: 'ASSET',
+          direction: 'DEBIT',
+          amount: 10000,
+          currency: 'INR',
+        },
+        {
+          accountCode: `LIABILITIES:ESCROW_HOLDING:${multiProjectId}`,
+          accountType: 'LIABILITY',
+          direction: 'CREDIT',
+          amount: 9000,
+          currency: 'INR',
+          projectId: multiProjectId,
+        },
+        {
+          accountCode: 'REVENUE:PLATFORM_FEE',
+          accountType: 'REVENUE',
+          direction: 'CREDIT',
+          amount: 1000,
+          currency: 'INR',
+        },
+      ],
+    });
+
+    // Step 1: Refund 3,333
+    const ref1 = await app.inject({
+      method: 'POST',
+      url: `/api/v1/payments/intents/${multiIntentId}/refunds`,
+      headers: { authorization: `Bearer ${clientToken}` },
+      payload: {
+        amount: 3333,
+        reason: 'CLIENT_REQUESTED',
+        idempotencyKey: `idemp_multi_1_${generateUuidV7()}`,
+      },
+    });
+    expect(ref1.statusCode).toBe(201);
+
+    // Step 2: Refund 3,333
+    const ref2 = await app.inject({
+      method: 'POST',
+      url: `/api/v1/payments/intents/${multiIntentId}/refunds`,
+      headers: { authorization: `Bearer ${clientToken}` },
+      payload: {
+        amount: 3333,
+        reason: 'CLIENT_REQUESTED',
+        idempotencyKey: `idemp_multi_2_${generateUuidV7()}`,
+      },
+    });
+    expect(ref2.statusCode).toBe(201);
+
+    // Step 3: Refund final 3,334 (reaches 10,000 / 100% full refund)
+    const ref3 = await app.inject({
+      method: 'POST',
+      url: `/api/v1/payments/intents/${multiIntentId}/refunds`,
+      headers: { authorization: `Bearer ${clientToken}` },
+      payload: {
+        amount: 3334,
+        reason: 'CLIENT_REQUESTED',
+        idempotencyKey: `idemp_multi_3_${generateUuidV7()}`,
+      },
+    });
+    expect(ref3.statusCode).toBe(201);
+
+    // Verify Payment Intent is fully REFUNDED
+    const finalIntent = await prisma.paymentIntent.findUniqueOrThrow({
+      where: { id: multiIntentId },
+    });
+    expect(finalIntent.status).toBe('REFUNDED');
+
+    // Escrow balance must be exactly 0 (Zero leakage / zero residue)
+    const finalEscrow = await ledgerService.getProjectEscrowBalance(multiProjectId);
+    expect(finalEscrow).toBe(0);
+
+    // Verify sum of debits and credits across all 3 refund ledger entries
+    const refundTransactions = await prisma.ledgerTransaction.findMany({
+      where: { paymentIntentId: multiIntentId, type: 'PAYMENT_REFUNDED' },
+      include: { entries: true },
+    });
+    expect(refundTransactions).toHaveLength(3);
+
+    let totalEscrowDebited = 0;
+    let totalFeeDebited = 0;
+    for (const tx of refundTransactions) {
+      for (const entry of tx.entries) {
+        if (entry.direction === 'DEBIT') {
+          if (entry.accountId) {
+            const acc = await prisma.ledgerAccount.findUniqueOrThrow({
+              where: { id: entry.accountId },
+            });
+            if (acc.code.startsWith('LIABILITIES:ESCROW_HOLDING')) {
+              totalEscrowDebited += entry.amount;
+            } else if (acc.code === 'REVENUE:PLATFORM_FEE') {
+              totalFeeDebited += entry.amount;
+            }
+          }
+        }
+      }
+    }
+
+    expect(totalEscrowDebited).toBe(9000);
+    expect(totalFeeDebited).toBe(1000);
+  });
+
+  // ============================================================================
+  // Section F: Active Dispute Lifecycle Escrow & Client Refund Protection
+  // ============================================================================
+
+  it('prohibits unilateral client refund and escrow release during active disputes', async () => {
+    const { assignmentId, applicationId } =
+      await createAcceptedApplication('Dispute Invariant Task');
+    const disputeProjectId = generateUuidV7();
+    const disputeIntentId = generateUuidV7();
+
+    await prisma.project.create({
+      data: {
+        id: disputeProjectId,
+        assignmentId,
+        applicationId,
+        clientId: clientUserId,
+        talentId: talentUserId,
+        title: 'Dispute Invariant Contract',
+        totalAmount: 50000,
+        currency: 'INR',
+        status: 'IN_PROGRESS',
+        version: 1,
+      },
+    });
+
+    await prisma.paymentIntent.create({
+      data: {
+        id: disputeIntentId,
+        projectId: disputeProjectId,
+        clientId: clientUserId,
+        amount: 50000,
+        currency: 'INR',
+        platformFee: 5000,
+        status: 'SUCCEEDED',
+        provider: 'SANDBOX_MOCK',
+        providerPaymentId: `pay_dispute_${generateUuidV7().replace(/-/g, '')}`,
+        version: 1,
+      },
+    });
+
+    // Fund escrow
+    await ledgerService.postTransaction({
+      paymentIntentId: disputeIntentId,
+      type: 'PAYMENT_CAPTURED',
+      description: 'Funding dispute invariant contract',
+      entries: [
+        {
+          accountCode: 'ASSETS:PROCESSOR_CLEARING:SANDBOX_MOCK',
+          accountType: 'ASSET',
+          direction: 'DEBIT',
+          amount: 50000,
+          currency: 'INR',
+        },
+        {
+          accountCode: `LIABILITIES:ESCROW_HOLDING:${disputeProjectId}`,
+          accountType: 'LIABILITY',
+          direction: 'CREDIT',
+          amount: 45000,
+          currency: 'INR',
+          projectId: disputeProjectId,
+        },
+        {
+          accountCode: 'REVENUE:PLATFORM_FEE',
+          accountType: 'REVENUE',
+          direction: 'CREDIT',
+          amount: 5000,
+          currency: 'INR',
+        },
+      ],
+    });
+
+    // Open active dispute
+    const openDisputeRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/disputes',
+      headers: { authorization: `Bearer ${clientToken}` },
+      payload: {
+        projectId: disputeProjectId,
+        reason: 'DELIVERABLE_POOR_QUALITY',
+        description: 'Quality does not match agreed brief requirements.',
+      },
+    });
+    expect(openDisputeRes.statusCode).toBe(201);
+
+    // Verify project is DISPUTED
+    const disputedProj = await prisma.project.findUniqueOrThrow({
+      where: { id: disputeProjectId },
+    });
+    expect(disputedProj.status).toBe('DISPUTED');
+
+    // 1. Unilateral client refund during active dispute MUST be rejected (400)
+    const refundAttempt = await app.inject({
+      method: 'POST',
+      url: `/api/v1/payments/intents/${disputeIntentId}/refunds`,
+      headers: { authorization: `Bearer ${clientToken}` },
+      payload: {
+        amount: 25000,
+        reason: 'CLIENT_REQUESTED',
+        idempotencyKey: `idemp_dispute_refund_${generateUuidV7()}`,
+      },
+    });
+    expect(refundAttempt.statusCode).toBe(400);
+    expect(refundAttempt.json().detail || refundAttempt.json().message).toContain('active dispute');
+
+    // 2. Escrow release during active dispute MUST be rejected (400)
+    const releaseAttempt = await app.inject({
+      method: 'POST',
+      url: `/api/v1/payments/projects/${disputeProjectId}/escrow/release`,
+      headers: { authorization: `Bearer ${clientToken}` },
+    });
+    expect(releaseAttempt.statusCode).toBe(400);
+    expect(releaseAttempt.json().detail || releaseAttempt.json().message).toContain(
+      'active dispute',
+    );
+  });
 });

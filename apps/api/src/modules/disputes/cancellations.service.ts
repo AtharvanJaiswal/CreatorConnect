@@ -157,6 +157,16 @@ export class CancellationsService {
     const now = new Date();
 
     return await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "projects" WHERE id = ${projectId}::uuid FOR UPDATE`;
+      const currentProject = await tx.project.findUniqueOrThrow({
+        where: { id: projectId },
+      });
+      if (currentProject.status === 'DISPUTED') {
+        throw new ProjectNotDisputableError(
+          'Cannot decide cancellation while project has an active dispute.',
+        );
+      }
+
       const updated = await tx.projectCancellation.update({
         where: { id: cancellationId },
         data: {
