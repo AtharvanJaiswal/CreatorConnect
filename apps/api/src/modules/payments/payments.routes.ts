@@ -5,8 +5,11 @@ import {
   ConfirmPaymentIntentInputSchema,
   WebhookIngestResponseSchema,
   PaymentProviderSchema,
+  RefundResponseSchema,
+  CreateRefundInputSchema,
   type CreatePaymentIntentInput,
   type ConfirmPaymentIntentInput,
+  type CreateRefundInput,
   type PaymentProvider,
 } from '@creatorconnect/contracts';
 import { Type, type Static } from '@sinclair/typebox';
@@ -244,6 +247,127 @@ export const paymentsRoutes: FastifyPluginAsync<PaymentsRoutesOptions> = async (
         signature,
       );
 
+      return reply.send(result);
+    },
+  );
+
+  // POST /api/v1/payments/intents/:id/refunds
+  fastify.post<{ Params: IdParam; Body: CreateRefundInput }>(
+    '/api/v1/payments/intents/:id/refunds',
+    {
+      preHandler: [
+        fastify.authenticate,
+        fastify.rateLimit({
+          endpoint: 'payment-refund-create',
+          max: 10,
+          windowSeconds: 60,
+          onRedisFailure: 'fail-closed',
+        }),
+      ],
+      schema: {
+        description: 'Issues an idempotent full or partial refund and balances escrow ledger',
+        tags: ['Payments', 'Refunds'],
+        security: [{ bearerAuth: [] }],
+        params: IdParamSchema,
+        body: CreateRefundInputSchema,
+        response: {
+          201: RefundResponseSchema,
+          400: ProblemDetailsSchema,
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+          409: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const isAdmin = (request.user.roles || []).includes('ADMIN');
+      const result = await service.createRefund(
+        request.user.id,
+        request.params.id,
+        request.body,
+        isAdmin,
+      );
+      return reply.status(201).send(result);
+    },
+  );
+
+  // GET /api/v1/payments/intents/:id/refunds
+  fastify.get<{ Params: IdParam }>(
+    '/api/v1/payments/intents/:id/refunds',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Lists all refunds associated with a payment intent',
+        tags: ['Payments', 'Refunds'],
+        security: [{ bearerAuth: [] }],
+        params: IdParamSchema,
+        response: {
+          200: Type.Array(RefundResponseSchema),
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const isAdmin = (request.user.roles || []).includes('ADMIN');
+      const results = await service.listRefundsForIntent(
+        request.user.id,
+        request.params.id,
+        isAdmin,
+      );
+      return reply.send(results);
+    },
+  );
+
+  // GET /api/v1/payments/refunds/:id
+  fastify.get<{ Params: IdParam }>(
+    '/api/v1/payments/refunds/:id',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Retrieves a refund transaction by ID',
+        tags: ['Payments', 'Refunds'],
+        security: [{ bearerAuth: [] }],
+        params: IdParamSchema,
+        response: {
+          200: RefundResponseSchema,
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const isAdmin = (request.user.roles || []).includes('ADMIN');
+      const result = await service.getRefund(request.user.id, request.params.id, isAdmin);
+      return reply.send(result);
+    },
+  );
+
+  // POST /api/v1/payments/refunds/:id/reconcile
+  fastify.post<{ Params: IdParam }>(
+    '/api/v1/payments/refunds/:id/reconcile',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Reconciles an uncertain or processing refund (ADMIN only)',
+        tags: ['Payments', 'Refunds'],
+        security: [{ bearerAuth: [] }],
+        params: IdParamSchema,
+        response: {
+          200: RefundResponseSchema,
+          400: ProblemDetailsSchema,
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const isAdmin = (request.user.roles || []).includes('ADMIN');
+      const result = await service.reconcileRefund(request.user.id, request.params.id, isAdmin);
       return reply.send(result);
     },
   );

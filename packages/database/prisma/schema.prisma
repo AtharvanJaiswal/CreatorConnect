@@ -147,6 +147,13 @@ enum NotificationType {
   PAYMENT_INTENT_FAILED
   ESCROW_RELEASED
   REFUND_PROCESSED
+
+  // Phase 6 Increment 3 Notification Types
+  DISPUTE_OPENED
+  DISPUTE_STATUS_UPDATED
+  DISPUTE_RESOLVED
+  CANCELLATION_REQUESTED
+  CANCELLATION_RESOLVED
 }
 
 // ==============================================================================
@@ -211,6 +218,15 @@ model User {
   talentProjects            Project[]                 @relation("TalentProjects")
   clientPaymentIntents      PaymentIntent[]           @relation("ClientPaymentIntents")
   ledgerAccounts            LedgerAccount[]           @relation("UserLedgerAccounts")
+
+  // Phase 6 Increment 3 Relations
+  disputesOpened            Dispute[]                 @relation("DisputesOpened")
+  disputesResolved          Dispute[]                 @relation("DisputesResolved")
+  disputeEvidenceUploaded   DisputeEvidence[]
+  disputeHistory            DisputeStatusHistory[]
+  cancellationsRequested    ProjectCancellation[]     @relation("CancellationsRequested")
+  cancellationsDecided      ProjectCancellation[]     @relation("CancellationsDecided")
+  refundsIssued             Refund[]
 
   @@index([email])
   @@index([supabaseAuthId])
@@ -475,6 +491,7 @@ model MediaAsset {
   portfolioMedia     PortfolioMedia[]
   messageAttachments MessageAttachment[]
   deliverables       ProjectDeliverable[]
+  disputeEvidence    DisputeEvidence[]
 
   @@index([userId])
   @@index([status])
@@ -819,6 +836,9 @@ model Project {
   deliverables   ProjectDeliverable[]
   paymentIntents PaymentIntent[]
   ledgerAccounts LedgerAccount[]
+  disputes       Dispute[]
+  cancellations  ProjectCancellation[]
+  refunds        Refund[]
 
   @@index([clientId, status])
   @@index([talentId, status])
@@ -846,6 +866,7 @@ model ProjectDeliverable {
   project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   submittedAsset MediaAsset?     @relation(fields: [submittedAssetId], references: [id], onDelete: SetNull)
   paymentIntents PaymentIntent[]
+  disputes       Dispute[]
 
   @@index([projectId, status])
   @@index([submittedAssetId])
@@ -920,6 +941,7 @@ model PaymentIntent {
   deliverable        ProjectDeliverable? @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
   client             User                @relation("ClientPaymentIntents", fields: [clientId], references: [id], onDelete: Restrict)
   ledgerTransactions LedgerTransaction[]
+  refunds            Refund[]
 
   @@index([clientId, status])
   @@index([projectId, status])
@@ -1017,4 +1039,173 @@ model PaymentWebhookEvent {
   @@unique([provider, eventId])
   @@index([status, createdAt])
   @@map("payment_webhook_events")
+}
+
+// ==============================================================================
+// Phase 6 Increment 3: Disputes, Cancellations, Refunds & Financial Recovery
+// ==============================================================================
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  EVIDENCE_REQUESTED
+  RESOLVED_FOR_CLIENT
+  RESOLVED_FOR_CREATOR
+  CLOSED
+}
+
+enum DisputeReason {
+  DELIVERABLE_POOR_QUALITY
+  MISSED_DEADLINE
+  UNRESPONSIVE_PARTY
+  SCOPE_MISMATCH
+  UNAUTHORIZED_WORK
+  OTHER
+}
+
+enum CancellationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum RefundStatus {
+  REQUESTED
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  RECONCILIATION_REQUIRED
+}
+
+enum RefundReason {
+  PROJECT_CANCELLED
+  DISPUTE_RESOLUTION
+  CLIENT_REQUESTED
+  ADMIN_ADJUSTMENT
+  DUPLICATE_PAYMENT
+}
+
+model Dispute {
+  id               String        @id @db.Uuid
+  projectId        String        @map("project_id") @db.Uuid
+  deliverableId    String?       @map("deliverable_id") @db.Uuid
+  openedById       String        @map("opened_by_id") @db.Uuid
+  reason           DisputeReason
+  description      String        @db.Text
+  status           DisputeStatus @default(OPEN)
+  deadline         DateTime?     @db.Timestamptz(3)
+  resolvedById     String?       @map("resolved_by_id") @db.Uuid
+  resolutionReason String?       @map("resolution_reason") @db.Text
+  resolutionNotes  String?       @map("resolution_notes") @db.Text
+  resolvedAt       DateTime?     @map("resolved_at")
+  closedAt         DateTime?     @map("closed_at")
+  version          Int           @default(1)
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  project     Project                @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  deliverable ProjectDeliverable?    @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
+  openedBy    User                   @relation("DisputesOpened", fields: [openedById], references: [id], onDelete: Restrict)
+  resolvedBy  User?                  @relation("DisputesResolved", fields: [resolvedById], references: [id], onDelete: SetNull)
+  evidence    DisputeEvidence[]
+  history     DisputeStatusHistory[]
+  refunds     Refund[]
+
+  @@index([projectId, status])
+  @@index([openedById])
+  @@index([status, createdAt])
+  @@map("disputes")
+}
+
+model DisputeEvidence {
+  id           String      @id @db.Uuid
+  disputeId    String      @map("dispute_id") @db.Uuid
+  uploadedById String      @map("uploaded_by_id") @db.Uuid
+  mediaAssetId String?     @map("media_asset_id") @db.Uuid
+  title        String      @db.VarChar(150)
+  description  String?     @db.Text
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  dispute    Dispute     @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  uploadedBy User        @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  mediaAsset MediaAsset? @relation(fields: [mediaAssetId], references: [id], onDelete: SetNull)
+
+  @@index([disputeId])
+  @@index([uploadedById])
+  @@index([mediaAssetId])
+  @@map("dispute_evidence")
+}
+
+model DisputeStatusHistory {
+  id         String        @id @db.Uuid
+  disputeId  String        @map("dispute_id") @db.Uuid
+  fromStatus DisputeStatus @map("from_status")
+  toStatus   DisputeStatus @map("to_status")
+  actorId    String        @map("actor_id") @db.Uuid
+  reason     String?       @db.Text
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  actor   User    @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([disputeId, createdAt])
+  @@index([actorId])
+  @@map("dispute_status_history")
+}
+
+model ProjectCancellation {
+  id             String             @id @db.Uuid
+  projectId      String             @map("project_id") @db.Uuid
+  requestedById  String             @map("requested_by_id") @db.Uuid
+  reason         String             @db.Text
+  status         CancellationStatus @default(PENDING)
+  decidedById    String?            @map("decided_by_id") @db.Uuid
+  decisionReason String?            @map("decision_reason") @db.Text
+  decidedAt      DateTime?          @map("decided_at")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requestedBy User     @relation("CancellationsRequested", fields: [requestedById], references: [id], onDelete: Restrict)
+  decidedBy   User?    @relation("CancellationsDecided", fields: [decidedById], references: [id], onDelete: SetNull)
+  refunds     Refund[]
+
+  @@index([projectId, status])
+  @@index([requestedById])
+  @@map("project_cancellations")
+}
+
+model Refund {
+  id               String          @id @db.Uuid
+  paymentIntentId  String          @map("payment_intent_id") @db.Uuid
+  projectId        String          @map("project_id") @db.Uuid
+  disputeId        String?         @map("dispute_id") @db.Uuid
+  cancellationId   String?         @map("cancellation_id") @db.Uuid
+  refundedById     String          @map("refunded_by_id") @db.Uuid
+  amount           Int
+  currency         String          @default("INR") @db.VarChar(3)
+  reason           RefundReason
+  status           RefundStatus    @default(PENDING)
+  provider         PaymentProvider
+  providerRefundId String?         @map("provider_refund_id") @db.VarChar(128)
+  idempotencyKey   String?         @map("idempotency_key") @db.VarChar(128)
+  errorMessage     String?         @map("error_message") @db.Text
+  metadata         Json?
+  processedAt      DateTime?       @map("processed_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  paymentIntent PaymentIntent        @relation(fields: [paymentIntentId], references: [id], onDelete: Restrict)
+  project       Project              @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  dispute       Dispute?             @relation(fields: [disputeId], references: [id], onDelete: SetNull)
+  cancellation  ProjectCancellation? @relation(fields: [cancellationId], references: [id], onDelete: SetNull)
+  refundedBy    User                 @relation(fields: [refundedById], references: [id], onDelete: Restrict)
+
+  @@index([paymentIntentId, status])
+  @@index([projectId, status])
+  @@index([provider, providerRefundId])
+  @@index([idempotencyKey])
+  @@map("refunds")
 }

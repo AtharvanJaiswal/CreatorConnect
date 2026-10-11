@@ -3,6 +3,8 @@ import type {
   IPaymentProvider,
   CreateOrderParams,
   ProviderOrderResult,
+  CreateRefundParams,
+  ProviderRefundResult,
   VerifyWebhookParams,
   NormalizedWebhookEvent,
 } from './payment-provider.interface.js';
@@ -81,6 +83,55 @@ export class RazorpayPaymentProvider implements IPaymentProvider {
     };
   }
 
+  async createRefund(params: CreateRefundParams): Promise<ProviderRefundResult> {
+    if (this.keyId === 'rzp_test_placeholder_key') {
+      const hash = crypto
+        .createHash('sha256')
+        .update(
+          `${params.paymentId}:${params.amount}:${params.currency}:${params.receipt || 'default'}`,
+        )
+        .digest('hex')
+        .substring(0, 14);
+
+      return {
+        providerRefundId: `rfnd_${hash}`,
+        amount: params.amount,
+        currency: params.currency,
+        status: 'succeeded',
+      };
+    }
+
+    const authHeader = Buffer.from(`${this.keyId}:${this.keySecret}`).toString('base64');
+    const response = await fetch(
+      `https://api.razorpay.com/v1/payments/${params.paymentId}/refund`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Basic ${authHeader}`,
+        },
+        body: JSON.stringify({
+          amount: params.amount,
+          notes: params.notes,
+          receipt: params.receipt,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      throw new Error(`Razorpay refund creation failed (${response.status}): ${errBody}`);
+    }
+
+    const data = (await response.json()) as any;
+    return {
+      providerRefundId: data.id,
+      amount: data.amount,
+      currency: data.currency,
+      status: data.status === 'processed' ? 'succeeded' : 'processing',
+    };
+  }
+
   verifyWebhookSignature(params: VerifyWebhookParams): boolean {
     if (!params.signature || !params.rawBody) {
       return false;
@@ -118,21 +169,23 @@ export class RazorpayPaymentProvider implements IPaymentProvider {
       status = 'succeeded';
     } else if (eventType === 'payment.failed') {
       status = 'failed';
-    } else if (eventType === 'refund.processed') {
+    } else if (eventType === 'refund.processed' || eventType === 'refund.created') {
       status = 'refunded';
     }
 
     const paymentEntity = payload.payload?.payment?.entity;
     const orderEntity = payload.payload?.order?.entity;
+    const refundEntity = payload.payload?.refund?.entity;
 
     return {
       eventId,
       eventType,
-      providerPaymentId: paymentEntity?.id || undefined,
+      providerPaymentId: paymentEntity?.id || refundEntity?.payment_id || undefined,
       providerOrderId: paymentEntity?.order_id || orderEntity?.id || undefined,
+      providerRefundId: refundEntity?.id || undefined,
       status,
-      amount: paymentEntity?.amount || orderEntity?.amount || undefined,
-      currency: paymentEntity?.currency || orderEntity?.currency || 'INR',
+      amount: refundEntity?.amount || paymentEntity?.amount || orderEntity?.amount || undefined,
+      currency: refundEntity?.currency || paymentEntity?.currency || orderEntity?.currency || 'INR',
       errorMessage: paymentEntity?.error_description || undefined,
       rawPayload: payload,
     };

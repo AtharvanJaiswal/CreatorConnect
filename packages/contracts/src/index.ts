@@ -11,4 +11,5 @@ export * from './payments.js';
 export * from './discovery.js';
 export * from './messaging.js';
 export * from './notifications.js';
+export * from './disputes.js';
 export * from '@creatorconnect/validation';

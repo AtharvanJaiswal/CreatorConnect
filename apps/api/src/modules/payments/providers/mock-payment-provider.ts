@@ -3,6 +3,8 @@ import type {
   IPaymentProvider,
   CreateOrderParams,
   ProviderOrderResult,
+  CreateRefundParams,
+  ProviderRefundResult,
   VerifyWebhookParams,
   NormalizedWebhookEvent,
 } from './payment-provider.interface.js';
@@ -27,6 +29,25 @@ export class MockPaymentProvider implements IPaymentProvider {
       amount: params.amount,
       currency: params.currency,
       clientSecret,
+    };
+  }
+
+  async createRefund(params: CreateRefundParams): Promise<ProviderRefundResult> {
+    const hash = crypto
+      .createHash('sha256')
+      .update(
+        `${params.paymentId}:${params.amount}:${params.currency}:${params.receipt || 'default'}`,
+      )
+      .digest('hex')
+      .substring(0, 16);
+
+    const providerRefundId = `mock_rfnd_${hash}`;
+
+    return {
+      providerRefundId,
+      amount: params.amount,
+      currency: params.currency,
+      status: 'succeeded',
     };
   }
 
@@ -71,7 +92,7 @@ export class MockPaymentProvider implements IPaymentProvider {
       status = 'succeeded';
     } else if (eventType === 'payment.failed') {
       status = 'failed';
-    } else if (eventType === 'refund.processed') {
+    } else if (eventType === 'refund.processed' || eventType === 'refund.created') {
       status = 'refunded';
     }
 
@@ -80,9 +101,18 @@ export class MockPaymentProvider implements IPaymentProvider {
       eventType,
       providerPaymentId: payload.payload?.payment?.id || payload.paymentId || undefined,
       providerOrderId: payload.payload?.order?.id || payload.orderId || undefined,
+      providerRefundId: payload.payload?.refund?.id || payload.refundId || undefined,
       status,
-      amount: payload.payload?.payment?.amount || payload.amount || undefined,
-      currency: payload.payload?.payment?.currency || payload.currency || 'INR',
+      amount:
+        payload.payload?.refund?.amount ||
+        payload.payload?.payment?.amount ||
+        payload.amount ||
+        undefined,
+      currency:
+        payload.payload?.refund?.currency ||
+        payload.payload?.payment?.currency ||
+        payload.currency ||
+        'INR',
       errorMessage: payload.payload?.payment?.error_description || payload.error || undefined,
       rawPayload: payload,
     };
