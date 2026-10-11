@@ -753,7 +753,7 @@ describe('Phase 6 Increment 3: Dispute Resolution, Cancellations, Refunds & Fina
           amount: testAmount,
           currency: 'INR',
           provider: 'SANDBOX_MOCK',
-          idempotencyKey: `idemp_rfnd_setup_${generateUuidV7().substring(0, 8)}`,
+          idempotencyKey: `idemp_rfnd_setup_${generateUuidV7().replace(/-/g, '')}`,
         },
       });
       expect(intentRes.statusCode).toBe(201);
@@ -764,14 +764,14 @@ describe('Phase 6 Increment 3: Dispute Resolution, Cancellations, Refunds & Fina
         url: `/api/v1/payments/intents/${refundPaymentIntentId}/confirm`,
         headers: { authorization: `Bearer ${clientToken}` },
         payload: {
-          providerPaymentId: `pay_mock_rfnd_${generateUuidV7().substring(0, 8)}`,
+          providerPaymentId: `pay_mock_rfnd_${generateUuidV7().replace(/-/g, '')}`,
         },
       });
     });
 
     it('processes an idempotent partial refund and posts balanced ledger entries', async () => {
       const partialAmount = 20000; // 200 INR (20,000 paisa)
-      const idempotencyKey = `idemp_partial_${generateUuidV7().substring(0, 10)}`;
+      const idempotencyKey = `idemp_partial_${generateUuidV7().replace(/-/g, '')}`;
 
       const initialEscrowBalance = await ledgerService.getProjectEscrowBalance(refundProjectId);
       expect(initialEscrowBalance).toBe(45000); // 50,000 - 10% fee = 45,000 paisa
