@@ -653,6 +653,19 @@ export class PaymentsService {
         throw new BadRequestError('Cannot release escrow funds for a cancelled project.');
       }
 
+      // Check for pending or in-flight refund reservations to prevent concurrent escrow drain
+      const inFlightRefunds = await tx.refund.count({
+        where: {
+          projectId,
+          status: { in: ['PENDING', 'PROCESSING'] },
+        },
+      });
+      if (inFlightRefunds > 0) {
+        throw new BadRequestError(
+          'Cannot release escrow funds while there are pending or in-flight refund reservations for this project.',
+        );
+      }
+
       const currentEscrowBalance = await this.ledger.getProjectEscrowBalance(projectId, tx);
       if (currentEscrowBalance <= 0) {
         throw new BadRequestError(
@@ -758,6 +771,17 @@ export class PaymentsService {
     // 2. Pre-Provider Reservation Phase with Exclusive Row Locking
     // Ensures real concurrent requests serialize at database level and cannot cause provider overdrafts
     const reservation = await this.prisma.$transaction(async (tx) => {
+      // Find parent project first to adhere to strict global lock ordering: projects -> payment_intents
+      const targetIntent = await tx.paymentIntent.findUnique({
+        where: { id: paymentIntentId },
+        select: { id: true, projectId: true },
+      });
+      if (!targetIntent) {
+        throw new NotFoundError('Payment intent not found.');
+      }
+
+      // 1. Strict lock ordering: projects row-lock first, payment_intents second (deadlock prevention)
+      await tx.$queryRaw`SELECT id FROM "projects" WHERE id = ${targetIntent.projectId}::uuid FOR UPDATE`;
       await tx.$queryRaw`SELECT id FROM "payment_intents" WHERE id = ${paymentIntentId}::uuid FOR UPDATE`;
 
       const intent = await tx.paymentIntent.findUnique({
@@ -884,21 +908,46 @@ export class PaymentsService {
         },
       });
     } catch (err: any) {
-      // Mark reservation as FAILED so balance is released
-      await this.prisma.refund.update({
-        where: { id: refundId },
-        data: {
-          status: 'FAILED',
-          errorMessage: err.message,
-        },
-      });
+      // Determine if failure is an ambiguous network timeout vs definitive provider rejection
+      const isAmbiguousTimeout =
+        err.name === 'TimeoutError' ||
+        err.code === 'ETIMEDOUT' ||
+        err.code === 'ECONNRESET' ||
+        err.code === 'ECONNREFUSED' ||
+        /timeout|timed out|network|hang up|reset/i.test(err.message || '');
 
-      throw new PaymentProviderError(`Payment provider rejected refund: ${err.message}`);
+      if (isAmbiguousTimeout) {
+        // Ambiguous timeout: retain reservation as PROCESSING so recovery/webhook can reconcile without double-refund overdraft
+        await this.prisma.refund.update({
+          where: { id: refundId },
+          data: {
+            status: 'PROCESSING',
+            errorMessage: `Ambiguous provider response (${err.message}). Awaiting reconciliation or webhook.`,
+          },
+        });
+
+        throw new PaymentProviderError(
+          `Refund status is ambiguous due to gateway timeout/disconnect: ${err.message}. Reservation retained for administrative reconciliation.`,
+        );
+      } else {
+        // Definitive provider rejection: mark reservation as FAILED so balance is released
+        await this.prisma.refund.update({
+          where: { id: refundId },
+          data: {
+            status: 'FAILED',
+            errorMessage: err.message,
+          },
+        });
+
+        throw new PaymentProviderError(`Payment provider rejected refund: ${err.message}`);
+      }
     }
 
     // 4. Atomic Settlement Transaction with Row Locking
     try {
       return await this.prisma.$transaction(async (tx) => {
+        // Strict lock ordering: projects first, payment_intents second
+        await tx.$queryRaw`SELECT id FROM "projects" WHERE id = ${intent.projectId}::uuid FOR UPDATE`;
         await tx.$queryRaw`SELECT id FROM "payment_intents" WHERE id = ${paymentIntentId}::uuid FOR UPDATE`;
 
         const isSucceeded = providerRefundResult.status === 'succeeded';
@@ -1104,7 +1153,16 @@ export class PaymentsService {
     const now = new Date();
 
     return await this.prisma.$transaction(async (tx) => {
+      // Strict lock ordering: projects first, payment_intents second
+      await tx.$queryRaw`SELECT id FROM "projects" WHERE id = ${intent.projectId}::uuid FOR UPDATE`;
       await tx.$queryRaw`SELECT id FROM "payment_intents" WHERE id = ${intent.id}::uuid FOR UPDATE`;
+
+      const currentRefund = await tx.refund.findUniqueOrThrow({
+        where: { id: refundId },
+      });
+      if (currentRefund.status === 'SUCCEEDED') {
+        return this.mapRefund(currentRefund);
+      }
 
       const updated = await tx.refund.update({
         where: { id: refundId },
@@ -1138,6 +1196,13 @@ export class PaymentsService {
           ? Math.floor((totalRefundedSoFar * intent.platformFee) / intent.amount) - priorFeeReversed
           : 0;
       const escrowReversal = refund.amount - feeReversal;
+
+      const currentEscrow = await this.ledger.getProjectEscrowBalance(intent.projectId, tx);
+      if (currentEscrow < escrowReversal) {
+        throw new BadRequestError(
+          `Cannot reconcile refund: Insufficient escrow balance (${currentEscrow}) to absorb escrow reversal (${escrowReversal}). Milestone funds may have already been released.`,
+        );
+      }
 
       await this.ledger.postTransaction(
         {

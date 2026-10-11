@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { describe, expect, it, beforeAll, afterAll } from 'vitest';
+import { describe, expect, it, beforeAll, afterAll, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { getPrismaClient } from '@creatorconnect/database';
 import { generateUuidV7 } from '@creatorconnect/utils';
@@ -7,6 +7,7 @@ import { buildApp } from '../../app.js';
 import { defaultJwtVerifier } from '../../services/jwt-verifier.js';
 import { createTestJwt, createTestKeySet } from '../../../../../tests/fixtures/auth-test-helper.js';
 import { ledgerService } from '../payments/ledger/ledger.service.js';
+import { getPaymentProvider } from '../payments/providers/index.js';
 
 describe('Phase 6 Increment 5: Final Hardening, Financial Reconciliation & Release Integration', () => {
   let app: FastifyInstance;
@@ -1154,5 +1155,245 @@ describe('Phase 6 Increment 5: Final Hardening, Financial Reconciliation & Relea
     expect(releaseAttempt.json().detail || releaseAttempt.json().message).toContain(
       'active dispute',
     );
+  });
+
+  it('blocks escrow release while pending or processing refund reservations exist on the project', async () => {
+    const { assignmentId, applicationId } = await createAcceptedApplication(
+      'In-Flight Refund Escrow Drain Protection',
+    );
+    const projId = generateUuidV7();
+    const intentId = generateUuidV7();
+
+    await prisma.project.create({
+      data: {
+        id: projId,
+        assignmentId,
+        applicationId,
+        clientId: clientUserId,
+        talentId: talentUserId,
+        title: 'Refund In-Flight Drain Guard Contract',
+        totalAmount: 100000,
+        currency: 'INR',
+        status: 'IN_PROGRESS',
+        version: 1,
+      },
+    });
+
+    await prisma.paymentIntent.create({
+      data: {
+        id: intentId,
+        projectId: projId,
+        clientId: clientUserId,
+        amount: 100000,
+        currency: 'INR',
+        platformFee: 10000,
+        status: 'SUCCEEDED',
+        provider: 'SANDBOX_MOCK',
+        providerPaymentId: `pay_drain_${generateUuidV7().replace(/-/g, '')}`,
+        version: 1,
+      },
+    });
+
+    // Fund escrow: 90000 escrow holding, 10000 platform fee
+    await ledgerService.postTransaction({
+      paymentIntentId: intentId,
+      type: 'PAYMENT_CAPTURED',
+      description: 'Funding contract for in-flight refund guard test',
+      entries: [
+        {
+          accountCode: 'ASSETS:PROCESSOR_CLEARING:SANDBOX_MOCK',
+          accountType: 'ASSET',
+          direction: 'DEBIT',
+          amount: 100000,
+          currency: 'INR',
+        },
+        {
+          accountCode: `LIABILITIES:ESCROW_HOLDING:${projId}`,
+          accountType: 'LIABILITY',
+          direction: 'CREDIT',
+          amount: 90000,
+          currency: 'INR',
+          projectId: projId,
+        },
+        {
+          accountCode: 'REVENUE:PLATFORM_FEE',
+          accountType: 'REVENUE',
+          direction: 'CREDIT',
+          amount: 10000,
+          currency: 'INR',
+        },
+      ],
+    });
+
+    // Create an in-flight PENDING refund reservation
+    const pendingRefundId = generateUuidV7();
+    await prisma.refund.create({
+      data: {
+        id: pendingRefundId,
+        paymentIntentId: intentId,
+        projectId: projId,
+        refundedById: clientUserId,
+        amount: 50000,
+        currency: 'INR',
+        reason: 'CLIENT_REQUESTED',
+        status: 'PENDING',
+        provider: 'SANDBOX_MOCK',
+      },
+    });
+
+    // 1. Escrow release MUST be blocked with 400 because refund is in-flight
+    const blockedRelease = await app.inject({
+      method: 'POST',
+      url: `/api/v1/payments/projects/${projId}/escrow/release`,
+      headers: { authorization: `Bearer ${clientToken}` },
+    });
+    expect(blockedRelease.statusCode).toBe(400);
+    expect(blockedRelease.json().detail || blockedRelease.json().message).toContain(
+      'in-flight refund reservations',
+    );
+
+    // 2. If the pending refund failed at provider, reservation is marked FAILED
+    await prisma.refund.update({
+      where: { id: pendingRefundId },
+      data: { status: 'FAILED', errorMessage: 'Provider rejected' },
+    });
+
+    // 3. Escrow release should now succeed smoothly
+    const allowedRelease = await app.inject({
+      method: 'POST',
+      url: `/api/v1/payments/projects/${projId}/escrow/release`,
+      headers: { authorization: `Bearer ${clientToken}` },
+    });
+    expect(allowedRelease.statusCode).toBe(200);
+    expect(allowedRelease.json().releasedAmount).toBe(90000);
+  });
+
+  it('preserves PROCESSING reservation on ambiguous provider timeout and allows admin reconciliation', async () => {
+    const { assignmentId, applicationId } = await createAcceptedApplication(
+      'Ambiguous Timeout Recovery Contract',
+    );
+    const projId = generateUuidV7();
+    const intentId = generateUuidV7();
+
+    await prisma.project.create({
+      data: {
+        id: projId,
+        assignmentId,
+        applicationId,
+        clientId: clientUserId,
+        talentId: talentUserId,
+        title: 'Ambiguous Timeout Recovery Contract',
+        totalAmount: 100000,
+        currency: 'INR',
+        status: 'IN_PROGRESS',
+        version: 1,
+      },
+    });
+
+    await prisma.paymentIntent.create({
+      data: {
+        id: intentId,
+        projectId: projId,
+        clientId: clientUserId,
+        amount: 100000,
+        currency: 'INR',
+        platformFee: 10000,
+        status: 'SUCCEEDED',
+        provider: 'SANDBOX_MOCK',
+        providerPaymentId: `pay_timeout_${generateUuidV7().replace(/-/g, '')}`,
+        version: 1,
+      },
+    });
+
+    // Fund escrow
+    await ledgerService.postTransaction({
+      paymentIntentId: intentId,
+      type: 'PAYMENT_CAPTURED',
+      description: 'Funding contract for ambiguous timeout test',
+      entries: [
+        {
+          accountCode: 'ASSETS:PROCESSOR_CLEARING:SANDBOX_MOCK',
+          accountType: 'ASSET',
+          direction: 'DEBIT',
+          amount: 100000,
+          currency: 'INR',
+        },
+        {
+          accountCode: `LIABILITIES:ESCROW_HOLDING:${projId}`,
+          accountType: 'LIABILITY',
+          direction: 'CREDIT',
+          amount: 90000,
+          currency: 'INR',
+          projectId: projId,
+        },
+        {
+          accountCode: 'REVENUE:PLATFORM_FEE',
+          accountType: 'REVENUE',
+          direction: 'CREDIT',
+          amount: 10000,
+          currency: 'INR',
+        },
+      ],
+    });
+
+    // Mock provider to simulate network timeout on createRefund
+    const provider = getPaymentProvider('SANDBOX_MOCK');
+    const spy = vi.spyOn(provider, 'createRefund').mockImplementationOnce(async () => {
+      const timeoutError: any = new Error('ETIMEDOUT: Connection timed out to gateway');
+      timeoutError.code = 'ETIMEDOUT';
+      throw timeoutError;
+    });
+
+    // Client requests refund of 60000
+    const refundAttempt = await app.inject({
+      method: 'POST',
+      url: `/api/v1/payments/intents/${intentId}/refunds`,
+      headers: { authorization: `Bearer ${clientToken}` },
+      payload: {
+        amount: 60000,
+        reason: 'CLIENT_REQUESTED',
+        idempotencyKey: `idemp_timeout_${generateUuidV7()}`,
+      },
+    });
+
+    expect(refundAttempt.statusCode).toBe(502);
+    expect(refundAttempt.json().detail || refundAttempt.json().message).toContain('ambiguous');
+
+    // Verify refund in database is held in PROCESSING status (not FAILED!)
+    const processingRefund = await prisma.refund.findFirstOrThrow({
+      where: { paymentIntentId: intentId },
+    });
+    expect(processingRefund.status).toBe('PROCESSING');
+    expect(processingRefund.errorMessage).toContain('ETIMEDOUT');
+
+    // Double refund protection: A new refund of 60000 must be rejected because 60000 is still reserved
+    const secondRefundAttempt = await app.inject({
+      method: 'POST',
+      url: `/api/v1/payments/intents/${intentId}/refunds`,
+      headers: { authorization: `Bearer ${clientToken}` },
+      payload: {
+        amount: 60000,
+        reason: 'CLIENT_REQUESTED',
+        idempotencyKey: `idemp_timeout_attempt2_${generateUuidV7()}`,
+      },
+    });
+    expect(secondRefundAttempt.statusCode).toBe(400); // Exceeds remaining refundable amount (40000)
+
+    // Admin reconciles the refund after manual/bank confirmation
+    const reconcileRes = await app.inject({
+      method: 'POST',
+      url: `/api/v1/payments/refunds/${processingRefund.id}/reconcile`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    });
+    expect(reconcileRes.statusCode).toBe(200);
+    expect(reconcileRes.json().status).toBe('SUCCEEDED');
+
+    // Verify final state
+    const settledRefund = await prisma.refund.findUniqueOrThrow({
+      where: { id: processingRefund.id },
+    });
+    expect(settledRefund.status).toBe('SUCCEEDED');
+
+    spy.mockRestore();
   });
 });
