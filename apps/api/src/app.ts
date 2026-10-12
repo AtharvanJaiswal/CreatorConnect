@@ -22,6 +22,7 @@ import { discoveryRoutes } from './modules/discovery/discovery.routes.js';
 import { messagingRoutes } from './modules/messaging/messaging.routes.js';
 import { notificationsRoutes } from './modules/notifications/notifications.routes.js';
 import { projectsRoutes } from './modules/projects/projects.routes.js';
+import { paymentsRoutes } from './modules/payments/payments.routes.js';
 
 export async function buildApp(opts: FastifyServerOptions = {}): Promise<FastifyInstance> {
   const defaultTrustProxy = process.env.TRUST_PROXY
@@ -60,6 +61,17 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
       ],
     },
     ...opts,
+  });
+
+  app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+    try {
+      (req as any).rawBody = body;
+      const json = body ? JSON.parse(body as string) : {};
+      done(null, json);
+    } catch (err: any) {
+      err.statusCode = 400;
+      done(err, undefined);
+    }
   });
 
   await app.register(helmet, {
@@ -182,6 +194,7 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
   await app.register(messagingRoutes);
   await app.register(notificationsRoutes);
   await app.register(projectsRoutes);
+  await app.register(paymentsRoutes);
 
   return app;
 }

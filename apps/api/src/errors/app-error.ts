@@ -187,3 +187,43 @@ export {
   NotificationAccessDeniedError,
   InvalidNotificationPreferenceError,
 } from '@creatorconnect/database';
+
+// ==============================================================================
+// Phase 6 Payments & Financial Ledger Domain Errors
+// ==============================================================================
+
+export class UnbalancedLedgerEntryError extends AppError {
+  constructor(detail = 'Ledger transaction is unbalanced: total debits must equal total credits.') {
+    super(400, 'UNBALANCED_LEDGER_TRANSACTION', 'Unbalanced Ledger Transaction', detail);
+  }
+}
+
+export class InvalidLedgerAmountError extends AppError {
+  constructor(detail = 'Ledger amounts must be positive integer minor units.') {
+    super(400, 'INVALID_LEDGER_AMOUNT', 'Invalid Ledger Amount', detail);
+  }
+}
+
+export class IdempotencyConflictError extends AppError {
+  constructor(detail = 'Idempotency key reused with a different request payload.') {
+    super(409, 'IDEMPOTENCY_CONFLICT', 'Idempotency Conflict', detail);
+  }
+}
+
+export class WebhookSignatureVerificationError extends AppError {
+  constructor(detail = 'Webhook signature verification failed.') {
+    super(400, 'INVALID_WEBHOOK_SIGNATURE', 'Invalid Webhook Signature', detail);
+  }
+}
+
+export class PaymentIntentStateError extends AppError {
+  constructor(detail = 'Payment intent is not in an acceptable state for this operation.') {
+    super(400, 'INVALID_PAYMENT_INTENT_STATE', 'Invalid Payment Intent State', detail);
+  }
+}
+
+export class PaymentProviderError extends AppError {
+  constructor(detail = 'Payment provider communication or processing error.') {
+    super(502, 'PAYMENT_PROVIDER_ERROR', 'Payment Provider Error', detail);
+  }
+}
