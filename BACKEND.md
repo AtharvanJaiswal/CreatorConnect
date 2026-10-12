@@ -371,13 +371,13 @@ pnpm build
 
 ## 13. Backend Changelog
 
-| Phase             | Release Commit | Summary                                                                                                       | Database Changes      | Operational Status                             |
-| :---------------- | :------------- | :------------------------------------------------------------------------------------------------------------ | :-------------------- | :--------------------------------------------- |
-| **Phase 0**       | `c6080c4`      | Product & Architecture Lock, ADRs, canonical data model                                                       | Greenfield design     | Approved                                       |
-| **Phase 1–3**     | `aba599b`      | Monorepo setup, Fastify engine, Supabase Auth, JWKS, RBAC                                                     | Migrations 0001       | Verified in CI                                 |
-| **Phase 4**       | `b42ffdb`      | Profiles, portfolio CRUD, assignments, atomic hiring, FTS                                                     | 15 models             | Verified in CI                                 |
-| **Phase 5**       | `58e8ae0`      | Realtime Socket.IO, Outbox relay, ClamAV scanning, Moderation                                                 | 32 models (0001–0004) | Promoted to `dev` & `main`                     |
-| **Stage 5 Ops**   | Working Tree   | Operational verification: Restore drill PASS, Probes PASS, External alerts NOT_VERIFIED, Prod secrets BLOCKED | 32 models (verified)  | **Gates Evaluated (Prod Blocked)**             |
-| **Phase 6 Inc 1** | `13264ff`      | Projects & Deliverables: contract milestones, submission review workflows, optimistic concurrency             | 37 models (0005)      | Branch `feature/phase-6-projects-deliverables` |
-| **Phase 6 Inc 2** | `8f1bacf`      | Payments, Ledger & Escrow Foundation: immutable double-entry ledger, payment intents, webhooks                | 40 models (0006)      | Branch `feature/phase-6-payments-ledger`       |
-| **Phase 6 Inc 3** | Working Tree   | Disputes, Cancellations, Refunds & Financial Recovery: state machines, compensating ledger, outbox events     | 45 models (0007)      | Branch `feature/phase-6-disputes-refunds`      |
+| Phase             | Release Commit | Summary                                                                                                       | Database Changes      | Operational Status                        |
+| :---------------- | :------------- | :------------------------------------------------------------------------------------------------------------ | :-------------------- | :---------------------------------------- |
+| **Phase 0**       | `c6080c4`      | Product & Architecture Lock, ADRs, canonical data model                                                       | Greenfield design     | Approved                                  |
+| **Phase 1–3**     | `aba599b`      | Monorepo setup, Fastify engine, Supabase Auth, JWKS, RBAC                                                     | Migrations 0001       | Verified in CI                            |
+| **Phase 4**       | `b42ffdb`      | Profiles, portfolio CRUD, assignments, atomic hiring, FTS                                                     | 15 models             | Verified in CI                            |
+| **Phase 5**       | `58e8ae0`      | Realtime Socket.IO, Outbox relay, ClamAV scanning, Moderation                                                 | 32 models (0001–0004) | Promoted to `dev` & `main`                |
+| **Stage 5 Ops**   | `801806e`      | Operational verification: Restore drill PASS, Probes PASS, External alerts NOT_VERIFIED, Prod secrets BLOCKED | 32 models (verified)  | **Gates Evaluated (Prod Blocked)**        |
+| **Phase 6 Inc 1** | `0955bc1`      | Projects & Deliverables: contract milestones, submission review workflows, optimistic concurrency             | 34 models (0005)      | Promoted to `dev`                         |
+| **Phase 6 Inc 2** | `27fc1a4`      | Payments, Ledger & Escrow Foundation: immutable double-entry ledger, payment intents, webhooks                | 40 models (0006)      | Promoted to `dev`                         |
+| **Phase 6 Inc 3** | `56e16af`      | Disputes, Cancellations, Refunds & Financial Recovery: state machines, compensating ledger, outbox events     | 45 models (0007)      | Branch `feature/phase-6-disputes-refunds` |
