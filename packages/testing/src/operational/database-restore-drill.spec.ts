@@ -17,7 +17,7 @@ describe('DatabaseRestoreDrillRunner Integration', () => {
     expect(report.backupMetadata.sha256Digest).toBeDefined();
     expect(report.backupMetadata.sizeBytes).toBeGreaterThan(0);
 
-    // Verify schema metrics (Phase 5 baseline: >= 32 tables, >= 4 migrations)
+    // Verify schema metrics (Phase 5+ baseline: >= 32 tables, >= 4 migrations)
     expect(report.drillMetrics.tablesVerified).toBeGreaterThanOrEqual(32);
     expect(report.drillMetrics.indexesVerified).toBeGreaterThan(50);
     expect(report.drillMetrics.foreignKeysVerified).toBeGreaterThan(20);
