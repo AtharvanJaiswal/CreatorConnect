@@ -25,12 +25,13 @@ The CreatorConnect backend powers an enterprise-grade, multi-sided creator econo
 - **Phase 5 Operational Verification**: Evaluated Gates A–D. Gate A (isolated DB restore drill PASS: RTO 1.4s, RPO 0.4s, SHA-256 match) and Gate D (CI PASS & promoted to dev/main). Gate B (external alert delivery NOT_VERIFIED) and Gate C (production secrets BLOCKED) remain pending external production credentials; production deployment is NOT authorized.
 - **Phase 6 (Increment 1)**: Projects & Deliverable Escrow Foundation (**IMPLEMENTED & LOCALLY VERIFIED** on branch `feature/phase-6-projects-deliverables`). Execution contract lifecycle for accepted proposals, milestone deliverables, submit/review workflows, optimistic concurrency locking, and transactional outbox events (`project.created.v1`, `project.deliverable.submitted.v1`, `project.deliverable.revision_requested.v1`, `project.deliverable.approved.v1`).
 - **Phase 6 (Increment 2)**: Payments, Ledger & Escrow Foundation (**IMPLEMENTED & LOCALLY VERIFIED** on branch `feature/phase-6-payments-ledger`). Immutable double-entry balanced ledger ($\sum \text{debits} \equiv \sum \text{credits}$), integer minor units (paisa), idempotent payment intent lifecycle with SHA-256 payload hash verification, provider abstraction (Sandbox Mock & Razorpay Orders/Route compliance for Indian market), HMAC SHA-256 signed webhook ingestion with event deduplication, and transactional outbox events (`payment.intent.created.v1`, `payment.intent.succeeded.v1`, `ledger.transaction.posted.v1`, `escrow.released.v1`). Live payouts and real-money nodal escrow remain strictly simulated in sandbox mode pending RBI Payment Aggregator compliance and production nodal onboarding.
+- **Phase 6 (Increment 3)**: Dispute Resolution, Cancellations, Refunds & Financial Recovery (**IMPLEMENTED & LOCALLY VERIFIED** on branch `feature/phase-6-disputes-refunds`). Formal dispute lifecycle (`OPEN`, `UNDER_REVIEW`, `EVIDENCE_REQUESTED`, `RESOLVED_FOR_CLIENT`, `RESOLVED_FOR_CREATOR`, `CLOSED`), anti-conflict-of-interest check (admins cannot arbitrate their own disputes), evidence quarantine scanning verification (`ACTIVE` + `SCANNED_CLEAN`), mutual consent / requester withdrawal project cancellations, integer minor-unit compensating balanced ledger transactions ($\sum \text{debits} \equiv \sum \text{credits}$), idempotent refund execution with SHA-256 payload hash verification, out-of-transaction provider commands, and transactional outbox events (`dispute.opened.v1`, `dispute.status_updated.v1`, `dispute.resolved.v1`, `cancellation.requested.v1`, `cancellation.resolved.v1`, `payment.refund.created.v1`, `payment.refund.processed.v1`).
 
 ### Core Technologies & Runtimes:
 
 - **Language / Runtime**: Node.js 20 LTS + TypeScript 5.5+
 - **HTTP Engine**: Fastify v4.x (High throughput, native TypeBox JSON Schema compilation)
-- **Database**: PostgreSQL 16 managed with Prisma ORM 5.18 (40 models, 6 applied migrations)
+- **Database**: PostgreSQL 16 managed with Prisma ORM 5.18 (45 models, 7 applied migrations)
 - **In-Memory Cache & Broker**: Redis 7
 - **Asynchronous Task Queues**: BullMQ v5.x
 - **Realtime Gateway**: Socket.IO v4.x with `@socket.io/redis-adapter`
@@ -57,7 +58,8 @@ f:\CreatorConnect/
 │   │   │   │   ├── assignments/ # Brand briefs, requirements, budget bounds
 │   │   │   │   ├── applications/# Proposal submissions & atomic hiring state machine
 │   │   │   │   ├── projects/    # Project contracts & milestone deliverables (/api/v1/projects)
-│   │   │   │   ├── payments/    # Double-entry ledger, payment intents & escrow (/api/v1/payments)
+│   │   │   │   ├── payments/    # Double-entry ledger, payment intents, escrow & refunds (/api/v1/payments)
+│   │   │   │   ├── disputes/    # Dispute arbitration & project cancellations (/api/v1/disputes)
 │   │   │   │   ├── discovery/   # PostgreSQL tsvector FTS + pg_trgm fuzzy matching
 │   │   │   │   ├── messaging/   # Direct chat threads, message history, read receipts
 │   │   │   │   └── notifications/# User notification preference management
@@ -197,12 +199,15 @@ All errors follow standard RFC 7807:
 ### 7.1 Relational Schema & Migrations
 
 - **Location**: `packages/database/prisma/schema.prisma`
-- **Total Entities**: 32 public tables
+- **Total Entities**: 45 public tables
 - **Applied Migrations**:
   - `0001_initial_schema`: Core identity, profiles, taxonomy, assignments, applications.
   - `0002_messaging_and_moderation`: Conversations, messages, attachments, reactions, blocks, reports, moderation actions.
   - `0003_outbox_and_notifications`: Transactional outbox events, processed events, notifications, notification preferences.
   - `0004_media_assets_and_scanning`: Media assets, quarantine metadata, scan status.
+  - `0005_projects_and_deliverables`: Contract projects, milestones, deliverables, revisions, state history.
+  - `0006_payments_ledger_and_escrow`: Immutable double-entry ledger accounts/entries, payment intents, and escrow states.
+  - `0007_disputes_cancellations_and_refunds`: Formal dispute lifecycle, evidence attachments, project cancellations, and compensating refund records.
 
 ### 7.2 Database Backup & Real Restore Drill (Gate A Verified)
 
@@ -257,9 +262,56 @@ All errors follow standard RFC 7807:
 
 ---
 
-## 10. Operational Runbooks & Troubleshooting
+## 10. Phase 6 Domain Architecture: Projects, Payments, Disputes & Financial Recovery
 
-### 10.1 Database Connection Errors
+### 10.1 Dispute Lifecycle & State Machine
+
+The dispute engine mediates conflicts between project participants (Client and Creator/Pro) under strict administrative governance:
+
+- **State Transitions**:
+  - `OPEN` $\rightarrow$ `UNDER_REVIEW` (Admin reviews and assigns case)
+  - `UNDER_REVIEW` $\rightarrow$ `EVIDENCE_REQUESTED` (Admin requests supplementary documentation from client or creator)
+  - `EVIDENCE_REQUESTED` $\rightarrow$ `UNDER_REVIEW` (Participant uploads evidence, resetting review cycle)
+  - `UNDER_REVIEW` $\rightarrow$ `RESOLVED_FOR_CLIENT` (Admin rules in favor of client; triggers refund flow)
+  - `UNDER_REVIEW` $\rightarrow$ `RESOLVED_FOR_CREATOR` (Admin rules in favor of creator; permits escrow release)
+  - `RESOLVED_FOR_CLIENT` / `RESOLVED_FOR_CREATOR` $\rightarrow$ `CLOSED` (Case finalized)
+- **Eligibility & Guard Invariants**:
+  - Only authenticated project participants (`clientId` or `talentId`) may open a dispute for projects in `IN_PROGRESS` or `IN_REVIEW` status.
+  - If a dispute is already open on a project (`project.status === 'DISPUTED'`), subsequent attempts are rejected with `409 Conflict`.
+  - Opening a dispute transitions the project to `DISPUTED` and immediately halts pending deliverable reviews and creator payouts.
+  - **Anti-Conflict-of-Interest Guard**: An administrator who is also a project participant (`adminId === project.clientId` or `adminId === project.talentId`) is strictly forbidden from arbitrating their own dispute (`403 Forbidden: SELF_DISPUTE_RESOLUTION_NOT_ALLOWED`).
+  - **Evidence Quarantine Verification**: Dispute evidence files must point to existing `MediaAsset` records that have passed ClamAV scanning (`status === 'ACTIVE'` and `scanStatus === 'SCANNED_CLEAN'`).
+
+### 10.2 Project Cancellation Workflow
+
+- **Mutual Consent & Requester Control**:
+  - A project participant may request cancellation with a specified reason.
+  - If the other participant has already requested cancellation, the system approves mutual cancellation and transitions the project to `CANCELLED`.
+  - The requesting participant can withdraw their pending request before review (`CANCELLED` cancellation status).
+  - The counterparty or an administrator may approve or reject the cancellation request.
+  - When approved, `project.status` updates to `CANCELLED`, allowing refundable escrow balances to be returned.
+
+### 10.3 Financial Invariants & Compensating Ledger Transactions
+
+- **Integer Minor-Unit Representation**: All monetary quantities are strictly represented in integer minor units (paisa in INR). Exact integer arithmetic prevents fractional rounding errors.
+- **Strictly Compensating Reversals**: Posted ledger entries are mathematically immutable. Adjustments, reversals, and refunds are posted as balanced compensating transactions:
+  $$\sum \text{Debits} \equiv \sum \text{Credits}$$
+- **Ledger Allocation**:
+  - Escrow refund portion (90%): Debit `LIABILITIES:ESCROW_HOLDING:{projectId}`.
+  - Platform fee refund portion (10%): Debit `REVENUE:PLATFORM_FEE`.
+  - Payment processor settlement (100%): Credit `ASSETS:PROCESSOR_CLEARING:{provider}`.
+- **Provider Isolation**: Provider refund commands (`createRefund`) are executed strictly **outside** database transactions.
+  - If the provider call fails, a `FAILED` refund attempt record is written and the business error is returned without mutating ledger balances.
+  - If the provider call succeeds, an atomic database transaction posts the compensating ledger entry, records the `SUCCEEDED` refund, and dispatches the outbox event.
+- **Non-Over-Refunding Guard**: $\sum \text{Refunds} \le \text{CapturedAmount}$. Concurrent requests checking captured amounts enforce strict non-over-refunding constraints.
+- **Idempotent Refund Requests**: Each refund command requires an `Idempotency-Key`. Re-requests with identical payloads return the existing refund record; payload alterations with duplicate keys are rejected with `409 Conflict`.
+- **Webhook Reconciliation**: Out-of-order or asynchronous provider webhook events (`refund.processed`, `refund.created`) reconcile the internal refund state and outbox events safely.
+
+---
+
+## 11. Operational Runbooks & Troubleshooting
+
+### 11.1 Database Connection Errors
 
 - **Symptom**: `PrismaClientInitializationError: Can't reach database server`.
 - **Remediation**:
@@ -267,7 +319,7 @@ All errors follow standard RFC 7807:
   2. Verify host port mapping: `creatorconnect-postgres` uses port `5433` on host (mapping to container `5432`).
   3. Ensure `DATABASE_URL` in `.env` specifies port `5433` for local development.
 
-### 10.2 Migration Recovery
+### 11.2 Migration Recovery
 
 - **Symptom**: `Database migration failed or drift detected`.
 - **Remediation**:
@@ -275,7 +327,7 @@ All errors follow standard RFC 7807:
   2. Never execute destructive `prisma migrate reset` against production or persistent staging environments.
   3. Resolve migration drift by applying forward migrations with `pnpm --filter @creatorconnect/database db:migrate`.
 
-### 10.3 Redis Unavailability
+### 11.3 Redis Unavailability
 
 - **Symptom**: Rate-limiter failover or Socket.IO adapter disconnections.
 - **Remediation**:
@@ -283,7 +335,7 @@ All errors follow standard RFC 7807:
   2. Rate limiter fails open for read routes and fails closed for sensitive write operations.
   3. Realtime gateway reconnects with exponential backoff and synchronizes active room memberships.
 
-### 10.4 Outbox Worker Backlog
+### 11.4 Outbox Worker Backlog
 
 - **Symptom**: Growing queue depth in `outbox_events`.
 - **Remediation**:
@@ -293,7 +345,7 @@ All errors follow standard RFC 7807:
 
 ---
 
-## 11. Automated Testing & Verification Commands
+## 12. Automated Testing & Verification Commands
 
 ```bash
 # Run unit tests across all monorepo workspaces
@@ -317,12 +369,15 @@ pnpm build
 
 ---
 
-## 12. Backend Changelog
+## 13. Backend Changelog
 
-| Phase           | Release Commit | Summary                                                                                                       | Database Changes      | Operational Status                 |
-| :-------------- | :------------- | :------------------------------------------------------------------------------------------------------------ | :-------------------- | :--------------------------------- |
-| **Phase 0**     | `c6080c4`      | Product & Architecture Lock, ADRs, canonical data model                                                       | Greenfield design     | Approved                           |
-| **Phase 1–3**   | `aba599b`      | Monorepo setup, Fastify engine, Supabase Auth, JWKS, RBAC                                                     | Migrations 0001       | Verified in CI                     |
-| **Phase 4**     | `b42ffdb`      | Profiles, portfolio CRUD, assignments, atomic hiring, FTS                                                     | 15 models             | Verified in CI                     |
-| **Phase 5**     | `58e8ae0`      | Realtime Socket.IO, Outbox relay, ClamAV scanning, Moderation                                                 | 32 models (0001–0004) | Promoted to `dev` & `main`         |
-| **Stage 5 Ops** | `801806e`      | Operational verification: Restore drill PASS, Probes PASS, External alerts NOT_VERIFIED, Prod secrets BLOCKED | 32 models (verified)  | **Gates Evaluated (Prod Blocked)** |
+| Phase             | Release Commit | Summary                                                                                                       | Database Changes      | Operational Status                        |
+| :---------------- | :------------- | :------------------------------------------------------------------------------------------------------------ | :-------------------- | :---------------------------------------- |
+| **Phase 0**       | `c6080c4`      | Product & Architecture Lock, ADRs, canonical data model                                                       | Greenfield design     | Approved                                  |
+| **Phase 1–3**     | `aba599b`      | Monorepo setup, Fastify engine, Supabase Auth, JWKS, RBAC                                                     | Migrations 0001       | Verified in CI                            |
+| **Phase 4**       | `b42ffdb`      | Profiles, portfolio CRUD, assignments, atomic hiring, FTS                                                     | 15 models             | Verified in CI                            |
+| **Phase 5**       | `58e8ae0`      | Realtime Socket.IO, Outbox relay, ClamAV scanning, Moderation                                                 | 32 models (0001–0004) | Promoted to `dev` & `main`                |
+| **Stage 5 Ops**   | `801806e`      | Operational verification: Restore drill PASS, Probes PASS, External alerts NOT_VERIFIED, Prod secrets BLOCKED | 32 models (verified)  | **Gates Evaluated (Prod Blocked)**        |
+| **Phase 6 Inc 1** | `0955bc1`      | Projects & Deliverables: contract milestones, submission review workflows, optimistic concurrency             | 34 models (0005)      | Promoted to `dev`                         |
+| **Phase 6 Inc 2** | `27fc1a4`      | Payments, Ledger & Escrow Foundation: immutable double-entry ledger, payment intents, webhooks                | 40 models (0006)      | Promoted to `dev`                         |
+| **Phase 6 Inc 3** | `56e16af`      | Disputes, Cancellations, Refunds & Financial Recovery: state machines, compensating ledger, outbox events     | 45 models (0007)      | Branch `feature/phase-6-disputes-refunds` |

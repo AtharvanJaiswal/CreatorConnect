@@ -227,3 +227,93 @@ export class PaymentProviderError extends AppError {
     super(502, 'PAYMENT_PROVIDER_ERROR', 'Payment Provider Error', detail);
   }
 }
+
+// ==============================================================================
+// Phase 6 Increment 3: Disputes, Cancellations & Financial Recovery Errors
+// ==============================================================================
+
+export class DisputeNotFoundError extends AppError {
+  constructor(detail = 'Dispute not found.') {
+    super(404, 'DISPUTE_NOT_FOUND', 'Dispute Not Found', detail);
+  }
+}
+
+export class DisputeStateError extends AppError {
+  constructor(detail = 'Operation rejected: Dispute is not in a valid state for this action.') {
+    super(400, 'INVALID_DISPUTE_STATE', 'Invalid Dispute State', detail);
+  }
+}
+
+export class SelfDisputeResolutionNotAllowedError extends AppError {
+  constructor(
+    detail = 'Administrators who are participants in a project cannot arbitrate or resolve their own dispute.',
+  ) {
+    super(403, 'SELF_DISPUTE_RESOLUTION_NOT_ALLOWED', 'Self Dispute Resolution Prohibited', detail);
+  }
+}
+
+export class NotDisputeParticipantError extends AppError {
+  constructor(detail = 'You are not an authorized participant in this dispute.') {
+    super(403, 'NOT_DISPUTE_PARTICIPANT', 'Not Dispute Participant', detail);
+  }
+}
+
+export class ProjectNotDisputableError extends AppError {
+  constructor(detail = 'Project is not eligible for disputes in its current status.') {
+    super(400, 'PROJECT_NOT_DISPUTABLE', 'Project Not Disputable', detail);
+  }
+}
+
+export class DisputeAlreadyOpenError extends AppError {
+  constructor(detail = 'An active dispute is already open for this project.') {
+    super(409, 'DISPUTE_ALREADY_OPEN', 'Dispute Already Open', detail);
+  }
+}
+
+export class CancellationNotFoundError extends AppError {
+  constructor(detail = 'Cancellation request not found.') {
+    super(404, 'CANCELLATION_NOT_FOUND', 'Cancellation Not Found', detail);
+  }
+}
+
+export class CancellationStateError extends AppError {
+  constructor(detail = 'Cancellation request is not in a valid state for this operation.') {
+    super(400, 'INVALID_CANCELLATION_STATE', 'Invalid Cancellation State', detail);
+  }
+}
+
+export class ProjectCancellationConflictError extends AppError {
+  constructor(
+    detail = 'A pending cancellation request or active dispute already exists for this project.',
+  ) {
+    super(409, 'PROJECT_CANCELLATION_CONFLICT', 'Cancellation Conflict', detail);
+  }
+}
+
+export class RefundNotFoundError extends AppError {
+  constructor(detail = 'Refund record not found.') {
+    super(404, 'REFUND_NOT_FOUND', 'Refund Not Found', detail);
+  }
+}
+
+export class RefundExceedsCapturableAmountError extends AppError {
+  constructor(
+    detail = 'Requested refund amount exceeds total refundable amount or remaining escrow balance.',
+  ) {
+    super(400, 'REFUND_EXCEEDS_CAPTURABLE_AMOUNT', 'Refund Exceeds Capturable Amount', detail);
+  }
+}
+
+export class RefundStateError extends AppError {
+  constructor(detail = 'Payment intent is not eligible for refunds in its current status.') {
+    super(400, 'INVALID_REFUND_STATE', 'Invalid Refund State', detail);
+  }
+}
+
+export class FinancialReconciliationRequiredError extends AppError {
+  constructor(
+    detail = 'Financial state requires manual reconciliation due to conflicting provider records.',
+  ) {
+    super(409, 'FINANCIAL_RECONCILIATION_REQUIRED', 'Financial Reconciliation Required', detail);
+  }
+}

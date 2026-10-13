@@ -33,6 +33,9 @@ export class PaymentsRepository {
             lastName: true,
           },
         },
+        refunds: {
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
   }
@@ -46,6 +49,7 @@ export class PaymentsRepository {
       include: {
         project: true,
         deliverable: true,
+        refunds: true,
       },
     });
   }
@@ -59,6 +63,7 @@ export class PaymentsRepository {
       include: {
         project: true,
         deliverable: true,
+        refunds: true,
       },
     });
   }
@@ -77,6 +82,7 @@ export class PaymentsRepository {
   async listIntentsByProjectId(projectId: string) {
     return this.prisma.paymentIntent.findMany({
       where: { projectId },
+      include: { refunds: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -84,8 +90,62 @@ export class PaymentsRepository {
   async listIntentsByClientId(clientId: string) {
     return this.prisma.paymentIntent.findMany({
       where: { clientId },
+      include: { refunds: true },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async findRefundById(id: string) {
+    return this.prisma.refund.findUnique({
+      where: { id },
+      include: {
+        paymentIntent: true,
+        project: true,
+        refundedBy: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+      },
+    });
+  }
+
+  async findRefundByProviderRefundId(provider: PaymentProvider, providerRefundId: string) {
+    return this.prisma.refund.findFirst({
+      where: {
+        provider,
+        providerRefundId,
+      },
+      include: {
+        paymentIntent: true,
+        project: true,
+      },
+    });
+  }
+
+  async listRefundsByPaymentIntentId(paymentIntentId: string) {
+    return this.prisma.refund.findMany({
+      where: { paymentIntentId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async listRefundsByProjectId(projectId: string) {
+    return this.prisma.refund.findMany({
+      where: { projectId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async sumRefundedAmountForIntent(paymentIntentId: string): Promise<number> {
+    const aggregate = await this.prisma.refund.aggregate({
+      where: {
+        paymentIntentId,
+        status: { in: ['SUCCEEDED', 'PROCESSING'] },
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+    return aggregate._sum.amount ?? 0;
   }
 }
 

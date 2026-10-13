@@ -23,6 +23,7 @@ import { messagingRoutes } from './modules/messaging/messaging.routes.js';
 import { notificationsRoutes } from './modules/notifications/notifications.routes.js';
 import { projectsRoutes } from './modules/projects/projects.routes.js';
 import { paymentsRoutes } from './modules/payments/payments.routes.js';
+import { disputesRoutes, cancellationsRoutes } from './modules/disputes/index.js';
 
 export async function buildApp(opts: FastifyServerOptions = {}): Promise<FastifyInstance> {
   const defaultTrustProxy = process.env.TRUST_PROXY
@@ -195,6 +196,8 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
   await app.register(notificationsRoutes);
   await app.register(projectsRoutes);
   await app.register(paymentsRoutes);
+  await app.register(disputesRoutes);
+  await app.register(cancellationsRoutes);
 
   return app;
 }
