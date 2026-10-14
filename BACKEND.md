@@ -397,17 +397,18 @@ pnpm build
 
 ## 13. Backend Changelog
 
-| Phase             | Release Commit | Summary                                                                                                       | Database Changes      | Operational Status                             |
-| :---------------- | :------------- | :------------------------------------------------------------------------------------------------------------ | :-------------------- | :--------------------------------------------- |
-| **Phase 0**       | `c6080c4`      | Product & Architecture Lock, ADRs, canonical data model                                                       | Greenfield design     | Approved                                       |
-| **Phase 1–3**     | `aba599b`      | Monorepo setup, Fastify engine, Supabase Auth, JWKS, RBAC                                                     | Migrations 0001       | Verified in CI                                 |
-| **Phase 4**       | `b42ffdb`      | Profiles, portfolio CRUD, assignments, atomic hiring, FTS                                                     | 15 models             | Verified in CI                                 |
-| **Phase 5**       | `58e8ae0`      | Realtime Socket.IO, Outbox relay, ClamAV scanning, Moderation                                                 | 32 models (0001–0004) | Promoted to `dev` & `main`                     |
-| **Stage 5 Ops**   | Working Tree   | Operational verification: Restore drill PASS, Probes PASS, External alerts NOT_VERIFIED, Prod secrets BLOCKED | 32 models (verified)  | **Gates Evaluated (Prod Blocked)**             |
-| **Phase 6 Inc 1** | `13264ff`      | Projects & Deliverables: contract milestones, submission review workflows, optimistic concurrency             | 37 models (0005)      | Branch `feature/phase-6-projects-deliverables` |
-| **Phase 6 Inc 2** | `8f1bacf`      | Payments, Ledger & Escrow Foundation: immutable double-entry ledger, payment intents, webhooks                | 40 models (0006)      | Branch `feature/phase-6-payments-ledger`       |
-| **Phase 6 Inc 4** | `0bdfe08`      | Reviews, Reputation Scoring & Governance: verified reviews, Bayesian scoring, 48h edit window, moderation     | 48 models (0008)      | Branch `feature/phase-6-reviews-governance`    |
-| **Phase 6 Inc 5** | Working Tree   | Release Hardening, Financial Reconciliation & Release Integration: dynamic fee allocation, E2E suite, drills  | 48 models (0001–0008) | Branch `feature/phase-6-release-hardening`     |
+| Phase             | Release Commit | Summary                                                                                                       | Database Changes      | Operational Status                         |
+| :---------------- | :------------- | :------------------------------------------------------------------------------------------------------------ | :-------------------- | :----------------------------------------- |
+| **Phase 0**       | `c6080c4`      | Product & Architecture Lock, ADRs, canonical data model                                                       | Greenfield design     | Approved                                   |
+| **Phase 1–3**     | `aba599b`      | Monorepo setup, Fastify engine, Supabase Auth, JWKS, RBAC                                                     | Migrations 0001       | Verified in CI                             |
+| **Phase 4**       | `b42ffdb`      | Profiles, portfolio CRUD, assignments, atomic hiring, FTS                                                     | 15 models             | Verified in CI                             |
+| **Phase 5**       | `58e8ae0`      | Realtime Socket.IO, Outbox relay, ClamAV scanning, Moderation                                                 | 32 models (0001–0004) | Promoted to `dev` & `main`                 |
+| **Stage 5 Ops**   | `801806e`      | Operational verification: Restore drill PASS, Probes PASS, External alerts NOT_VERIFIED, Prod secrets BLOCKED | 32 models (verified)  | **Gates Evaluated (Prod Blocked)**         |
+| **Phase 6 Inc 1** | `0955bc1`      | Projects & Deliverables: contract milestones, submission review workflows, optimistic concurrency             | 34 models (0005)      | Promoted to `dev`                          |
+| **Phase 6 Inc 2** | `27fc1a4`      | Payments, Ledger & Escrow Foundation: immutable double-entry ledger, payment intents, webhooks                | 40 models (0006)      | Promoted to `dev`                          |
+| **Phase 6 Inc 3** | `37c0fcd`      | Disputes, Cancellations, Refunds & Financial Recovery: state machines, compensating ledger, outbox events     | 45 models (0007)      | Promoted to `dev`                          |
+| **Phase 6 Inc 4** | `ba8322c`      | Reviews, Reputation Scoring & Governance: verified reviews, Bayesian scoring, 48h edit window, moderation     | 48 models (0008)      | Promoted to `dev`                          |
+| **Phase 6 Inc 5** | Working Tree   | Release Hardening, Financial Reconciliation & Release Integration: dynamic fee allocation, E2E suite, drills  | 48 models (0001–0008) | Branch `feature/phase-6-release-hardening` |
 
 ---
 
@@ -419,7 +420,7 @@ pnpm build
 | :---------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------- |
 | **Implemented Functionality**       | Increments 1–5 (Projects, Deliverables, Payments Ledger, Disputes, Refunds, Reviews, Reputation, E2E Integration)                                                                                                                                                | **Complete** |
 | **Locally Verified Functionality**  | Unit/integration test suites (67 test files, 585 tests PASS), clean database migrations (0001–0008 applied sequentially), isolated container restore drill (RTO 5.6s, RPO 0.4s, SHA-256 match, 48 tables verified), `format:check`, `lint`, `typecheck`, `build` | **Verified** |
-| **Remotely Verified Functionality** | PR status on remote feature branches (`feature/phase-6-projects-deliverables`, `feature/phase-6-payments-ledger`) passing GitHub Actions workflows                                                                                                               | **Verified** |
+| **Remotely Verified Functionality** | PR status on remote feature branches (`feature/phase-6-projects-deliverables`, `feature/phase-6-payments-ledger`, `feature/phase-6-reviews-governance`) passing GitHub Actions workflows                                                                         | **Verified** |
 | **External Production Gates**       | Production payment gateway credentials (Razorpay Live Key ID/Secret), AWS Secrets Manager / KMS envelope encryption, External Alert Delivery (PagerDuty/Slack webhook dispatch), Bank KYC / RBI Escrow nodal compliance                                          | **BLOCKED**  |
 
 ### 14.2 Known Limitations & Policy Invariants
