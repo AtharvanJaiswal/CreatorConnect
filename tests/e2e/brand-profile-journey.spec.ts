@@ -180,7 +180,7 @@ test.describe('Brand/Customer Profile User Journey End-to-End', () => {
     await page.goto('/brand', { waitUntil: 'networkidle' });
 
     // 2. Click "Edit Brand Profile" action button
-    const editProfileLink = page.locator('[data-testid="edit-brand-profile-link"]');
+    const editProfileLink = page.locator('[data-testid="edit-brand-profile-link"]').first();
     await expect(editProfileLink).toBeVisible();
     await editProfileLink.click();
 
