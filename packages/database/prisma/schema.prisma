@@ -154,6 +154,11 @@ enum NotificationType {
   DISPUTE_RESOLVED
   CANCELLATION_REQUESTED
   CANCELLATION_RESOLVED
+
+  // Phase 6 Increment 4 Notification Types
+  REVIEW_RECEIVED
+  REVIEW_REPORTED
+  REVIEW_MODERATED
 }
 
 // ==============================================================================
@@ -227,6 +232,12 @@ model User {
   cancellationsRequested    ProjectCancellation[]     @relation("CancellationsRequested")
   cancellationsDecided      ProjectCancellation[]     @relation("CancellationsDecided")
   refundsIssued             Refund[]
+
+  // Phase 6 Increment 4 Relations
+  reviewsAuthored           Review[]                  @relation("ReviewsAuthored")
+  reviewsReceived           Review[]                  @relation("ReviewsReceived")
+  reviewReportsSubmitted    ReviewReport[]
+  reviewModerationsTaken    ReviewModerationAudit[]
 
   @@index([email])
   @@index([supabaseAuthId])
@@ -839,6 +850,7 @@ model Project {
   disputes       Dispute[]
   cancellations  ProjectCancellation[]
   refunds        Refund[]
+  reviews        Review[]
 
   @@index([clientId, status])
   @@index([talentId, status])
@@ -1209,3 +1221,107 @@ model Refund {
   @@index([idempotencyKey])
   @@map("refunds")
 }
+
+// ==============================================================================
+// Phase 6 Increment 4 Enums & Models: Reviews, Reputation & Governance
+// ==============================================================================
+
+enum ReviewStatus {
+  PUBLISHED
+  FLAGGED
+  HIDDEN
+  REMOVED
+}
+
+enum ReviewReportReason {
+  SPAM
+  HARASSMENT
+  DEFAMATION
+  INAPPROPRIATE_CONTENT
+  CONFLICT_OF_INTEREST
+  OTHER
+}
+
+enum ReviewReportStatus {
+  PENDING
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+enum ReviewModerationActionType {
+  FLAG
+  HIDE
+  REMOVE
+  RESTORE
+}
+
+model Review {
+  id                  String       @id @db.Uuid
+  projectId           String       @map("project_id") @db.Uuid
+  reviewerId          String       @map("reviewer_id") @db.Uuid
+  revieweeId          String       @map("reviewee_id") @db.Uuid
+  rating              Int
+  communicationRating Int?         @map("communication_rating")
+  qualityRating       Int?         @map("quality_rating")
+  adherenceRating     Int?         @map("adherence_rating")
+  feedback            String       @db.Text
+  status              ReviewStatus @default(PUBLISHED)
+  editCount           Int          @default(0) @map("edit_count")
+  editedAt            DateTime?    @map("edited_at")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  project         Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reviewer        User                    @relation("ReviewsAuthored", fields: [reviewerId], references: [id], onDelete: Restrict)
+  reviewee        User                    @relation("ReviewsReceived", fields: [revieweeId], references: [id], onDelete: Restrict)
+  reports         ReviewReport[]
+  moderationAudit ReviewModerationAudit[]
+
+  @@unique([projectId, reviewerId])
+  @@index([revieweeId, status, createdAt])
+  @@index([reviewerId, createdAt])
+  @@index([projectId])
+  @@index([status, createdAt])
+  @@map("reviews")
+}
+
+model ReviewReport {
+  id         String             @id @db.Uuid
+  reviewId   String             @map("review_id") @db.Uuid
+  reporterId String             @map("reporter_id") @db.Uuid
+  reason     ReviewReportReason
+  details    String             @db.Text
+  status     ReviewReportStatus @default(PENDING)
+  createdAt  DateTime           @default(now()) @map("created_at")
+  updatedAt  DateTime           @updatedAt @map("updated_at")
+
+  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reporter User   @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, reporterId])
+  @@index([reviewId, status])
+  @@index([reporterId])
+  @@index([status, createdAt])
+  @@map("review_reports")
+}
+
+model ReviewModerationAudit {
+  id            String                     @id @db.Uuid
+  reviewId      String                     @map("review_id") @db.Uuid
+  moderatorId   String                     @map("moderator_id") @db.Uuid
+  actionType    ReviewModerationActionType @map("action_type")
+  fromStatus    ReviewStatus               @map("from_status")
+  toStatus      ReviewStatus               @map("to_status")
+  reason        String                     @db.Text
+  internalNotes String?                    @map("internal_notes") @db.Text
+  createdAt     DateTime                   @default(now()) @map("created_at")
+
+  review    Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  moderator User   @relation(fields: [moderatorId], references: [id], onDelete: Restrict)
+
+  @@index([reviewId, createdAt])
+  @@index([moderatorId])
+  @@map("review_moderation_audits")
+}
+

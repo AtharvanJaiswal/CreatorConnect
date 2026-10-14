@@ -26,12 +26,13 @@ The CreatorConnect backend powers an enterprise-grade, multi-sided creator econo
 - **Phase 6 (Increment 1)**: Projects & Deliverable Escrow Foundation (**IMPLEMENTED & LOCALLY VERIFIED** on branch `feature/phase-6-projects-deliverables`). Execution contract lifecycle for accepted proposals, milestone deliverables, submit/review workflows, optimistic concurrency locking, and transactional outbox events (`project.created.v1`, `project.deliverable.submitted.v1`, `project.deliverable.revision_requested.v1`, `project.deliverable.approved.v1`).
 - **Phase 6 (Increment 2)**: Payments, Ledger & Escrow Foundation (**IMPLEMENTED & LOCALLY VERIFIED** on branch `feature/phase-6-payments-ledger`). Immutable double-entry balanced ledger ($\sum \text{debits} \equiv \sum \text{credits}$), integer minor units (paisa), idempotent payment intent lifecycle with SHA-256 payload hash verification, provider abstraction (Sandbox Mock & Razorpay Orders/Route compliance for Indian market), HMAC SHA-256 signed webhook ingestion with event deduplication, and transactional outbox events (`payment.intent.created.v1`, `payment.intent.succeeded.v1`, `ledger.transaction.posted.v1`, `escrow.released.v1`). Live payouts and real-money nodal escrow remain strictly simulated in sandbox mode pending RBI Payment Aggregator compliance and production nodal onboarding.
 - **Phase 6 (Increment 3)**: Dispute Resolution, Cancellations, Refunds & Financial Recovery (**IMPLEMENTED & LOCALLY VERIFIED** on branch `feature/phase-6-disputes-refunds`). Formal dispute lifecycle (`OPEN`, `UNDER_REVIEW`, `EVIDENCE_REQUESTED`, `RESOLVED_FOR_CLIENT`, `RESOLVED_FOR_CREATOR`, `CLOSED`), anti-conflict-of-interest check (admins cannot arbitrate their own disputes), evidence quarantine scanning verification (`ACTIVE` + `SCANNED_CLEAN`), mutual consent / requester withdrawal project cancellations, integer minor-unit compensating balanced ledger transactions ($\sum \text{debits} \equiv \sum \text{credits}$), idempotent refund execution with SHA-256 payload hash verification, out-of-transaction provider commands, and transactional outbox events (`dispute.opened.v1`, `dispute.status_updated.v1`, `dispute.resolved.v1`, `cancellation.requested.v1`, `cancellation.resolved.v1`, `payment.refund.created.v1`, `payment.refund.processed.v1`).
+- **Phase 6 (Increment 4)**: Reviews, Reputation Scoring & Platform Governance (**IMPLEMENTED & LOCALLY VERIFIED** on branch `feature/phase-6-reviews-governance`). Verified review lifecycle for completed projects (`ProjectStatus.COMPLETED`), bidirectional reciprocal review eligibility, database-enforced unique constraints (`@@unique([projectId, reviewerId])`), 48-hour editing window, deterministic and transparent Bayesian reputation scoring ($m = 4.0, C = 5.0$), cold-start unrated handling, abuse reporting, and administrative governance with immutable audit logging and anti-conflict-of-interest guards.
 
 ### Core Technologies & Runtimes:
 
 - **Language / Runtime**: Node.js 20 LTS + TypeScript 5.5+
 - **HTTP Engine**: Fastify v4.x (High throughput, native TypeBox JSON Schema compilation)
-- **Database**: PostgreSQL 16 managed with Prisma ORM 5.18 (45 models, 7 applied migrations)
+- **Database**: PostgreSQL 16 managed with Prisma ORM 5.18 (48 models, 8 applied migrations)
 - **In-Memory Cache & Broker**: Redis 7
 - **Asynchronous Task Queues**: BullMQ v5.x
 - **Realtime Gateway**: Socket.IO v4.x with `@socket.io/redis-adapter`
@@ -60,6 +61,7 @@ f:\CreatorConnect/
 │   │   │   │   ├── projects/    # Project contracts & milestone deliverables (/api/v1/projects)
 │   │   │   │   ├── payments/    # Double-entry ledger, payment intents, escrow & refunds (/api/v1/payments)
 │   │   │   │   ├── disputes/    # Dispute arbitration & project cancellations (/api/v1/disputes)
+│   │   │   │   ├── reviews/     # Reviews, deterministic reputation & governance (/api/v1/reviews)
 │   │   │   │   ├── discovery/   # PostgreSQL tsvector FTS + pg_trgm fuzzy matching
 │   │   │   │   ├── messaging/   # Direct chat threads, message history, read receipts
 │   │   │   │   └── notifications/# User notification preference management
@@ -199,7 +201,7 @@ All errors follow standard RFC 7807:
 ### 7.1 Relational Schema & Migrations
 
 - **Location**: `packages/database/prisma/schema.prisma`
-- **Total Entities**: 45 public tables
+- **Total Entities**: 48 public tables
 - **Applied Migrations**:
   - `0001_initial_schema`: Core identity, profiles, taxonomy, assignments, applications.
   - `0002_messaging_and_moderation`: Conversations, messages, attachments, reactions, blocks, reports, moderation actions.
@@ -208,6 +210,7 @@ All errors follow standard RFC 7807:
   - `0005_projects_and_deliverables`: Contract projects, milestones, deliverables, revisions, state history.
   - `0006_payments_ledger_and_escrow`: Immutable double-entry ledger accounts/entries, payment intents, and escrow states.
   - `0007_disputes_cancellations_and_refunds`: Formal dispute lifecycle, evidence attachments, project cancellations, and compensating refund records.
+  - `0008_reviews_and_reputation`: Reviews, sub-category ratings, abuse reports, moderation audit trail, and reputation indexing.
 
 ### 7.2 Database Backup & Real Restore Drill (Gate A Verified)
 
@@ -307,6 +310,29 @@ The dispute engine mediates conflicts between project participants (Client and C
 - **Idempotent Refund Requests**: Each refund command requires an `Idempotency-Key`. Re-requests with identical payloads return the existing refund record; payload alterations with duplicate keys are rejected with `409 Conflict`.
 - **Webhook Reconciliation**: Out-of-order or asynchronous provider webhook events (`refund.processed`, `refund.created`) reconcile the internal refund state and outbox events safely.
 
+### 10.4 Reviews, Reputation Metrics & Platform Governance
+
+- **Eligibility Policy**:
+  - Only completed projects (`project.status === 'COMPLETED'`) are eligible to receive reviews. Cancelled, draft, or in-progress projects are strictly rejected (`400 Bad Request: PROJECT_NOT_REVIEWABLE`).
+  - Active unresolved disputes (`OPEN`, `UNDER_REVIEW`, `EVIDENCE_REQUESTED`) block review creation until fully arbitrated.
+  - Only authenticated project participants (`clientId` or `talentId`) can submit reviews. Reciprocal reviews are fully supported (client reviews creator, creator reviews client).
+  - Uniqueness is strictly enforced at the database layer (`@@unique([projectId, reviewerId])`), preventing duplicate or concurrent submissions.
+- **Review Editing Rules**:
+  - Reviews may be edited exclusively by the author within a **48-hour editing window** from submission (`createdAt + 48h`). After 48 hours, edits are rejected (`400 Bad Request: REVIEW_EDIT_WINDOW_EXPIRED`).
+  - Reviews in `HIDDEN` or `REMOVED` status cannot be edited. Every edit increments `editCount` and sets `editedAt`.
+- **Deterministic Bayesian Reputation Formula**:
+  - Raw immutable review records are authoritative. Derived reputation metrics are 100% rebuildable without arbitrary black-box AI scores.
+  - Published review count: $N$.
+  - Exact overall average: $\bar{R} = \frac{\sum R}{N}$ (rounded to 2 decimal places; `null` for cold-start $N = 0$).
+  - Bayesian shrinkage formula:
+    $$S = \frac{C \cdot m + \sum R}{C + N}$$
+    Where prior mean $m = 4.0$ (platform baseline), confidence constant $C = 5.0$.
+    Properties: Cold-start returns `null` (unrated); single early reviews are regressed toward platform baseline to prevent manipulation; converges to true empirical average as $N$ increases.
+- **Platform Governance & Abuse Reporting**:
+  - Authenticated users can report reviews (`SPAM`, `HARASSMENT`, `DEFAMATION`, `INAPPROPRIATE_CONTENT`, `CONFLICT_OF_INTEREST`, `OTHER`). Reporting automatically flags published reviews for administrative review.
+  - Administrators can `HIDE`, `REMOVE`, or `RESTORE` reviews with mandatory reason codes and optional private internal notes.
+  - **Anti-Conflict-of-Interest Guard**: Administrators who are participants in a review (author or reviewee) are strictly prohibited from moderating that review (`403 Forbidden: SELF_MODERATION_NOT_ALLOWED`).
+
 ---
 
 ## 11. Operational Runbooks & Troubleshooting
@@ -371,13 +397,14 @@ pnpm build
 
 ## 13. Backend Changelog
 
-| Phase             | Release Commit | Summary                                                                                                       | Database Changes      | Operational Status                        |
-| :---------------- | :------------- | :------------------------------------------------------------------------------------------------------------ | :-------------------- | :---------------------------------------- |
-| **Phase 0**       | `c6080c4`      | Product & Architecture Lock, ADRs, canonical data model                                                       | Greenfield design     | Approved                                  |
-| **Phase 1–3**     | `aba599b`      | Monorepo setup, Fastify engine, Supabase Auth, JWKS, RBAC                                                     | Migrations 0001       | Verified in CI                            |
-| **Phase 4**       | `b42ffdb`      | Profiles, portfolio CRUD, assignments, atomic hiring, FTS                                                     | 15 models             | Verified in CI                            |
-| **Phase 5**       | `58e8ae0`      | Realtime Socket.IO, Outbox relay, ClamAV scanning, Moderation                                                 | 32 models (0001–0004) | Promoted to `dev` & `main`                |
-| **Stage 5 Ops**   | `801806e`      | Operational verification: Restore drill PASS, Probes PASS, External alerts NOT_VERIFIED, Prod secrets BLOCKED | 32 models (verified)  | **Gates Evaluated (Prod Blocked)**        |
-| **Phase 6 Inc 1** | `0955bc1`      | Projects & Deliverables: contract milestones, submission review workflows, optimistic concurrency             | 34 models (0005)      | Promoted to `dev`                         |
-| **Phase 6 Inc 2** | `27fc1a4`      | Payments, Ledger & Escrow Foundation: immutable double-entry ledger, payment intents, webhooks                | 40 models (0006)      | Promoted to `dev`                         |
-| **Phase 6 Inc 3** | `56e16af`      | Disputes, Cancellations, Refunds & Financial Recovery: state machines, compensating ledger, outbox events     | 45 models (0007)      | Branch `feature/phase-6-disputes-refunds` |
+| Phase             | Release Commit | Summary                                                                                                       | Database Changes      | Operational Status                          |
+| :---------------- | :------------- | :------------------------------------------------------------------------------------------------------------ | :-------------------- | :------------------------------------------ |
+| **Phase 0**       | `c6080c4`      | Product & Architecture Lock, ADRs, canonical data model                                                       | Greenfield design     | Approved                                    |
+| **Phase 1–3**     | `aba599b`      | Monorepo setup, Fastify engine, Supabase Auth, JWKS, RBAC                                                     | Migrations 0001       | Verified in CI                              |
+| **Phase 4**       | `b42ffdb`      | Profiles, portfolio CRUD, assignments, atomic hiring, FTS                                                     | 15 models             | Verified in CI                              |
+| **Phase 5**       | `58e8ae0`      | Realtime Socket.IO, Outbox relay, ClamAV scanning, Moderation                                                 | 32 models (0001–0004) | Promoted to `dev` & `main`                  |
+| **Stage 5 Ops**   | `801806e`      | Operational verification: Restore drill PASS, Probes PASS, External alerts NOT_VERIFIED, Prod secrets BLOCKED | 32 models (verified)  | **Gates Evaluated (Prod Blocked)**          |
+| **Phase 6 Inc 1** | `0955bc1`      | Projects & Deliverables: contract milestones, submission review workflows, optimistic concurrency             | 34 models (0005)      | Promoted to `dev`                           |
+| **Phase 6 Inc 2** | `27fc1a4`      | Payments, Ledger & Escrow Foundation: immutable double-entry ledger, payment intents, webhooks                | 40 models (0006)      | Promoted to `dev`                           |
+| **Phase 6 Inc 3** | `56e16af`      | Disputes, Cancellations, Refunds & Financial Recovery: state machines, compensating ledger, outbox events     | 45 models (0007)      | Branch `feature/phase-6-disputes-refunds`   |
+| **Phase 6 Inc 4** | `0bdfe08`      | Reviews, Reputation Scoring & Governance: verified reviews, Bayesian scoring, 48h edit window, moderation     | 48 models (0008)      | Branch `feature/phase-6-reviews-governance` |

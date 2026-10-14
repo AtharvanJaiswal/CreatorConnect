@@ -317,3 +317,63 @@ export class FinancialReconciliationRequiredError extends AppError {
     super(409, 'FINANCIAL_RECONCILIATION_REQUIRED', 'Financial Reconciliation Required', detail);
   }
 }
+
+export class ProjectNotReviewableError extends AppError {
+  constructor(
+    detail = 'Project is not eligible for reviews. Only completed projects without unresolved disputes can be reviewed.',
+  ) {
+    super(400, 'PROJECT_NOT_REVIEWABLE', 'Project Not Reviewable', detail);
+  }
+}
+
+export class ReviewAlreadyExistsError extends AppError {
+  constructor(detail = 'You have already submitted a review for this project.') {
+    super(409, 'REVIEW_ALREADY_EXISTS', 'Review Already Exists', detail);
+  }
+}
+
+export class ReviewNotFoundError extends AppError {
+  constructor(detail = 'Review not found.') {
+    super(404, 'REVIEW_NOT_FOUND', 'Review Not Found', detail);
+  }
+}
+
+export class ReviewEditWindowExpiredError extends AppError {
+  constructor(detail = 'Review can only be edited within 48 hours of initial publication.') {
+    super(400, 'REVIEW_EDIT_WINDOW_EXPIRED', 'Review Edit Window Expired', detail);
+  }
+}
+
+export class ReviewAlreadyModeratedError extends AppError {
+  constructor(detail = 'Moderated or removed reviews cannot be edited.') {
+    super(400, 'REVIEW_ALREADY_MODERATED', 'Review Already Moderated', detail);
+  }
+}
+
+export class ReviewReportAlreadyExistsError extends AppError {
+  constructor(detail = 'You have already reported this review.') {
+    super(409, 'REVIEW_REPORT_ALREADY_EXISTS', 'Review Report Already Exists', detail);
+  }
+}
+
+export class SelfReviewNotAllowedError extends AppError {
+  constructor(detail = 'Users cannot submit reviews for themselves.') {
+    super(400, 'SELF_REVIEW_NOT_ALLOWED', 'Self Review Not Allowed', detail);
+  }
+}
+
+export class SelfModerationNotAllowedError extends AppError {
+  constructor(
+    detail = 'Administrators cannot moderate reviews in which they are a participant (conflict of interest).',
+  ) {
+    super(403, 'SELF_MODERATION_NOT_ALLOWED', 'Self Moderation Not Allowed', detail);
+  }
+}
+
+export class NotProjectParticipantError extends AppError {
+  constructor(
+    detail = 'Only project participants (client or talent) are authorized to perform this operation.',
+  ) {
+    super(403, 'NOT_PROJECT_PARTICIPANT', 'Not Project Participant', detail);
+  }
+}
