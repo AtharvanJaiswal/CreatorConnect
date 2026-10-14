@@ -489,7 +489,31 @@ export class PaymentsService {
             },
           });
 
-          const feeReversal = Math.floor(refundAmount * 0.1);
+          // Calculate transaction-specific fee reversal dynamically with cumulative rounding precision
+          const priorRefunds = await tx.refund.findMany({
+            where: {
+              paymentIntentId: intent.id,
+              status: 'SUCCEEDED',
+              id: { not: refund.id },
+            },
+            select: { amount: true },
+          });
+          const priorFeeReversed = priorRefunds.reduce((acc, r) => {
+            return (
+              acc +
+              (intent.amount > 0 ? Math.floor((r.amount * intent.platformFee) / intent.amount) : 0)
+            );
+          }, 0);
+
+          const totalRefundedSoFar =
+            priorRefunds.reduce((acc, r) => acc + r.amount, 0) + refundAmount;
+          const isFinalRefund = totalRefundedSoFar >= intent.amount;
+          const feeReversal = isFinalRefund
+            ? Math.max(0, intent.platformFee - priorFeeReversed)
+            : intent.amount > 0
+              ? Math.floor((totalRefundedSoFar * intent.platformFee) / intent.amount) -
+                priorFeeReversed
+              : 0;
           const escrowReversal = refundAmount - feeReversal;
 
           await this.ledger.postTransaction(
@@ -602,12 +626,53 @@ export class PaymentsService {
       throw new ForbiddenError('Only the project client can release escrow funds.');
     }
 
+    if (project.status === 'DISPUTED') {
+      throw new BadRequestError('Cannot release escrow funds while project has an active dispute.');
+    }
+    if (project.status === 'CANCELLED') {
+      throw new BadRequestError('Cannot release escrow funds for a cancelled project.');
+    }
+
     const currentEscrowBalance = await this.ledger.getProjectEscrowBalance(projectId);
     if (currentEscrowBalance <= 0) {
       throw new BadRequestError('No funded escrow balance available to release for this project.');
     }
 
     return await this.prisma.$transaction(async (tx) => {
+      // Row-level lock on project to serialize concurrent escrow release, disputes, and cancellations
+      await tx.$queryRaw`SELECT id FROM "projects" WHERE id = ${projectId}::uuid FOR UPDATE`;
+      const currentProject = await tx.project.findUniqueOrThrow({
+        where: { id: projectId },
+      });
+      if (currentProject.status === 'DISPUTED') {
+        throw new BadRequestError(
+          'Cannot release escrow funds while project has an active dispute.',
+        );
+      }
+      if (currentProject.status === 'CANCELLED') {
+        throw new BadRequestError('Cannot release escrow funds for a cancelled project.');
+      }
+
+      // Check for pending or in-flight refund reservations to prevent concurrent escrow drain
+      const inFlightRefunds = await tx.refund.count({
+        where: {
+          projectId,
+          status: { in: ['PENDING', 'PROCESSING'] },
+        },
+      });
+      if (inFlightRefunds > 0) {
+        throw new BadRequestError(
+          'Cannot release escrow funds while there are pending or in-flight refund reservations for this project.',
+        );
+      }
+
+      const currentEscrowBalance = await this.ledger.getProjectEscrowBalance(projectId, tx);
+      if (currentEscrowBalance <= 0) {
+        throw new BadRequestError(
+          'No funded escrow balance available to release for this project.',
+        );
+      }
+
       // Transfer from Project Escrow Liability to Creator Payable Liability
       await this.ledger.postTransaction(
         {
@@ -701,53 +766,134 @@ export class PaymentsService {
       }
     }
 
-    // 2. Fetch Payment Intent and Validate Invariants
-    const intent = await this.repo.findIntentById(paymentIntentId);
-    if (!intent) {
-      throw new NotFoundError('Payment intent not found.');
-    }
-
-    const isClient = intent.clientId === callerUserId;
-    if (!isClient && !isAdmin) {
-      throw new ForbiddenError(
-        'Only the paying client or platform administrators can request refunds.',
-      );
-    }
-
-    if (intent.status !== 'SUCCEEDED' && intent.status !== 'PARTIALLY_REFUNDED') {
-      throw new RefundStateError(
-        `Cannot issue refund for payment intent in '${intent.status}' state. Only captured payments can be refunded.`,
-      );
-    }
-
-    if (!Number.isInteger(input.amount) || input.amount <= 0) {
-      throw new BadRequestError('Refund amount must be a positive integer in minor units (paisa).');
-    }
-
-    const alreadyRefunded = await this.repo.sumRefundedAmountForIntent(paymentIntentId);
-    const refundableAmount = intent.amount - alreadyRefunded;
-
-    if (input.amount > refundableAmount) {
-      throw new RefundExceedsCapturableAmountError(
-        `Requested refund amount (${input.amount}) exceeds total remaining refundable amount (${refundableAmount}).`,
-      );
-    }
-
-    const feeRatio = 0.1;
-    const feeReversal = Math.floor(input.amount * feeRatio);
-    const escrowReversal = input.amount - feeReversal;
-    const currentEscrow = await this.ledger.getProjectEscrowBalance(intent.projectId);
-
-    if (currentEscrow < escrowReversal) {
-      throw new RefundExceedsCapturableAmountError(
-        `Insufficient escrow balance (${currentEscrow}) to process refund (requires ${escrowReversal} from escrow). Milestone funds may have already been released.`,
-      );
-    }
-
     const refundId = generateUuidV7();
+
+    // 2. Pre-Provider Reservation Phase with Exclusive Row Locking
+    // Ensures real concurrent requests serialize at database level and cannot cause provider overdrafts
+    const reservation = await this.prisma.$transaction(async (tx) => {
+      // Find parent project first to adhere to strict global lock ordering: projects -> payment_intents
+      const targetIntent = await tx.paymentIntent.findUnique({
+        where: { id: paymentIntentId },
+        select: { id: true, projectId: true },
+      });
+      if (!targetIntent) {
+        throw new NotFoundError('Payment intent not found.');
+      }
+
+      // 1. Strict lock ordering: projects row-lock first, payment_intents second (deadlock prevention)
+      await tx.$queryRaw`SELECT id FROM "projects" WHERE id = ${targetIntent.projectId}::uuid FOR UPDATE`;
+      await tx.$queryRaw`SELECT id FROM "payment_intents" WHERE id = ${paymentIntentId}::uuid FOR UPDATE`;
+
+      const intent = await tx.paymentIntent.findUnique({
+        where: { id: paymentIntentId },
+        include: { project: true },
+      });
+      if (!intent) {
+        throw new NotFoundError('Payment intent not found.');
+      }
+
+      const isClient = intent.clientId === callerUserId;
+      if (!isClient && !isAdmin) {
+        throw new ForbiddenError(
+          'Only the paying client or platform administrators can request refunds.',
+        );
+      }
+
+      if (intent.status !== 'SUCCEEDED' && intent.status !== 'PARTIALLY_REFUNDED') {
+        throw new RefundStateError(
+          `Cannot issue refund for payment intent in '${intent.status}' state. Only captured payments can be refunded.`,
+        );
+      }
+
+      if (!Number.isInteger(input.amount) || input.amount <= 0) {
+        throw new BadRequestError(
+          'Refund amount must be a positive integer in minor units (paisa).',
+        );
+      }
+
+      // Check active dispute protection: Client cannot bypass dispute with unilateral refund
+      if (
+        intent.project.status === 'DISPUTED' &&
+        input.reason !== 'DISPUTE_RESOLUTION' &&
+        !isAdmin
+      ) {
+        throw new BadRequestError(
+          'Cannot initiate standard client refund while project has an active dispute. Refund must be processed via dispute resolution.',
+        );
+      }
+
+      // Sum existing refunds including PENDING and PROCESSING reservations
+      const aggregateInTx = await tx.refund.aggregate({
+        where: {
+          paymentIntentId,
+          status: { in: ['SUCCEEDED', 'PROCESSING', 'PENDING'] },
+        },
+        _sum: { amount: true },
+      });
+      const alreadyRefundedOrReserved = aggregateInTx._sum.amount ?? 0;
+      const remainingCapturable = intent.amount - alreadyRefundedOrReserved;
+
+      if (input.amount > remainingCapturable) {
+        throw new RefundExceedsCapturableAmountError(
+          `Requested refund amount (${input.amount}) exceeds total remaining refundable amount (${remainingCapturable}).`,
+        );
+      }
+
+      // Exact cumulative fee calculation to prevent rounding leakage across multiple partial refunds
+      const priorRefunds = await tx.refund.findMany({
+        where: {
+          paymentIntentId,
+          status: { in: ['SUCCEEDED', 'PROCESSING'] },
+        },
+        select: { amount: true },
+      });
+      const priorFeeReversed = priorRefunds.reduce((acc, r) => {
+        return (
+          acc +
+          (intent.amount > 0 ? Math.floor((r.amount * intent.platformFee) / intent.amount) : 0)
+        );
+      }, 0);
+
+      const isFinalRefund = alreadyRefundedOrReserved + input.amount >= intent.amount;
+      const feeReversal = isFinalRefund
+        ? Math.max(0, intent.platformFee - priorFeeReversed)
+        : intent.amount > 0
+          ? Math.floor(
+              ((alreadyRefundedOrReserved + input.amount) * intent.platformFee) / intent.amount,
+            ) - priorFeeReversed
+          : 0;
+      const escrowReversal = input.amount - feeReversal;
+
+      const currentEscrow = await this.ledger.getProjectEscrowBalance(intent.projectId, tx);
+      if (currentEscrow < escrowReversal) {
+        throw new RefundExceedsCapturableAmountError(
+          `Insufficient escrow balance (${currentEscrow}) to process refund (requires ${escrowReversal} from escrow). Milestone funds may have already been released.`,
+        );
+      }
+
+      // Create initial PENDING reservation in database before calling external payment provider
+      await tx.refund.create({
+        data: {
+          id: refundId,
+          paymentIntentId,
+          projectId: intent.projectId,
+          refundedById: callerUserId,
+          amount: input.amount,
+          currency: intent.currency,
+          reason: input.reason,
+          status: 'PENDING',
+          provider: intent.provider,
+          idempotencyKey: input.idempotencyKey ?? null,
+        },
+      });
+
+      return { intent, feeReversal, escrowReversal, alreadyRefundedOrReserved };
+    });
+
+    const { intent, feeReversal, escrowReversal } = reservation;
     const provider = getPaymentProvider(intent.provider);
 
-    // 3. Provider Refund Execution OUTSIDE database transaction
+    // 3. Provider Refund Execution strictly OUTSIDE database transaction
     let providerRefundResult: { providerRefundId: string; status: string };
     try {
       providerRefundResult = await provider.createRefund({
@@ -762,151 +908,188 @@ export class PaymentsService {
         },
       });
     } catch (err: any) {
-      await this.prisma.refund.create({
-        data: {
-          id: refundId,
-          paymentIntentId,
-          projectId: intent.projectId,
-          refundedById: callerUserId,
-          amount: input.amount,
-          currency: intent.currency,
-          reason: input.reason,
-          status: 'FAILED',
-          provider: intent.provider,
-          idempotencyKey: input.idempotencyKey ?? null,
-          errorMessage: err.message,
-        },
-      });
+      // Determine if failure is an ambiguous network timeout vs definitive provider rejection
+      const isAmbiguousTimeout =
+        err.name === 'TimeoutError' ||
+        err.code === 'ETIMEDOUT' ||
+        err.code === 'ECONNRESET' ||
+        err.code === 'ECONNREFUSED' ||
+        /timeout|timed out|network|hang up|reset/i.test(err.message || '');
 
-      throw new PaymentProviderError(`Payment provider rejected refund: ${err.message}`);
+      if (isAmbiguousTimeout) {
+        // Ambiguous timeout: retain reservation as PROCESSING so recovery/webhook can reconcile without double-refund overdraft
+        await this.prisma.refund.update({
+          where: { id: refundId },
+          data: {
+            status: 'PROCESSING',
+            errorMessage: `Ambiguous provider response (${err.message}). Awaiting reconciliation or webhook.`,
+          },
+        });
+
+        throw new PaymentProviderError(
+          `Refund status is ambiguous due to gateway timeout/disconnect: ${err.message}. Reservation retained for administrative reconciliation.`,
+        );
+      } else {
+        // Definitive provider rejection: mark reservation as FAILED so balance is released
+        await this.prisma.refund.update({
+          where: { id: refundId },
+          data: {
+            status: 'FAILED',
+            errorMessage: err.message,
+          },
+        });
+
+        throw new PaymentProviderError(`Payment provider rejected refund: ${err.message}`);
+      }
     }
 
-    // 4. Atomic Database Transaction
-    return await this.prisma.$transaction(async (tx) => {
-      const isSucceeded = providerRefundResult.status === 'succeeded';
-      const status: RefundStatus = isSucceeded ? 'SUCCEEDED' : 'PROCESSING';
-      const now = new Date();
+    // 4. Atomic Settlement Transaction with Row Locking
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        // Strict lock ordering: projects first, payment_intents second
+        await tx.$queryRaw`SELECT id FROM "projects" WHERE id = ${intent.projectId}::uuid FOR UPDATE`;
+        await tx.$queryRaw`SELECT id FROM "payment_intents" WHERE id = ${paymentIntentId}::uuid FOR UPDATE`;
 
-      const refund = await tx.refund.create({
-        data: {
-          id: refundId,
-          paymentIntentId,
-          projectId: intent.projectId,
-          refundedById: callerUserId,
-          amount: input.amount,
-          currency: intent.currency,
-          reason: input.reason,
-          status,
-          provider: intent.provider,
-          providerRefundId: providerRefundResult.providerRefundId,
-          idempotencyKey: input.idempotencyKey ?? null,
-          processedAt: isSucceeded ? now : null,
-        },
-      });
+        const isSucceeded = providerRefundResult.status === 'succeeded';
+        const status: RefundStatus = isSucceeded ? 'SUCCEEDED' : 'PROCESSING';
+        const now = new Date();
 
-      if (isSucceeded) {
-        // Compensating balanced double-entry ledger entries
-        await this.ledger.postTransaction(
-          {
-            paymentIntentId,
-            type: 'PAYMENT_REFUNDED',
-            description: `Compensating refund entry for payment intent ${paymentIntentId}`,
-            entries: [
-              {
-                accountCode: `LIABILITIES:ESCROW_HOLDING:${intent.projectId}`,
-                accountName: `Project Escrow Holding for ${intent.projectId}`,
-                accountType: 'LIABILITY',
-                direction: 'DEBIT',
-                amount: escrowReversal,
-                currency: intent.currency,
+        const refund = await tx.refund.update({
+          where: { id: refundId },
+          data: {
+            status,
+            providerRefundId: providerRefundResult.providerRefundId,
+            processedAt: isSucceeded ? now : null,
+          },
+        });
+
+        if (isSucceeded) {
+          // Compensating balanced double-entry ledger entries
+          await this.ledger.postTransaction(
+            {
+              paymentIntentId,
+              type: 'PAYMENT_REFUNDED',
+              description: `Compensating refund entry for payment intent ${paymentIntentId}`,
+              entries: [
+                {
+                  accountCode: `LIABILITIES:ESCROW_HOLDING:${intent.projectId}`,
+                  accountName: `Project Escrow Holding for ${intent.projectId}`,
+                  accountType: 'LIABILITY',
+                  direction: 'DEBIT',
+                  amount: escrowReversal,
+                  currency: intent.currency,
+                  projectId: intent.projectId,
+                },
+                {
+                  accountCode: 'REVENUE:PLATFORM_FEE',
+                  accountName: 'CreatorConnect Platform Take Rate',
+                  accountType: 'REVENUE',
+                  direction: 'DEBIT',
+                  amount: feeReversal,
+                  currency: intent.currency,
+                },
+                {
+                  accountCode: `ASSETS:PROCESSOR_CLEARING:${intent.provider}`,
+                  accountName: `${intent.provider} Settlement Clearing`,
+                  accountType: 'ASSET',
+                  direction: 'CREDIT',
+                  amount: input.amount,
+                  currency: intent.currency,
+                },
+              ],
+            },
+            tx,
+          );
+
+          const totalSucceeded = await tx.refund.aggregate({
+            where: {
+              paymentIntentId,
+              status: 'SUCCEEDED',
+            },
+            _sum: { amount: true },
+          });
+          const totalRefunded = totalSucceeded._sum.amount ?? input.amount;
+          const isFullyRefunded = totalRefunded >= intent.amount;
+
+          await tx.paymentIntent.update({
+            where: { id: paymentIntentId },
+            data: {
+              status: isFullyRefunded ? 'REFUNDED' : 'PARTIALLY_REFUNDED',
+              version: { increment: 1 },
+            },
+          });
+
+          await tx.outboxEvent.create({
+            data: {
+              id: generateUuidV7(),
+              eventType: 'refund.succeeded.v1',
+              aggregateType: 'Refund',
+              aggregateId: refundId,
+              payload: {
+                refundId,
+                paymentIntentId,
                 projectId: intent.projectId,
-              },
-              {
-                accountCode: 'REVENUE:PLATFORM_FEE',
-                accountName: 'CreatorConnect Platform Take Rate',
-                accountType: 'REVENUE',
-                direction: 'DEBIT',
-                amount: feeReversal,
-                currency: intent.currency,
-              },
-              {
-                accountCode: `ASSETS:PROCESSOR_CLEARING:${intent.provider}`,
-                accountName: `${intent.provider} Settlement Clearing`,
-                accountType: 'ASSET',
-                direction: 'CREDIT',
                 amount: input.amount,
                 currency: intent.currency,
+                providerRefundId: providerRefundResult.providerRefundId,
+                processedAt: now.toISOString(),
               },
-            ],
-          },
-          tx,
-        );
-
-        const newTotalRefunded = alreadyRefunded + input.amount;
-        const isFullyRefunded = newTotalRefunded >= intent.amount;
-
-        await tx.paymentIntent.update({
-          where: { id: paymentIntentId },
-          data: {
-            status: isFullyRefunded ? 'REFUNDED' : 'PARTIALLY_REFUNDED',
-            version: { increment: 1 },
-          },
-        });
-
-        await tx.outboxEvent.create({
-          data: {
-            id: generateUuidV7(),
-            eventType: 'refund.succeeded.v1',
-            aggregateType: 'Refund',
-            aggregateId: refundId,
-            payload: {
-              refundId,
-              paymentIntentId,
-              projectId: intent.projectId,
-              amount: input.amount,
-              currency: intent.currency,
-              providerRefundId: providerRefundResult.providerRefundId,
-              processedAt: now.toISOString(),
+              status: 'PENDING',
             },
-            status: 'PENDING',
-          },
-        });
-      } else {
-        await tx.outboxEvent.create({
-          data: {
-            id: generateUuidV7(),
-            eventType: 'refund.processing.v1',
-            aggregateType: 'Refund',
-            aggregateId: refundId,
-            payload: {
-              refundId,
-              paymentIntentId,
-              projectId: intent.projectId,
-              amount: input.amount,
-              providerRefundId: providerRefundResult.providerRefundId,
+          });
+        } else {
+          await tx.outboxEvent.create({
+            data: {
+              id: generateUuidV7(),
+              eventType: 'refund.processing.v1',
+              aggregateType: 'Refund',
+              aggregateId: refundId,
+              payload: {
+                refundId,
+                paymentIntentId,
+                projectId: intent.projectId,
+                amount: input.amount,
+                providerRefundId: providerRefundResult.providerRefundId,
+              },
+              status: 'PENDING',
             },
-            status: 'PENDING',
+          });
+        }
+
+        const mapped = this.mapRefund(refund);
+
+        if (input.idempotencyKey) {
+          await this.idempotency.record(
+            scope,
+            input.idempotencyKey,
+            input,
+            201,
+            mapped,
+            refundId,
+            24,
+            tx,
+          );
+        }
+
+        return mapped;
+      });
+    } catch (dbErr: any) {
+      // Provider succeeded, but settlement DB transaction failed.
+      // Update existing PENDING refund to PROCESSING with providerRefundId for administrative reconciliation.
+      try {
+        await this.prisma.refund.update({
+          where: { id: refundId },
+          data: {
+            status: 'PROCESSING',
+            providerRefundId: providerRefundResult.providerRefundId,
+            errorMessage: `Provider refund succeeded (${providerRefundResult.providerRefundId}) but local database transaction failed: ${dbErr.message}`,
           },
         });
+      } catch {
+        // Non-fatal if fallback update fails; the PENDING record already exists in DB
       }
-
-      const mapped = this.mapRefund(refund);
-
-      if (input.idempotencyKey) {
-        await this.idempotency.record(
-          scope,
-          input.idempotencyKey,
-          input,
-          201,
-          mapped,
-          refundId,
-          24,
-          tx,
-        );
-      }
-
-      return mapped;
-    });
+      throw dbErr;
+    }
   }
 
   async getRefund(
@@ -970,6 +1153,17 @@ export class PaymentsService {
     const now = new Date();
 
     return await this.prisma.$transaction(async (tx) => {
+      // Strict lock ordering: projects first, payment_intents second
+      await tx.$queryRaw`SELECT id FROM "projects" WHERE id = ${intent.projectId}::uuid FOR UPDATE`;
+      await tx.$queryRaw`SELECT id FROM "payment_intents" WHERE id = ${intent.id}::uuid FOR UPDATE`;
+
+      const currentRefund = await tx.refund.findUniqueOrThrow({
+        where: { id: refundId },
+      });
+      if (currentRefund.status === 'SUCCEEDED') {
+        return this.mapRefund(currentRefund);
+      }
+
       const updated = await tx.refund.update({
         where: { id: refundId },
         data: {
@@ -978,8 +1172,37 @@ export class PaymentsService {
         },
       });
 
-      const feeReversal = Math.floor(refund.amount * 0.1);
+      // Transaction-specific proportional fee reversal from actual intent records
+      const priorRefunds = await tx.refund.findMany({
+        where: {
+          paymentIntentId: intent.id,
+          status: 'SUCCEEDED',
+          id: { not: refundId },
+        },
+        select: { amount: true },
+      });
+      const priorFeeReversed = priorRefunds.reduce((acc, r) => {
+        return (
+          acc +
+          (intent.amount > 0 ? Math.floor((r.amount * intent.platformFee) / intent.amount) : 0)
+        );
+      }, 0);
+
+      const totalRefundedSoFar = priorRefunds.reduce((acc, r) => acc + r.amount, 0) + refund.amount;
+      const isFinalRefund = totalRefundedSoFar >= intent.amount;
+      const feeReversal = isFinalRefund
+        ? Math.max(0, intent.platformFee - priorFeeReversed)
+        : intent.amount > 0
+          ? Math.floor((totalRefundedSoFar * intent.platformFee) / intent.amount) - priorFeeReversed
+          : 0;
       const escrowReversal = refund.amount - feeReversal;
+
+      const currentEscrow = await this.ledger.getProjectEscrowBalance(intent.projectId, tx);
+      if (currentEscrow < escrowReversal) {
+        throw new BadRequestError(
+          `Cannot reconcile refund: Insufficient escrow balance (${currentEscrow}) to absorb escrow reversal (${escrowReversal}). Milestone funds may have already been released.`,
+        );
+      }
 
       await this.ledger.postTransaction(
         {
@@ -1014,15 +1237,7 @@ export class PaymentsService {
         tx,
       );
 
-      const totalPriorRefunds = await tx.refund.aggregate({
-        where: {
-          paymentIntentId: intent.id,
-          status: 'SUCCEEDED',
-        },
-        _sum: { amount: true },
-      });
-      const totalRefunded = totalPriorRefunds._sum.amount ?? refund.amount;
-      const isFullyRefunded = totalRefunded >= intent.amount;
+      const isFullyRefunded = totalRefundedSoFar >= intent.amount;
 
       await tx.paymentIntent.update({
         where: { id: intent.id },

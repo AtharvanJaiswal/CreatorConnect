@@ -193,17 +193,25 @@ export class LedgerService {
     return this.mapAccount(account);
   }
 
-  async getProjectEscrowBalance(projectId: string): Promise<number> {
+  async getProjectEscrowBalance(
+    projectId: string,
+    externalTx?: Prisma.TransactionClient,
+  ): Promise<number> {
+    const client = externalTx || this.prisma;
     const code = `LIABILITIES:ESCROW_HOLDING:${projectId}`;
-    const account = await this.prisma.ledgerAccount.findUnique({
+    const account = await client.ledgerAccount.findUnique({
       where: { code },
     });
     return account ? Number(account.balance) : 0;
   }
 
-  async getCreatorPayableBalance(userId: string): Promise<number> {
+  async getCreatorPayableBalance(
+    userId: string,
+    externalTx?: Prisma.TransactionClient,
+  ): Promise<number> {
+    const client = externalTx || this.prisma;
     const code = `LIABILITIES:CREATOR_PAYABLE:${userId}`;
-    const account = await this.prisma.ledgerAccount.findUnique({
+    const account = await client.ledgerAccount.findUnique({
       where: { code },
     });
     return account ? Number(account.balance) : 0;

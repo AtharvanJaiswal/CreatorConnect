@@ -437,9 +437,9 @@ CreatorConnect enforces an automated operational readiness framework (`packages/
 
 ## 13. Roadmap
 
-The complete platform roadmap is structured into 16 phases. Below is the separation between verified implemented milestones and planned future work:
+The complete platform roadmap is structured into 16 phases. Below is the separation between verified implemented milestones, release candidate status, and planned future work:
 
-### Implemented Milestones
+### Implemented & Verified Milestones
 
 - [x] **Phase 0: Product & Architecture Lock**: Completed and documented in `docs/`.
 - [x] **Phase 1: Monorepo & Development Foundation**: Workspaces, tooling, and database containerization.
@@ -448,12 +448,18 @@ The complete platform roadmap is structured into 16 phases. Below is the separat
 - [x] **Phase 4: Profiles, Portfolio, Assignments & Discovery**: 4 personas, portfolio CRUD, presigned media, assignments, atomic hiring, and pg_trgm/tsvector search.
 - [x] **Phase 5: Realtime Messaging, Outbox Events & Moderation**: 32-table database schema, Socket.IO WebSockets cluster with Redis adapter, monotonic sequencing, client idempotency, transactional outbox relay, ClamAV antivirus scanning, user blocking, reports & moderation.
 - [x] **Phase 5 Operational Verification**: Evaluated Gates A–D. Gate A (isolated DB restore drill PASS: RTO 1.4s, RPO 0.4s, SHA-256 match) and Gate D (CI passed & promoted to dev/main). Gate B (external alert delivery NOT_VERIFIED) and Gate C (production secrets BLOCKED) remain pending external production credentials; production deployment is NOT authorized.
+- [x] **Phase 6: Projects, Payments, Disputes, Reviews & Release Integration (Release Candidate)**:
+  - **Increment 1 (Projects & Deliverables)**: Contract initialization, milestone submissions, revision requests, approvals, and optimistic concurrency.
+  - **Increment 2 (Payments & Double-Entry Ledger)**: Double-entry balanced ledger ($\sum \text{debits} \equiv \sum \text{credits}$), payment intents, escrow holding, provider abstractions, and signed webhooks.
+  - **Increment 3 (Disputes, Cancellations & Refunds)**: Formal dispute lifecycle, mutual cancellations, compensating refund ledger entries, and transactional outbox events.
+  - **Increment 4 (Reviews & Reputation Governance)**: Verified 2-sided reviews, 48-hour editing window, deterministic Bayesian reputation scoring, and moderation audit trail.
+  - **Increment 5 (Hardening, Financial Reconciliation & Release Integration)**: Transaction-specific dynamic fee allocations, in-transaction concurrent refund overdraft protection, recoverable states upon provider/database failures, dispute-locked escrow release guards, and end-to-end integration test suite.
+  - **Release Status**: **Release Candidate Verified Locally (68/68 test files, 599/599 tests passed; clean DB migrations 0001–0008; isolated backup/restore drill PASS; 23/23 Playwright E2E smoke tests passed)**. External production gates (live payment credentials, production secrets, RBI compliance) remain strictly **BLOCKED**.
 
-### Planned Milestones
+### Planned Future Milestones
 
-- [ ] **Phase 6: Projects & Deliverable Escrow (Planned)**: Milestone sign-offs, revision workflows, and deliverable watermarking.
-- [ ] **Phase 7: Payments, Ledger & Subscriptions (Planned)**: Razorpay double-entry ledger, webhook verification, and platform fees.
-- [ ] **Phase 8: Reviews, Advanced Moderation & Dispute Arbitration (Planned)**: Double-blind feedback loops and Admin dispute center.
+- [ ] **Phase 7: Subscriptions & Advanced Invoicing (Planned)**: Recurring creator memberships, tax invoices, and multi-currency payouts.
+- [ ] **Phase 8: Advanced AI Content Moderation (Planned)**: Automated image/video safety scanning with ML vision models.
 - [ ] **Phase 9: Observability, Resilience & Load Testing (Planned)**: External SaaS APM integration, PagerDuty alerting delivery, and k6 stress testing.
 - [ ] **Phase 10: Staging Rehearsal & Production Deployment (Planned)**: Multi-AZ AWS ECS deployment with zero-downtime blue/green rollouts.
 - [ ] **Phase 11: Post-Launch Scale & AI Semantic Matching (Planned)**: Vector embeddings (`pgvector`) for natural language creator discovery.

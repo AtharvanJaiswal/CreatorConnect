@@ -122,6 +122,19 @@ export class CancellationsService {
       );
     }
 
+    if (cancellation.project.status === 'DISPUTED') {
+      throw new ProjectNotDisputableError(
+        'Cannot decide cancellation while project has an active dispute.',
+      );
+    }
+
+    const cancellableStatuses = ['IN_PROGRESS', 'SUBMITTED', 'REVISION_REQUESTED'];
+    if (!cancellableStatuses.includes(cancellation.project.status)) {
+      throw new CancellationStateError(
+        `Cannot decide cancellation for project in '${cancellation.project.status}' status.`,
+      );
+    }
+
     // Mutual consent check:
     // If client requested -> talent must decide (or Admin)
     // If talent requested -> client must decide (or Admin)
@@ -144,6 +157,16 @@ export class CancellationsService {
     const now = new Date();
 
     return await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "projects" WHERE id = ${projectId}::uuid FOR UPDATE`;
+      const currentProject = await tx.project.findUniqueOrThrow({
+        where: { id: projectId },
+      });
+      if (currentProject.status === 'DISPUTED') {
+        throw new ProjectNotDisputableError(
+          'Cannot decide cancellation while project has an active dispute.',
+        );
+      }
+
       const updated = await tx.projectCancellation.update({
         where: { id: cancellationId },
         data: {

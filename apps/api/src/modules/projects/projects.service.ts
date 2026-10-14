@@ -171,6 +171,13 @@ export class ProjectsService {
       throw new ForbiddenError('Only the assigned talent can submit deliverables.');
     }
 
+    if (deliverable.project.status === 'DISPUTED') {
+      throw new BadRequestError('Cannot submit deliverables while project is in DISPUTED status.');
+    }
+    if (deliverable.project.status === 'CANCELLED') {
+      throw new BadRequestError('Cannot submit deliverables for a cancelled project.');
+    }
+
     if (deliverable.status !== 'PENDING' && deliverable.status !== 'REVISION_REQUESTED') {
       throw new BadRequestError(
         `Cannot submit deliverable in '${deliverable.status}' status. Only PENDING or REVISION_REQUESTED can be submitted.`,
@@ -180,6 +187,19 @@ export class ProjectsService {
     const now = new Date();
 
     return await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "projects" WHERE id = ${projectId}::uuid FOR UPDATE`;
+      const currentProject = await tx.project.findUniqueOrThrow({
+        where: { id: projectId },
+      });
+      if (currentProject.status === 'DISPUTED') {
+        throw new BadRequestError(
+          'Cannot submit deliverables while project is in DISPUTED status.',
+        );
+      }
+      if (currentProject.status === 'CANCELLED') {
+        throw new BadRequestError('Cannot submit deliverables for a cancelled project.');
+      }
+
       const updatedDeliverable = await tx.projectDeliverable.update({
         where: { id: deliverableId },
         data: {
@@ -238,6 +258,13 @@ export class ProjectsService {
       throw new ForbiddenError('Only the project client can review deliverables.');
     }
 
+    if (deliverable.project.status === 'DISPUTED') {
+      throw new BadRequestError('Cannot review deliverables while project is in DISPUTED status.');
+    }
+    if (deliverable.project.status === 'CANCELLED') {
+      throw new BadRequestError('Cannot review deliverables for a cancelled project.');
+    }
+
     if (deliverable.status !== 'SUBMITTED' && deliverable.status !== 'IN_REVIEW') {
       throw new BadRequestError(
         `Cannot review deliverable in '${deliverable.status}' status. Only SUBMITTED deliverables can be reviewed.`,
@@ -247,6 +274,18 @@ export class ProjectsService {
     const now = new Date();
 
     return await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "projects" WHERE id = ${projectId}::uuid FOR UPDATE`;
+      const currentProject = await tx.project.findUniqueOrThrow({
+        where: { id: projectId },
+      });
+      if (currentProject.status === 'DISPUTED') {
+        throw new BadRequestError(
+          'Cannot review deliverables while project is in DISPUTED status.',
+        );
+      }
+      if (currentProject.status === 'CANCELLED') {
+        throw new BadRequestError('Cannot review deliverables for a cancelled project.');
+      }
       if (input.action === 'APPROVE') {
         const updatedDeliverable = await tx.projectDeliverable.update({
           where: { id: deliverableId },

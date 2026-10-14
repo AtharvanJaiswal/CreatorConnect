@@ -103,6 +103,7 @@ describe('PostgresContainerResolver', () => {
       }
       if (cmd.includes('docker compose ps')) throw new Error('no compose');
       if (cmd.includes('docker ps --filter "status=running"')) {
+        // Simulates GitHub Actions runner output with random container ID and service labels
         return [
           'redis-id-1\trunner-redis\tredis:7-alpine\t0.0.0.0:6379->6379/tcp\tlabel=foo',
           'gha-postgres-id-99\tgithub-actions-service-postgres\tpostgres:16-alpine\t0.0.0.0:5432->5432/tcp\tcom.github.actions.service=postgres',
