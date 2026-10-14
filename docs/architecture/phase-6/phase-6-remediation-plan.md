@@ -1,6 +1,7 @@
 # CreatorConnect — Phase 6 Remediation Plan & Risk Register
 
-**Evaluation Baseline Branch:** `audit/phase-6-financial-security-readiness`  
+**Evaluation Baseline Branch:** `audit/phase-6-operational-readiness`  
+**Base Audit Commit SHA:** `3735fb8`  
 **Base Integration Merge Commit on `dev`:** `4e5cb2241aae58dbf605e2ffd8a2793a7db09fbb`  
 **Auditor Roles:** Principal Software Architect, Application Security Engineer, and Financial Systems Engineer  
 **Scope:** Defect Classification, Remediation Tracking, Production Readiness Roadmap, and Operational Action Items.
