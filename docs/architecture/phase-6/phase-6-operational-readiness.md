@@ -13,13 +13,13 @@
 
 All 8 Prisma migrations apply sequentially from a pristine state without errors:
 
-1. `0001_initial_core`
-2. `0002_phase_4_identity_roles_profiles`
-3. `0003_phase_4_assignments_applications`
-4. `0004_phase_4_media_storage_pipeline`
-5. `0005_phase_5_messaging_realtime_outbox`
-6. `0006_projects_and_deliverables`
-7. `0007_payments_and_ledger`
+1. `0001_init_identity_and_roles`
+2. `0002_profiles_portfolio_assignments_applications`
+3. `0003_messaging_outbox_notifications_moderation`
+4. `0004_notifications_event_id_idempotency`
+5. `0005_projects_and_deliverables`
+6. `0006_payments_ledger_and_escrow`
+7. `0007_disputes_cancellations_and_refunds`
 8. `0008_reviews_and_reputation`
 
 - **Database Table Count:** Exactly 48 tables verified across public schema.

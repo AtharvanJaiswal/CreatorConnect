@@ -11,7 +11,7 @@
 
 ### Invariant F-INV-1: Integer Minor Units (Zero Floating-Point)
 
-- All monetary amounts across the database schema (`payment_intents.amount`, `payment_intents.platformFee`, `ledger_entries.amount`, `refunds.amount`, `refunds.platformFeeReversed`) are stored as **64-bit BigInt / PostgreSQL `bigint`** representing integer minor units (paise for INR, 1 INR = 100 paise).
+- All monetary amounts across the database schema (`payment_intents.amount`, `payment_intents.platformFee`, `ledger_entries.amount`, `refunds.amount` as PostgreSQL `INTEGER`, and `ledger_accounts.balance` as PostgreSQL `BIGINT`) represent **integer minor units** (paise for INR, 1 INR = 100 paise).
 - Floating-point numbers (`number` with decimals) are strictly prohibited in financial calculation paths.
 - Division operations use explicit integer flooring (`Math.floor`) with remainder reconciliation.
 

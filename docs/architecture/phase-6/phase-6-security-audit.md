@@ -28,25 +28,28 @@ All endpoints in Phase 6 distinguish between authentication (verifying caller id
 
 ### 2.1 Object-Level Authorization Matrix
 
-| Endpoint / Action                        | Actor Role        | Ownership / Relationship       | User Status | Expected Result      | Verified Result      | Test Spec Reference                   |
-| :--------------------------------------- | :---------------- | :----------------------------- | :---------- | :------------------- | :------------------- | :------------------------------------ |
-| `POST /api/v1/projects`                  | `BRAND`           | Self                           | `ACTIVE`    | `201 CREATED`        | `201 CREATED`        | `projects.spec.ts`                    |
-| `POST /api/v1/projects`                  | `CREATOR`         | Self                           | `ACTIVE`    | `403 FORBIDDEN`      | `403 FORBIDDEN`      | `projects.spec.ts`                    |
-| `POST /api/v1/projects/:id/deliverables` | `CREATOR`         | Project Assignee               | `ACTIVE`    | `201 CREATED`        | `201 CREATED`        | `phase-6-release-integration.spec.ts` |
-| `POST /api/v1/projects/:id/deliverables` | `CREATOR`         | Unrelated Project              | `ACTIVE`    | `403 FORBIDDEN`      | `403 FORBIDDEN`      | `phase-6-release-integration.spec.ts` |
-| `POST /api/v1/projects/:id/release`      | `BRAND`           | Project Owner                  | `ACTIVE`    | `200 OK`             | `200 OK`             | `phase-6-release-integration.spec.ts` |
-| `POST /api/v1/projects/:id/release`      | `CREATOR`         | Project Assignee               | `ACTIVE`    | `403 FORBIDDEN`      | `403 FORBIDDEN`      | `phase-6-release-integration.spec.ts` |
-| `POST /api/v1/projects/:id/release`      | `BRAND`           | Project Owner (Active Dispute) | `ACTIVE`    | `400 BAD_REQUEST`    | `400 BAD_REQUEST`    | `phase-6-release-integration.spec.ts` |
-| `POST /api/v1/projects/:id/refunds`      | `BRAND`           | Project Owner (Active Dispute) | `ACTIVE`    | `400 BAD_REQUEST`    | `400 BAD_REQUEST`    | `phase-6-release-integration.spec.ts` |
-| `POST /api/v1/disputes`                  | `BRAND`/`CREATOR` | Project Participant            | `ACTIVE`    | `201 CREATED`        | `201 CREATED`        | `disputes.spec.ts`                    |
-| `POST /api/v1/disputes`                  | Any Role          | Unrelated User                 | `ACTIVE`    | `403 FORBIDDEN`      | `403 FORBIDDEN`      | `disputes.spec.ts`                    |
-| `POST /api/v1/disputes/:id/resolve`      | `ADMIN`           | Platform Admin                 | `ACTIVE`    | `200 OK`             | `200 OK`             | `disputes.spec.ts`                    |
-| `POST /api/v1/disputes/:id/resolve`      | `BRAND`           | Dispute Initiator              | `ACTIVE`    | `403 FORBIDDEN`      | `403 FORBIDDEN`      | `disputes.spec.ts`                    |
-| `POST /api/v1/reviews`                   | `BRAND`/`CREATOR` | Completed Project Participant  | `ACTIVE`    | `201 CREATED`        | `201 CREATED`        | `reviews.spec.ts`                     |
-| `POST /api/v1/reviews`                   | `BRAND`/`CREATOR` | Incomplete / Disputed Project  | `ACTIVE`    | `400 BAD_REQUEST`    | `400 BAD_REQUEST`    | `reviews.spec.ts`                     |
-| `POST /api/v1/reviews`                   | Any Role          | Self-Review (Target = Caller)  | `ACTIVE`    | `400 BAD_REQUEST`    | `400 BAD_REQUEST`    | `reviews.spec.ts`                     |
-| Any Mutation Endpoint                    | Any Role          | Any                            | `SUSPENDED` | `403 USER_SUSPENDED` | `403 USER_SUSPENDED` | `security-integration.spec.ts`        |
-| Any Endpoint                             | Anonymous         | N/A                            | N/A         | `401 UNAUTHORIZED`   | `401 UNAUTHORIZED`   | `security-integration.spec.ts`        |
+| Endpoint / Action                                              | Actor Role        | Ownership / Relationship       | User Status | Expected Result       | Verified Result       | Test Spec Reference                        |
+| :------------------------------------------------------------- | :---------------- | :----------------------------- | :---------- | :-------------------- | :-------------------- | :----------------------------------------- |
+| `POST /api/v1/projects`                                        | `BRAND`           | Self                           | `ACTIVE`    | `201 CREATED`         | `201 CREATED`         | `projects.spec.ts`                         |
+| `POST /api/v1/projects`                                        | `CREATOR`         | Self                           | `ACTIVE`    | `403 FORBIDDEN`       | `403 FORBIDDEN`       | `projects.spec.ts`                         |
+| `POST /api/v1/projects/:id/deliverables/:deliverableId/submit` | `CREATOR`         | Project Assignee               | `ACTIVE`    | `200 OK`              | `200 OK`              | `phase-6-release-integration.spec.ts`      |
+| `POST /api/v1/projects/:id/deliverables/:deliverableId/submit` | `CREATOR`         | Unrelated Project              | `ACTIVE`    | `403/404 NOT_ALLOWED` | `403/404 NOT_ALLOWED` | `phase-6-adversarial-verification.spec.ts` |
+| `POST /api/v1/payments/projects/:id/escrow/release`            | `BRAND`           | Project Owner                  | `ACTIVE`    | `200 OK`              | `200 OK`              | `phase-6-release-integration.spec.ts`      |
+| `POST /api/v1/payments/projects/:id/escrow/release`            | `CREATOR`         | Project Assignee               | `ACTIVE`    | `403 FORBIDDEN`       | `403 FORBIDDEN`       | `phase-6-adversarial-verification.spec.ts` |
+| `POST /api/v1/payments/projects/:id/escrow/release`            | `BRAND`           | Project Owner (Active Dispute) | `ACTIVE`    | `400 BAD_REQUEST`     | `400 BAD_REQUEST`     | `phase-6-release-integration.spec.ts`      |
+| `POST /api/v1/payments/intents/:id/refunds`                    | `BRAND`           | Project Owner (Active Dispute) | `ACTIVE`    | `400 BAD_REQUEST`     | `400 BAD_REQUEST`     | `phase-6-release-integration.spec.ts`      |
+| `POST /api/v1/payments/intents/:id/refunds`                    | Any Role          | Unrelated Caller               | `ACTIVE`    | `403 FORBIDDEN`       | `403 FORBIDDEN`       | `phase-6-adversarial-verification.spec.ts` |
+| `POST /api/v1/disputes`                                        | `BRAND`/`CREATOR` | Project Participant            | `ACTIVE`    | `201 CREATED`         | `201 CREATED`         | `disputes.spec.ts`                         |
+| `POST /api/v1/disputes`                                        | Any Role          | Unrelated User                 | `ACTIVE`    | `403 FORBIDDEN`       | `403 FORBIDDEN`       | `disputes.spec.ts`                         |
+| `POST /api/v1/disputes/:id/resolve`                            | `ADMIN`           | Platform Admin                 | `ACTIVE`    | `200 OK`              | `200 OK`              | `disputes.spec.ts`                         |
+| `POST /api/v1/disputes/:id/resolve`                            | `BRAND`           | Dispute Initiator              | `ACTIVE`    | `403 FORBIDDEN`       | `403 FORBIDDEN`       | `disputes.spec.ts`                         |
+| `POST /api/v1/payments/refunds/:id/reconcile`                  | `ADMIN`           | Platform Admin                 | `ACTIVE`    | `200 OK`              | `200 OK`              | `phase-6-release-integration.spec.ts`      |
+| `POST /api/v1/payments/refunds/:id/reconcile`                  | Non-Admin         | Any                            | `ACTIVE`    | `403 FORBIDDEN`       | `403 FORBIDDEN`       | `phase-6-adversarial-verification.spec.ts` |
+| `POST /api/v1/reviews`                                         | `BRAND`/`CREATOR` | Completed Project Participant  | `ACTIVE`    | `201 CREATED`         | `201 CREATED`         | `reviews.spec.ts`                          |
+| `POST /api/v1/reviews`                                         | `BRAND`/`CREATOR` | Incomplete / Disputed Project  | `ACTIVE`    | `400 BAD_REQUEST`     | `400 BAD_REQUEST`     | `reviews.spec.ts`                          |
+| `POST /api/v1/reviews`                                         | Any Role          | Self-Review (Target = Caller)  | `ACTIVE`    | `400 BAD_REQUEST`     | `400 BAD_REQUEST`     | `reviews.spec.ts`                          |
+| Any Mutation Endpoint                                          | Any Role          | Any                            | `SUSPENDED` | `403 USER_SUSPENDED`  | `403 USER_SUSPENDED`  | `security-integration.spec.ts`             |
+| Any Endpoint                                                   | Anonymous         | N/A                            | N/A         | `401 UNAUTHORIZED`    | `401 UNAUTHORIZED`    | `security-integration.spec.ts`             |
 
 ---
 
@@ -54,12 +57,12 @@ All endpoints in Phase 6 distinguish between authentication (verifying caller id
 
 ### 3.1 Cryptographic Signature Verification
 
-Payment gateway webhooks (`POST /api/v1/payments/webhooks/razorpay`) enforce:
+Payment gateway webhooks (`POST /api/v1/payments/webhooks/:provider` with provider `RAZORPAY`, `STRIPE`, or `SANDBOX_MOCK`) enforce:
 
 1. **Raw Body Ingestion:** Fastify custom parser preserves exact byte-for-byte raw body string prior to JSON parsing.
 2. **HMAC-SHA256:** Computed using `crypto.createHmac('sha256', secret).update(rawBody).digest('hex')`.
 3. **Constant-Time Comparison:** Checked via `crypto.timingSafeEqual` preventing timing side-channel attacks.
-4. **Signature Failure Handling:** Invalid signatures reject immediately with HTTP `400/401` without leaking stack traces or internal configuration.
+4. **Signature Failure Handling:** Missing or invalid signatures reject immediately with HTTP `400 BAD_REQUEST` (`INVALID_WEBHOOK_SIGNATURE`) via Fastify RFC 7807 problem details handler without leaking stack traces or internal configuration.
 
 ### 3.2 Webhook Deduplication & Replay Protection
 
