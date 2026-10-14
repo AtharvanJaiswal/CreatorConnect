@@ -1,5 +1,10 @@
+import crypto from 'node:crypto';
 import { getPrismaClient } from '@creatorconnect/database';
-import { generateUuidV7 } from '@creatorconnect/utils';
+import {
+  generateUuidV7,
+  calculateCumulativeFeeReversal,
+  canonicalJsonStringify,
+} from '@creatorconnect/utils';
 import type {
   PaymentIntentResponse,
   PaymentProvider,
@@ -318,24 +323,63 @@ export class PaymentsService {
       });
 
       if (existing) {
-        return {
-          received: true,
-          eventId: event.eventId,
-          status: 'ALREADY_PROCESSED',
-        };
-      }
+        // Compare SHA-256 hash of existing payload vs incoming rawPayload deterministically
+        const existingHash = crypto
+          .createHash('sha256')
+          .update(canonicalJsonStringify(existing.payload))
+          .digest('hex');
+        const incomingHash = crypto
+          .createHash('sha256')
+          .update(canonicalJsonStringify(event.rawPayload))
+          .digest('hex');
 
-      await tx.paymentWebhookEvent.create({
-        data: {
-          id: generateUuidV7(),
-          provider: providerName,
-          eventId: event.eventId,
-          eventType: event.eventType,
-          payload: event.rawPayload as any,
-          signature,
-          status: 'PROCESSING',
-        },
-      });
+        if (existingHash !== incomingHash) {
+          // Conflicting payload anomaly under the same provider & eventId
+          // Preserve original event, record an auditable integrity anomaly, and reject execution
+          await tx.auditLog.create({
+            data: {
+              id: generateUuidV7(),
+              action: 'PAYMENT_WEBHOOK_PAYLOAD_MISMATCH_ANOMALY',
+              entity: 'PaymentWebhookEvent',
+              entityId: existing.id,
+              metadata: {
+                provider: providerName,
+                eventId: event.eventId,
+                existingStatus: existing.status,
+                reason:
+                  'A webhook was received with the same eventId as an existing record but with a conflicting payload.',
+              },
+            },
+          });
+
+          return {
+            received: true,
+            eventId: event.eventId,
+            status: 'PAYLOAD_MISMATCH_ANOMALY',
+          };
+        }
+
+        if (existing.status === 'PROCESSED') {
+          return {
+            received: true,
+            eventId: event.eventId,
+            status: 'ALREADY_PROCESSED',
+          };
+        }
+        // If existing.status === 'PROCESSING' and payload matches, proceed with processing (recovery path)
+      } else {
+        await tx.paymentWebhookEvent.create({
+          data: {
+            id: generateUuidV7(),
+            provider: providerName,
+            eventId: event.eventId,
+            eventType: event.eventType,
+            payload: event.rawPayload as any,
+            signature,
+            status: 'PROCESSING',
+          },
+        });
+      }
 
       if (event.status === 'succeeded') {
         const intent = event.providerOrderId
@@ -427,7 +471,12 @@ export class PaymentsService {
             })
           : null;
 
-        if (intent && intent.status !== 'FAILED') {
+        const terminalSuccessStatuses = ['SUCCEEDED', 'PARTIALLY_REFUNDED', 'REFUNDED'];
+        if (
+          intent &&
+          !terminalSuccessStatuses.includes(intent.status) &&
+          intent.status !== 'FAILED'
+        ) {
           await tx.paymentIntent.update({
             where: { id: intent.id },
             data: {
@@ -501,7 +550,9 @@ export class PaymentsService {
           const priorFeeReversed = priorRefunds.reduce((acc, r) => {
             return (
               acc +
-              (intent.amount > 0 ? Math.floor((r.amount * intent.platformFee) / intent.amount) : 0)
+              (intent.amount > 0
+                ? calculateCumulativeFeeReversal(r.amount, intent.platformFee, intent.amount)
+                : 0)
             );
           }, 0);
 
@@ -511,8 +562,11 @@ export class PaymentsService {
           const feeReversal = isFinalRefund
             ? Math.max(0, intent.platformFee - priorFeeReversed)
             : intent.amount > 0
-              ? Math.floor((totalRefundedSoFar * intent.platformFee) / intent.amount) -
-                priorFeeReversed
+              ? calculateCumulativeFeeReversal(
+                  totalRefundedSoFar,
+                  intent.platformFee,
+                  intent.amount,
+                ) - priorFeeReversed
               : 0;
           const escrowReversal = refundAmount - feeReversal;
 
@@ -850,7 +904,9 @@ export class PaymentsService {
       const priorFeeReversed = priorRefunds.reduce((acc, r) => {
         return (
           acc +
-          (intent.amount > 0 ? Math.floor((r.amount * intent.platformFee) / intent.amount) : 0)
+          (intent.amount > 0
+            ? calculateCumulativeFeeReversal(r.amount, intent.platformFee, intent.amount)
+            : 0)
         );
       }, 0);
 
@@ -858,8 +914,10 @@ export class PaymentsService {
       const feeReversal = isFinalRefund
         ? Math.max(0, intent.platformFee - priorFeeReversed)
         : intent.amount > 0
-          ? Math.floor(
-              ((alreadyRefundedOrReserved + input.amount) * intent.platformFee) / intent.amount,
+          ? calculateCumulativeFeeReversal(
+              alreadyRefundedOrReserved + input.amount,
+              intent.platformFee,
+              intent.amount,
             ) - priorFeeReversed
           : 0;
       const escrowReversal = input.amount - feeReversal;
@@ -1184,7 +1242,9 @@ export class PaymentsService {
       const priorFeeReversed = priorRefunds.reduce((acc, r) => {
         return (
           acc +
-          (intent.amount > 0 ? Math.floor((r.amount * intent.platformFee) / intent.amount) : 0)
+          (intent.amount > 0
+            ? calculateCumulativeFeeReversal(r.amount, intent.platformFee, intent.amount)
+            : 0)
         );
       }, 0);
 
@@ -1193,7 +1253,8 @@ export class PaymentsService {
       const feeReversal = isFinalRefund
         ? Math.max(0, intent.platformFee - priorFeeReversed)
         : intent.amount > 0
-          ? Math.floor((totalRefundedSoFar * intent.platformFee) / intent.amount) - priorFeeReversed
+          ? calculateCumulativeFeeReversal(totalRefundedSoFar, intent.platformFee, intent.amount) -
+            priorFeeReversed
           : 0;
       const escrowReversal = refund.amount - feeReversal;
 

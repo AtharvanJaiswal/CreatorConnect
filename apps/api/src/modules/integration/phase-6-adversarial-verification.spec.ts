@@ -508,13 +508,168 @@ describe('Phase 6 Adversarial Verification & Boundary Audit', () => {
     });
     expect(resAltered.statusCode).toBe(200);
     const bodyAltered = JSON.parse(resAltered.payload);
-    expect(bodyAltered.status).toBe('ALREADY_PROCESSED');
+    expect(bodyAltered.status).toBe('PAYLOAD_MISMATCH_ANOMALY');
+
+    // Assert that an audit log integrity anomaly was created
+    const anomalyAudit = await prisma.auditLog.findFirst({
+      where: {
+        action: 'PAYMENT_WEBHOOK_PAYLOAD_MISMATCH_ANOMALY',
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(anomalyAudit).not.toBeNull();
+    expect((anomalyAudit?.metadata as any)?.eventId).toBe(eventId);
 
     // Assert that zero additional ledger transactions or mutations took place
     const ledgerCountFinal = await prisma.ledgerTransaction.count({
       where: { paymentIntentId: intentId },
     });
     expect(ledgerCountFinal).toBe(1);
+  });
+
+  // ============================================================================
+  // Test 3B: Out-of-Order Webhook Delivery Protection
+  // ============================================================================
+  it('prevents late out-of-order failed events from reverting captured payment status', async () => {
+    const orderId = `order_ooo_${generateUuidV7().replace(/-/g, '')}`;
+    const intentId = generateUuidV7();
+
+    await prisma.paymentIntent.create({
+      data: {
+        id: intentId,
+        projectId: verifiedProjectId,
+        clientId: brandUserId,
+        amount: 30000,
+        currency: 'INR',
+        platformFee: 3000,
+        status: 'SUCCEEDED', // Already succeeded!
+        provider: 'RAZORPAY',
+        providerOrderId: orderId,
+        version: 1,
+      },
+    });
+
+    const secret = process.env.PAYMENT_WEBHOOK_SECRET || 'mock_webhook_secret_dev_key';
+    const failedPayloadObj = {
+      id: `evt_ooo_${generateUuidV7().replace(/-/g, '')}`,
+      event: 'payment.failed',
+      payload: {
+        payment: {
+          entity: {
+            id: `pay_ooo_${generateUuidV7().replace(/-/g, '')}`,
+            order_id: orderId,
+            amount: 30000,
+            currency: 'INR',
+            status: 'failed',
+            error_description: 'Card declined (delayed notification)',
+          },
+        },
+      },
+    };
+
+    const rawFailed = JSON.stringify(failedPayloadObj);
+    const sigFailed = crypto.createHmac('sha256', secret).update(rawFailed).digest('hex');
+
+    const resFailed = await app.inject({
+      method: 'POST',
+      url: '/api/v1/payments/webhooks/RAZORPAY',
+      headers: {
+        'content-type': 'application/json',
+        'x-razorpay-signature': sigFailed,
+      },
+      payload: rawFailed,
+    });
+    expect(resFailed.statusCode).toBe(200);
+
+    // Assert that payment intent status remains SUCCEEDED and was NOT reverted to FAILED
+    const intentAfter = await prisma.paymentIntent.findUniqueOrThrow({
+      where: { id: intentId },
+    });
+    expect(intentAfter.status).toBe('SUCCEEDED');
+  });
+
+  // ============================================================================
+  // Test 3C: Webhook Crash Self-Healing and Retry Recovery
+  // ============================================================================
+  it('resumes and completes event processing when matching webhook retries after PROCESSING state', async () => {
+    const eventId = `evt_crash_${generateUuidV7().replace(/-/g, '')}`;
+    const orderId = `order_crash_${generateUuidV7().replace(/-/g, '')}`;
+    const intentId = generateUuidV7();
+
+    await prisma.paymentIntent.create({
+      data: {
+        id: intentId,
+        projectId: verifiedProjectId,
+        clientId: brandUserId,
+        amount: 40000,
+        currency: 'INR',
+        platformFee: 4000,
+        status: 'REQUIRES_CAPTURE',
+        provider: 'RAZORPAY',
+        providerOrderId: orderId,
+        version: 1,
+      },
+    });
+
+    const secret = process.env.PAYMENT_WEBHOOK_SECRET || 'mock_webhook_secret_dev_key';
+    const payloadObj = {
+      id: eventId,
+      event: 'payment.captured',
+      payload: {
+        payment: {
+          entity: {
+            id: `pay_crash_${generateUuidV7().replace(/-/g, '')}`,
+            order_id: orderId,
+            amount: 40000,
+            currency: 'INR',
+            status: 'captured',
+          },
+        },
+      },
+    };
+    const rawBody = JSON.stringify(payloadObj);
+    const signature = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+
+    // Simulate an interrupted run that left the event in PROCESSING status in DB
+    await prisma.paymentWebhookEvent.create({
+      data: {
+        id: generateUuidV7(),
+        provider: 'RAZORPAY',
+        eventId,
+        eventType: 'payment.captured',
+        payload: payloadObj,
+        signature,
+        status: 'PROCESSING',
+      },
+    });
+
+    // Provider retries identical webhook after previous timeout
+    const resRetry = await app.inject({
+      method: 'POST',
+      url: '/api/v1/payments/webhooks/RAZORPAY',
+      headers: {
+        'content-type': 'application/json',
+        'x-razorpay-signature': signature,
+      },
+      payload: rawBody,
+    });
+    expect(resRetry.statusCode).toBe(200);
+
+    // Event should now be PROCESSED and intent SUCCEEDED
+    const eventRecord = await prisma.paymentWebhookEvent.findUniqueOrThrow({
+      where: {
+        provider_eventId: {
+          provider: 'RAZORPAY',
+          eventId,
+        },
+      },
+    });
+    expect(eventRecord.status).toBe('PROCESSED');
+
+    const intentAfter = await prisma.paymentIntent.findUniqueOrThrow({
+      where: { id: intentId },
+    });
+    expect(intentAfter.status).toBe('SUCCEEDED');
   });
 
   // ============================================================================
@@ -658,5 +813,30 @@ describe('Phase 6 Adversarial Verification & Boundary Audit', () => {
     expect(resExcess.statusCode).toBe(400);
     const body = JSON.parse(resExcess.payload);
     expect(body.code).toBe('REFUND_EXCEEDS_CAPTURABLE_AMOUNT');
+  });
+
+  // ============================================================================
+  // Test 8: Monetary Overflow Boundary Testing (PostgreSQL INTEGER Safety)
+  // ============================================================================
+  it('rejects monetary amounts exceeding signed 32-bit integer maximum at validation boundary with 400', async () => {
+    // 2,147,483,648 is MAX_INT_32 + 1. It must be rejected by MinorUnitsSchema with 400
+    // rather than causing an unhandled PostgreSQL 22003 integer out of range crash.
+    const resOverflow = await app.inject({
+      method: 'POST',
+      url: '/api/v1/payments/intents',
+      headers: {
+        authorization: `Bearer ${brandToken}`,
+        'content-type': 'application/json',
+      },
+      payload: {
+        projectId: verifiedProjectId,
+        amount: 2147483648, // Exceeds signed 32-bit maximum!
+        currency: 'INR',
+      },
+    });
+
+    expect(resOverflow.statusCode).toBe(400);
+    const body = JSON.parse(resOverflow.payload);
+    expect(body.status).toBe(400);
   });
 });

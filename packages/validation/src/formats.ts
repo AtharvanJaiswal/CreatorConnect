@@ -61,6 +61,7 @@ export const CurrencyCodeSchema = Type.String({
 
 export const MinorUnitsSchema = Type.Integer({
   minimum: 0,
+  maximum: 2147483647,
   description: 'Monetary amount in lowest currency denomination (e.g. cents, paise)',
 });
 

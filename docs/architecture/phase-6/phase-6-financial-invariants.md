@@ -9,11 +9,13 @@
 
 ## 1. Monetary Unit & Representation Invariant
 
-### Invariant F-INV-1: Integer Minor Units (Zero Floating-Point)
+### Invariant F-INV-1: Integer Minor Units & Boundary Constraints
 
 - All monetary amounts across the database schema (`payment_intents.amount`, `payment_intents.platformFee`, `ledger_entries.amount`, `refunds.amount` as PostgreSQL `INTEGER`, and `ledger_accounts.balance` as PostgreSQL `BIGINT`) represent **integer minor units** (paise for INR, 1 INR = 100 paise).
-- Floating-point numbers (`number` with decimals) are strictly prohibited in financial calculation paths.
-- Division operations use explicit integer flooring (`Math.floor`) with remainder reconciliation.
+- Ingress boundaries enforce signed 32-bit integer limits: `MinorUnitsSchema` validates `minimum: 0` and `maximum: 2147483647` ($2^{31} - 1$), rejecting payloads $> ₹21,474,836.47$ with RFC 7807 `400 BAD_REQUEST` before database execution.
+- Aggregate account balances in `ledger_accounts.balance` use PostgreSQL `BIGINT` (signed 64-bit: up to $\approx \pm 9 \times 10^{18}$ paise), ensuring aggregate platform volume cannot overflow.
+- Proportional calculations (such as cumulative fee reversals $C \cdot F / A$) use JavaScript `BigInt` arithmetic via `calculateCumulativeFeeReversal` to prevent precision degradation when intermediate products exceed `Number.MAX_SAFE_INTEGER` ($2^{53} - 1 \approx 9 \times 10^{15}$).
+- Floating-point numbers (`number` with decimals) are strictly prohibited in financial calculation and database storage paths.
 
 ---
 

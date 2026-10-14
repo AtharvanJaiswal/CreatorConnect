@@ -36,3 +36,20 @@ export function formatCurrency(
     maximumFractionDigits: 2,
   }).format(fromMinorUnits(amountMinor));
 }
+
+export const MAX_SAFE_MINOR_UNITS = 2_147_483_647; // 32-bit signed integer max for PostgreSQL INTEGER
+
+/**
+ * Calculates cumulative proportional fee reversal using 64-bit integer arithmetic,
+ * preventing JavaScript Number precision loss when intermediate products exceed Number.MAX_SAFE_INTEGER (2^53 - 1).
+ */
+export function calculateCumulativeFeeReversal(
+  cumulativeAmount: number,
+  platformFee: number,
+  totalAmount: number,
+): number {
+  if (totalAmount <= 0 || cumulativeAmount <= 0 || platformFee <= 0) {
+    return 0;
+  }
+  return Number((BigInt(cumulativeAmount) * BigInt(platformFee)) / BigInt(totalAmount));
+}
