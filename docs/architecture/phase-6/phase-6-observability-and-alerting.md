@@ -1,8 +1,8 @@
 # CreatorConnect — Phase 6 Observability, Telemetry & Alerting Guide
 
-**Document Version:** 1.0.0  
-**Baseline Branch:** `audit/phase-6-operational-readiness`  
-**Evaluation Commit SHA:** `3735fb8`  
+**Document Version:** 1.0.0
+**Baseline Branch:** `audit/phase-6-operational-readiness`
+**Evaluation Commit SHA:** `3735fb8`
 **Auditor Roles:** Site Reliability Engineer (SRE) & Observability Architect
 
 ---

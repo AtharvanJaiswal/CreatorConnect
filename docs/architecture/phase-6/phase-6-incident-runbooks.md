@@ -1,8 +1,8 @@
 # CreatorConnect — Phase 6 Financial & Infrastructure Incident Runbooks
 
-**Document Version:** 1.0.0  
-**Baseline Branch:** `audit/phase-6-operational-readiness`  
-**Evaluation Commit SHA:** `3735fb8`  
+**Document Version:** 1.0.0
+**Baseline Branch:** `audit/phase-6-operational-readiness`
+**Evaluation Commit SHA:** `3735fb8`
 **Auditor Roles:** Site Reliability Engineer (SRE), Incident Commander, and Financial Systems Engineer
 
 ---
@@ -32,15 +32,15 @@
 
 1. Log in to the payment gateway dashboard (or query gateway API using provider refund ID / payment ID).
 2. Determine final provider disposition:
-   - **Case A (Refund Succeeded at Gateway):**  
+   - **Case A (Refund Succeeded at Gateway):**
      Call admin reconciliation endpoint:
-     `POST /api/v1/payments/refunds/:id/reconcile`  
-     Payload: `{ "resolution": "SUCCEEDED", "notes": "Confirmed success on gateway dashboard" }`  
+     `POST /api/v1/payments/refunds/:id/reconcile`
+     Payload: `{ "resolution": "SUCCEEDED", "notes": "Confirmed success on gateway dashboard" }`
      _Effect:_ Posts compensating ledger entries, releases remaining balance, and transitions status to `SUCCEEDED`.
-   - **Case B (Refund Never Reached Gateway):**  
+   - **Case B (Refund Never Reached Gateway):**
      Call admin reconciliation endpoint:
-     `POST /api/v1/payments/refunds/:id/reconcile`  
-     Payload: `{ "resolution": "FAILED", "notes": "Gateway confirmed request timed out before arrival" }`  
+     `POST /api/v1/payments/refunds/:id/reconcile`
+     Payload: `{ "resolution": "FAILED", "notes": "Gateway confirmed request timed out before arrival" }`
      _Effect:_ Releases escrow reservation, restores capturable balance, and transitions status to `FAILED`.
 
 ### 5. Validation Before Closure

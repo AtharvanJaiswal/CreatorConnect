@@ -1,8 +1,8 @@
 # CreatorConnect — Phase 6 Security, Authorization & Abuse Resistance Audit
 
-**Audit Baseline Commit:** `4e5cb2241aae58dbf605e2ffd8a2793a7db09fbb`  
-**Integration Branch:** `dev`  
-**Auditor Roles:** Principal Application Security Engineer & Penetration Tester  
+**Audit Baseline Commit:** `4e5cb2241aae58dbf605e2ffd8a2793a7db09fbb`
+**Integration Branch:** `dev`
+**Auditor Roles:** Principal Application Security Engineer & Penetration Tester
 **Scope:** Authentication, Object-Level Authorization, Webhook Verification, Replay Prevention, Tenant Isolation, IDOR Resistance, and SAST/Security Scan Validation.
 
 ---

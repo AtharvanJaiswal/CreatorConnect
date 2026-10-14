@@ -1,9 +1,9 @@
 # CreatorConnect — Phase 6 Disaster Recovery, Backup & Restoration Runbook
 
-**Document Version:** 1.0.0  
-**Baseline Branch:** `audit/phase-6-operational-readiness`  
-**Evaluation Commit SHA:** `3735fb8`  
-**Target Environment:** Isolated Test / Staging Database Rehearsal  
+**Document Version:** 1.1.0
+**Baseline Branch:** `audit/phase-6-operational-readiness`
+**Evaluation Commit SHA:** `a7858ec`
+**Target Environment:** Isolated Test / Staging Database Rehearsal
 **Auditor Roles:** Site Reliability Engineer (SRE), Database Administrator (DBA), and Financial Systems Engineer
 
 ---
@@ -14,17 +14,19 @@
 
 #### Recovery Point Objective (RPO)
 
-$$\text{RPO} = t_{\text{failure}} - t_{\text{latest recoverable data}}$$
+$$\text{RPO} = t_{\text{failure}} - t_{\text{latest recoverable consistent committed data point}}$$
 
-- **SLA Target:** $\text{RPO} \le 300\text{ seconds}$ (5 minutes) in production via continuous PostgreSQL Write-Ahead Log (WAL) archiving.
-- **Measured Local Drill Metric:** In the isolated rehearsal drill (`database-restore-drill.spec.ts`), the elapsed delta between backup initiation and completion was measured at $\approx 0.5\text{ seconds}$, verifying zero data loss during snapshot execution.
+- **Production SLA Target:** $\text{RPO} \le 300\text{ seconds}$ (5 minutes) in cloud production via continuous PostgreSQL Write-Ahead Log (WAL) archiving and Point-in-Time Recovery (PITR).
+- **Cloud Disaster Recovery Status:** **`NOT_VERIFIED`** (Cloud multi-region WAL archiving, S3 storage replication, and cross-region failover have not been exercised in this local/CI test environment).
+- **Measured Local Snapshot Metric:** In the isolated rehearsal drill (`database-restore-drill.spec.ts`), the snapshot generation execution duration was measured at $\approx 0.5\text{ seconds}$ ($520\text{ ms}$). This measurement represents the storage dump execution window, not an end-to-end cloud RPO. In the drill scenario where no writes occurred post-snapshot, zero transactions were lost between snapshot creation and verification.
 
 #### Recovery Time Objective (RTO)
 
-$$\text{RTO} = t_{\text{service restored}} - t_{\text{recovery initiated}}$$
+$$\text{RTO} = t_{\text{validated recovery completion}} - t_{\text{incident start}}$$
 
-- **SLA Target:** $\text{RTO} \le 900\text{ seconds}$ (15 minutes) for full database restoration and operational verification.
-- **Measured Local Drill Metric:** Complete containerized dump, SHA-256 digest computation, isolated database provisioning, `pg_restore` execution, and schema/foreign key validation completed in **$6.7\text{ seconds}$**.
+- **Production SLA Target:** $\text{RTO} \le 900\text{ seconds}$ (15 minutes) for full database restoration and operational verification.
+- **Measured Local Drill Metric:** Complete containerized dump, SHA-256 digest computation, isolated database provisioning, `pg_restore` execution, schema verification (48 tables), foreign key integrity checks, and double-entry ledger reconciliation completed in **$6.9\text{ seconds}$** (measured locally between $6.3\text{s}$ and $7.3\text{s}$ across test runs).
+- **Cloud RTO Extrapolation:** Local restore timing confirms tooling and schema automation efficiency, but production cloud RTO remains subject to EBS volume snapshot hydration and network transfer latency. Cloud disaster recovery validation is scheduled for isolated Staging.
 
 ---
 

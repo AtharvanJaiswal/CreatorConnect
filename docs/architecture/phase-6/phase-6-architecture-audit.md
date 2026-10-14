@@ -1,8 +1,8 @@
 # CreatorConnect — Phase 6 Architecture & Dependency Audit
 
-**Audit Baseline Commit:** `4e5cb2241aae58dbf605e2ffd8a2793a7db09fbb`  
-**Integration Branch:** `dev` (Audit Branch: `audit/phase-6-financial-security-readiness`)  
-**Auditor Roles:** Principal Software Architect & SRE Lead  
+**Audit Baseline Commit:** `4e5cb2241aae58dbf605e2ffd8a2793a7db09fbb`
+**Integration Branch:** `dev` (Audit Branch: `audit/phase-6-financial-security-readiness`)
+**Auditor Roles:** Principal Software Architect & SRE Lead
 **Scope:** Complete request-to-database execution path across Projects, Deliverables, Payments, Ledger, Disputes, Cancellations, Refunds, Reviews, Reputation, and Concurrency Hardening.
 
 ---

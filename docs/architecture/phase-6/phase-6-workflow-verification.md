@@ -1,8 +1,8 @@
 # CreatorConnect — Phase 6 End-to-End Business Workflow Verification
 
-**Audit Baseline Commit:** `4e5cb2241aae58dbf605e2ffd8a2793a7db09fbb`  
-**Integration Branch:** `dev`  
-**Auditor Roles:** Senior Full-Stack Engineer & SRE Lead  
+**Audit Baseline Commit:** `4e5cb2241aae58dbf605e2ffd8a2793a7db09fbb`
+**Integration Branch:** `dev`
+**Auditor Roles:** Senior Full-Stack Engineer & SRE Lead
 **Scope:** Verification of Complete End-to-End Business Lifecycles, Concurrency Safety, Error Injection, and State-Machine Transitions.
 
 ---

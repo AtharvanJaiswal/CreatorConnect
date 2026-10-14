@@ -1,8 +1,8 @@
 # CreatorConnect — Phase 6 Financial Integrity, Ledger & Mathematical Invariants
 
-**Audit Baseline Commit:** `4e5cb2241aae58dbf605e2ffd8a2793a7db09fbb`  
-**Integration Branch:** `dev`  
-**Auditor Roles:** Principal Financial Systems Engineer & Quantitative Architect  
+**Audit Baseline Commit:** `4e5cb2241aae58dbf605e2ffd8a2793a7db09fbb`
+**Integration Branch:** `dev`
+**Auditor Roles:** Principal Financial Systems Engineer & Quantitative Architect
 **Scope:** Double-Entry Ledger, Monetary Conservation, Cumulative Partial-Refund Fee Allocation, Escrow Reservations, and Row-Lock Ordering Hierarchy.
 
 ---

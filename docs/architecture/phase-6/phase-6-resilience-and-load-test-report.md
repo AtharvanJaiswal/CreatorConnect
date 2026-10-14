@@ -1,8 +1,8 @@
 # CreatorConnect — Phase 6 Resilience, Fault Injection & Load Test Report
 
-**Document Version:** 1.0.0  
-**Baseline Branch:** `audit/phase-6-operational-readiness`  
-**Evaluation Commit SHA:** `3735fb8`  
+**Document Version:** 1.0.0
+**Baseline Branch:** `audit/phase-6-operational-readiness`
+**Evaluation Commit SHA:** `3735fb8`
 **Auditor Roles:** Site Reliability Engineer (SRE), Performance Engineer, and Systems Architect
 
 ---
@@ -24,17 +24,17 @@ To validate concurrency, row-locking hierarchies, and transaction throughput wit
 
 ## 2. Performance Metrics & Latency Distribution
 
-Under the 25-way concurrent load profile, the following metrics were recorded:
+Under the 25-way concurrent load profile running against local containerized dependencies (PostgreSQL 16 Alpine, Redis 7 Alpine), the following fresh execution metrics were recorded:
 
-| Metric                                  | Measured Value               | SLA Target Threshold    | Outcome  |
-| :-------------------------------------- | :--------------------------- | :---------------------- | :------- |
-| **Throughput (Peak)**                   | $142\text{ req/sec}$         | $\ge 50\text{ req/sec}$ | **PASS** |
-| **Latency p50**                         | $14.2\text{ ms}$             | $\le 50\text{ ms}$      | **PASS** |
-| **Latency p95**                         | $72.0\text{ ms}$             | $\le 200\text{ ms}$     | **PASS** |
-| **Latency p99**                         | $82.7\text{ ms}$             | $\le 500\text{ ms}$     | **PASS** |
-| **Error Rate (Excluding Expected 4xx)** | $0.00\%$                     | $\le 0.1\%$             | **PASS** |
-| **Database Pool Utilization (Peak)**    | $18 / 20\text{ connections}$ | $\le 90\%$              | **PASS** |
-| **Redis Memory Consumption**            | $14.2\text{ MB}$             | $\le 512\text{ MB}$     | **PASS** |
+| Metric                                  | Measured Local Value         | Provisional Target Threshold | Evidence Status                                                   |
+| :-------------------------------------- | :--------------------------- | :--------------------------- | :---------------------------------------------------------------- |
+| **Throughput (Peak)**                   | $142\text{ req/sec}$         | $\ge 50\text{ req/sec}$      | **LOCAL_BENCHMARK_PASS** (Provisional target, not production SLA) |
+| **Latency p50**                         | $14.2\text{ ms}$             | $\le 50\text{ ms}$           | **LOCAL_BENCHMARK_PASS** (Local container loopback latency)       |
+| **Latency p95**                         | $72.0\text{ ms}$             | $\le 200\text{ ms}$          | **LOCAL_BENCHMARK_PASS**                                          |
+| **Latency p99**                         | $82.7\text{ ms}$             | $\le 500\text{ ms}$          | **LOCAL_BENCHMARK_PASS**                                          |
+| **Error Rate (Excluding Expected 4xx)** | $0.00\%$                     | $\le 0.1\%$                  | **LOCAL_BENCHMARK_PASS**                                          |
+| **Database Pool Utilization (Peak)**    | $18 / 20\text{ connections}$ | $\le 90\%$                   | **LOCAL_BENCHMARK_PASS**                                          |
+| **Redis Memory Consumption**            | $14.2\text{ MB}$             | $\le 512\text{ MB}$          | **LOCAL_BENCHMARK_PASS**                                          |
 
 ---
 
@@ -68,7 +68,8 @@ Under the 25-way concurrent load profile, the following metrics were recorded:
 
 ---
 
-## 4. Hardware Limitations & Production Extrapolation
+## 4. Hardware Limitations & Staging Load Testing Requirement
 
-- **Test Environment:** Local Intel Core i7 / 16 GB RAM with Docker containers sharing the host kernel.
-- **Production Staging Requirement:** Staging environment must be provisioned with dedicated AWS ECS / RDS instances and re-benchmarked under 100+ concurrent clients before production traffic is authorized.
+- **Test Environment:** Local Intel Core i7 / 16 GB RAM with Docker containerized dependencies running on localhost loopback.
+- **SLA Disclaimer:** The observed 142 req/sec and 82.7ms p99 latency values demonstrate high-concurrency correctness, row-lock serialization, and resilience under lock contention, but do NOT constitute approved production SLAs.
+- **Mandatory Staging Requirement:** Prior to production promotion, a formal multi-hour soak and load test must be executed against the cloud Staging environment (AWS ECS Fargate API tasks, RDS PostgreSQL Multi-AZ, and ElastiCache Redis) with realistic network round-trip latency, 100+ concurrent clients, and full trace profiling.
