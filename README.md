@@ -454,7 +454,7 @@ The complete platform roadmap is structured into 16 phases. Below is the separat
   - **Increment 3 (Disputes, Cancellations & Refunds)**: Formal dispute lifecycle, mutual cancellations, compensating refund ledger entries, and transactional outbox events.
   - **Increment 4 (Reviews & Reputation Governance)**: Verified 2-sided reviews, 48-hour editing window, deterministic Bayesian reputation scoring, and moderation audit trail.
   - **Increment 5 (Hardening, Financial Reconciliation & Release Integration)**: Transaction-specific dynamic fee allocations, in-transaction concurrent refund overdraft protection, recoverable states upon provider/database failures, dispute-locked escrow release guards, and end-to-end integration test suite.
-  - **Release Status**: **Release Candidate Verified Locally (67/67 test files, 585/585 tests passed; clean DB migrations 0001–0008; isolated backup/restore drill PASS)**. External production gates (live payment credentials, production secrets, RBI compliance) remain strictly **BLOCKED**.
+  - **Release Status**: **Release Candidate Verified Locally (68/68 test files, 599/599 tests passed; clean DB migrations 0001–0008; isolated backup/restore drill PASS; 23/23 Playwright E2E smoke tests passed)**. External production gates (live payment credentials, production secrets, RBI compliance) remain strictly **BLOCKED**.
 
 ### Planned Future Milestones
 
