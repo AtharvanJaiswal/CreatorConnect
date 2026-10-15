@@ -3,6 +3,7 @@ import { getPrismaClient } from '@creatorconnect/database';
 import {
   generateUuidV7,
   calculateCumulativeFeeReversal,
+  calculateIncrementalFeeReversal,
   canonicalJsonStringify,
 } from '@creatorconnect/utils';
 import type {
@@ -894,31 +895,17 @@ export class PaymentsService {
       }
 
       // Exact cumulative fee calculation to prevent rounding leakage across multiple partial refunds
-      const priorRefunds = await tx.refund.findMany({
-        where: {
-          paymentIntentId,
-          status: { in: ['SUCCEEDED', 'PROCESSING'] },
-        },
-        select: { amount: true },
-      });
-      const priorFeeReversed = priorRefunds.reduce((acc, r) => {
-        return (
-          acc +
-          (intent.amount > 0
-            ? calculateCumulativeFeeReversal(r.amount, intent.platformFee, intent.amount)
-            : 0)
-        );
-      }, 0);
-
-      const isFinalRefund = alreadyRefundedOrReserved + input.amount >= intent.amount;
-      const feeReversal = isFinalRefund
-        ? Math.max(0, intent.platformFee - priorFeeReversed)
-        : intent.amount > 0
-          ? calculateCumulativeFeeReversal(
-              alreadyRefundedOrReserved + input.amount,
+      // T(C) = floor(C * F / A). Incremental reversal for [C1 -> C2] is T(C2) - T(C1).
+      const priorCumulativeAmount = alreadyRefundedOrReserved;
+      const newCumulativeAmount = Math.min(intent.amount, alreadyRefundedOrReserved + input.amount);
+      const feeReversal =
+        intent.amount > 0 && intent.platformFee > 0
+          ? calculateIncrementalFeeReversal(
+              priorCumulativeAmount,
+              newCumulativeAmount,
               intent.platformFee,
               intent.amount,
-            ) - priorFeeReversed
+            )
           : 0;
       const escrowReversal = input.amount - feeReversal;
 

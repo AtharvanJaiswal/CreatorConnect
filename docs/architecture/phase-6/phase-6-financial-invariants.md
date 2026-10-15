@@ -70,11 +70,17 @@ Given:
 The cumulative target fee reversal function is:
 $$T(C) = \left\lfloor \frac{C \cdot F}{A} \right\rfloor$$
 
-For any incremental refund of principal $\Delta C$ moving cumulative refunded principal from $C_{\text{prev}}$ to $C_{\text{new}}$:
-$$\Delta T = T(C_{\text{new}}) - T(C_{\text{prev}})$$
+For any incremental refund of principal $\Delta C$ moving cumulative refunded principal from $C_1$ to $C_2$:
+$$\Delta T = T(C_2) - T(C_1)$$
 
-For the final full refund ($C_{\text{final}} = A$):
-$$\Delta T_{\text{final}} = F - \sum_{\text{prior}} \Delta T$$
+Implemented via `calculateIncrementalFeeReversal(c1, c2, platformFee, totalAmount)` in `@creatorconnect/utils/currency.ts` and called directly in `payments.service.ts`:
+
+- Uses JavaScript `BigInt` for intermediate multiplication $C \cdot F$, completely eliminating 64-bit float precision degradation.
+- Validates preconditions: $A > 0, F \ge 0, 0 \le C_1 \le C_2 \le A$.
+- Strictly bounds $0 \le \Delta T \le F$.
+- Telescoping identity guarantees that for any partition of refunds $0 = C_0 \le C_1 \le \dots \le C_k = A$:
+  $$\sum_{i=1}^k [T(C_i) - T(C_{i-1})] \equiv T(C_k) - T(C_0) = T(A) - T(0) = F - 0 = F$$
+  Every single paise of platform fee is accounted for with zero cumulative rounding drift regardless of the refund sequence or split sizes.
 
 #### Verified Mathematical Properties:
 
@@ -82,6 +88,7 @@ $$\Delta T_{\text{final}} = F - \sum_{\text{prior}} \Delta T$$
 2. **Exact Reversal:** When $C = A$, total platform fee reversed $\sum \Delta T \equiv F$.
 3. **Escrow Conservation:** Net debited escrow $\sum \Delta C_{\text{net}} \equiv N$.
 4. **Zero Fractional Leakage:** Verified across multi-step 3-stage partial refunds (e.g. ₹3,000 + ₹3,000 + ₹4,000 on a ₹10,000 intent with ₹1,200 fee).
+5. **Precondition Safety:** Validated against non-integers, negative amounts, out-of-order bounds, and overflow limits in `packages/utils/src/currency.spec.ts:66-121`.
 
 ---
 
@@ -132,14 +139,14 @@ No code path is permitted to lock a `payment_intent` and subsequently attempt to
 
 All invariants are proven with deterministic unit and integration tests:
 
-| Invariant   | Description                            | Enforcing Source File       | Test Spec & Location                       | Verification Status |
-| :---------- | :------------------------------------- | :-------------------------- | :----------------------------------------- | :------------------ |
-| **F-INV-1** | Integer Minor Units                    | `payments.service.ts`       | `phase-6-release-integration.spec.ts:204`  | **PROVEN (100%)**   |
-| **F-INV-2** | Balanced Double-Entry Ledger           | `ledger.service.ts`         | `phase-6-release-integration.spec.ts:411`  | **PROVEN (100%)**   |
-| **F-INV-3** | Intent Allocation Conservation         | `payments.service.ts`       | `phase-6-release-integration.spec.ts:204`  | **PROVEN (100%)**   |
-| **F-INV-4** | Cumulative Fee Rounding Precision      | `disputes.service.ts`       | `phase-6-release-integration.spec.ts:896`  | **PROVEN (100%)**   |
-| **F-INV-5** | Pre-Provider Escrow Reservation        | `disputes.service.ts`       | `phase-6-release-integration.spec.ts:326`  | **PROVEN (100%)**   |
-| **F-INV-6** | Release Blocked by Pending Reservation | `projects.service.ts`       | `phase-6-release-integration.spec.ts:1160` | **PROVEN (100%)**   |
-| **F-INV-7** | Ambiguous Timeout Recovery             | `reconciliation.service.ts` | `phase-6-release-integration.spec.ts:1271` | **PROVEN (100%)**   |
+| Invariant   | Description                            | Enforcing Source File                             | Test Spec & Location                                                 | Verification Status |
+| :---------- | :------------------------------------- | :------------------------------------------------ | :------------------------------------------------------------------- | :------------------ |
+| **F-INV-1** | Integer Minor Units                    | `payments.service.ts`                             | `phase-6-release-integration.spec.ts:204`                            | **PROVEN (100%)**   |
+| **F-INV-2** | Balanced Double-Entry Ledger           | `ledger.service.ts`                               | `phase-6-release-integration.spec.ts:411`                            | **PROVEN (100%)**   |
+| **F-INV-3** | Intent Allocation Conservation         | `payments.service.ts`                             | `phase-6-release-integration.spec.ts:204`                            | **PROVEN (100%)**   |
+| **F-INV-4** | Cumulative Fee Rounding Precision      | `currency.ts` (`calculateIncrementalFeeReversal`) | `currency.spec.ts:66-121`, `phase-6-release-integration.spec.ts:896` | **PROVEN (100%)**   |
+| **F-INV-5** | Pre-Provider Escrow Reservation        | `payments.service.ts`                             | `phase-6-release-integration.spec.ts:326`                            | **PROVEN (100%)**   |
+| **F-INV-6** | Release Blocked by Pending Reservation | `payments.service.ts`                             | `phase-6-release-integration.spec.ts:1160`                           | **PROVEN (100%)**   |
+| **F-INV-7** | Ambiguous Timeout Recovery             | `payments.service.ts`                             | `phase-6-release-integration.spec.ts:1271`                           | **PROVEN (100%)**   |
 
 **Financial Integrity Verdict:** **PASSED**. Mathematical and financial invariants are strictly enforced, tamper-resistant, and formally proven by automated tests.
