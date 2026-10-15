@@ -1,8 +1,8 @@
 # CreatorConnect — Phase 6 Disaster Recovery, Backup & Restoration Runbook
 
-**Document Version:** 1.2.0
+**Document Version:** 1.3.0
 **Baseline Branch:** `dev`
-**Evaluation Commit SHA:** `2dd20f9bb93793317065fb0c9cf7860a5c148d6e`
+**Evaluation Commit SHA:** `284a36ae66f594bed54d1ef67f9b154003f36e5f`
 **Target Environment:** Isolated Test / Staging Database Rehearsal
 **Auditor Roles:** Site Reliability Engineer (SRE), Database Administrator (DBA), and Financial Systems Engineer
 
@@ -33,7 +33,11 @@ $$\text{RTO} = T_{\text{recovery complete}} - T_{\text{incident start}}$$
 
 To ensure that empirical testing strictly demonstrates the $\le 5\text{s}$ RPO target rather than an arbitrary historical rollback:
 
-1. **Continuous Synthetic Canary Ingestion:** A background synthetic worker commits timestamped canary records to `audit_logs` every $1.0\text{ second}$ with sequence numbers and client timestamps $t_{\text{client commit}}$.
+1. **Clock Synchronization & Continuous Synthetic Canary Ingestion:**
+   - Both the canary probe client and PostgreSQL Aurora cluster synchronize against the AWS Time Sync Service (`chrony` NTP server `169.254.169.123`) with enforced drift bound $|\Delta t_{\text{drift}}| \le 1.0\text{ ms}$.
+   - Canary records inserted into `audit_logs` record the transaction commit timestamp using PostgreSQL server-side `clock_timestamp()` to prevent client clock skew.
+   - Canary worker commits probe records every $1.0\text{ second}$ with sequential monotonically increasing sequence numbers and client dispatch timestamps.
+   - The canary client records an acknowledged stream of tuples $(s_n, t_{\text{ack}, n})$. The last acknowledged write prior to failure is denoted as $(S_{\text{client last}}, t_{\text{client last}})$.
 2. **Failure Injection ($T_{\text{incident start}} \equiv T_{\text{failure}}$):** Primary instance failure is triggered. The RTO clock begins at this exact millisecond. The last acknowledged client write is recorded as $(S_{\text{client last}}, t_{\text{client last}})$.
 3. **Cloud Restoration to Latest Restorable State:** AWS Aurora Point-in-Time Recovery restores the cluster using `--use-latest-restorable-time` (or targeting $T_{\text{failure}}$), replaying streaming WAL to the crash boundary.
 4. **Validation & Ledger Reconciliation ($T_{\text{recovery complete}}$):**

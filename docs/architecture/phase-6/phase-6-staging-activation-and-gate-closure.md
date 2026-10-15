@@ -1,23 +1,24 @@
 # CreatorConnect — Staging Infrastructure Activation & Release Gate Closure Specification
 
-**Document Version:** 1.0.0  
+**Document Version:** 1.1.0  
 **Baseline Git Branch:** `dev`  
-**Verified Baseline Commit SHA:** `4facbb0b8536df3724b149b762be28254b6746be`  
+**Verified Baseline Commit SHA:** `284a36ae66f594bed54d1ef67f9b154003f36e5f`  
 **Evaluation Date:** October 15, 2026  
-**Auditor Roles:** Principal Software Architect, DevSecOps Lead, Financial Systems Engineer, Site Reliability Engineer (SRE), and Database Administrator
+**Auditor Roles:** Principal Software Architect, DevSecOps Lead, Financial Systems Engineer, Site Reliability Engineer (SRE), and Database Reliability Lead
 
 ---
 
 ## 1. Executive Summary & Baseline Ref
 
-The CreatorConnect Phase 6 platform integration was verified on branch `dev` at commit `4facbb0b8536df3724b149b762be28254b6746be`, synchronized with `origin/dev`.
+The CreatorConnect Phase 6 platform integration was verified on branch `dev` at commit `284a36ae66f594bed54d1ef67f9b154003f36e5f`, synchronized with `origin/dev`.
 
-- **Remote CI Verification (100% Green on Exact Commit):**
-  - **PR Validation & Quality Gates Run ID:** [`38764285293`](https://github.com/AtharvanJaiswal/CreatorConnect/actions/runs/38764285293) (`success`)
-    - _Job 116523319112:_ Semgrep SAST Security Scan (`success`)
-    - _Job 116523319168:_ Playwright E2E Smoke Tests (`success`)
-    - _Job 116523319064:_ Lint, Typecheck, Test, Build (`success`)
-  - **CodeQL Analysis Run ID:** [`38764285217`](https://github.com/AtharvanJaiswal/CreatorConnect/actions/runs/38764285217) (`success`)
+- **Remote CI Verification (100% Green on Exact Current Commit):**
+  - **PR Validation & Quality Gates Run ID:** [`38769767655`](https://github.com/AtharvanJaiswal/CreatorConnect/actions/runs/38769767655) (`success`)
+    - _Job 116542207834:_ Semgrep SAST Security Scan (`success`)
+    - _Job 116542208097:_ Lint, Typecheck, Test, Build & Security Scan (`success`)
+    - _Job 116542208550:_ Playwright E2E Smoke Tests (`success`)
+  - **CodeQL Analysis Run ID:** [`38769767753`](https://github.com/AtharvanJaiswal/CreatorConnect/actions/runs/38769767753) (`success`)
+    - _Job 116542208255:_ Analyze JavaScript/TypeScript (`success` - 0 alerts, 0 CWEs)
 - **Supply-Chain Dependency Security:**
   - `pnpm audit --prod`: **0 vulnerabilities** (0 critical, 0 high, 0 moderate, 0 low). Fastify 5 migration completely eliminated all production runtime CVEs.
   - `pnpm audit` (full tree): **10 finding instances across 9 unique advisory IDs**, all strictly confined to `devDependencies` (test and build tooling).
@@ -50,6 +51,22 @@ Before activating or exposing the isolated staging deployment, the following inf
 > [!CRITICAL]
 > **Boundary Stopping Rule:**
 > If cloud KMS access, Doppler credentials, or staging VPC infrastructure are unavailable, the application service **must not be deployed or launched with local `.env` files**. The deployment pipeline must halt at this boundary.
+
+### 2.1 Actionable Staging Infrastructure Handoff Matrix
+
+To achieve authentic staging activation without guesswork, each infrastructure domain is assigned an accountable external owner, target cloud resource specifications, and non-negotiable acceptance verification commands:
+
+| Domain                             | Target Cloud Resource                                                            | Key Parameters & Constraints                                                                                                            | Accountable Owner         | Explicit Acceptance Verification Command                                                                                                                                                                                                                          |
+| :--------------------------------- | :------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------- | :------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. Staging Networking & VPC**    | AWS VPC `vpc-cc-staging` (`10.100.0.0/16`) in `ap-south-1`                       | 2 Public, 2 Private App, 2 Isolated DB subnets; NAT Gateway; VPC Flow Logs active; DB/Redis subnets non-routable from Internet          | Cloud Infrastructure Lead | `aws ec2 describe-vpcs --vpc-ids <vpc_id> --query "Vpcs[0].State"` $\to$ `"available"`<br>`aws ec2 describe-security-group-rules --filters "Name=group-id,Values=<sg_db>"` $\to$ Ingress strictly from `sg_app:5432`                                              |
+| **2. PostgreSQL / Aurora**         | AWS Aurora PostgreSQL Serverless v2 (`creatorconnect_staging`)                   | PostgreSQL 16.3; Multi-AZ; 7-day continuous WAL retention; RDS Proxy active; `sslmode=require`; connection limit 100                    | Database Reliability Lead | `aws rds describe-db-clusters --db-cluster-identifier creatorconnect-staging-aurora --query "DBClusters[0].Status"` $\to$ `"available"`<br>`psql "$DATABASE_URL" -c "SHOW ssl;"` $\to$ `on`<br>`pnpm prisma migrate status` $\to$ `Database schema is up to date` |
+| **3. Dedicated Redis**             | AWS ElastiCache Redis 7.1 replication group (`cc-staging-redis`)                 | Multi-AZ with auto-failover; TLS in-transit enabled; `requirepass` auth token; AOF enabled (`appendonly yes`) for BullMQ durability     | SRE / Platform Lead       | `aws elasticache describe-replication-groups --replication-group-id cc-staging-redis --query "ReplicationGroups[0].Status"` $\to$ `"available"`<br>`redis-cli -u "$REDIS_URL" ping` $\to$ `PONG`                                                                  |
+| **4. Object Storage**              | Cloudflare R2 / AWS S3 staging bucket (`creatorconnect-staging-media`)           | CORS allowed origins strictly `https://staging.creatorconnect.com`; pre-signed PUT/GET URL TTL $\le 900\text{s}$; public access blocked | Cloud Platform Engineer   | `aws s3api head-bucket --bucket creatorconnect-staging-media`<br>Execute synthetic PUT via pre-signed URL $\to$ HTTP 200; verify expired URL $\to$ HTTP 403                                                                                                       |
+| **5. Staging Authentication**      | Supabase Staging Project / Dedicated JWKS Endpoint                               | RS256/ES256 asymmetric signing keys; HTTPS-only JWKS URL; `ALLOW_HTTP_JWKS=false`; isolated staging user pool                           | Application Security Lead | `curl -fsS https://auth.staging.creatorconnect.com/auth/v1/.well-known/jwks.json \| jq .keys[0].kty` $\to$ `"RSA"` / `"EC"`<br>Verify synthetic test JWT parses through Fastify auth hook $\to$ HTTP 200                                                          |
+| **6. Managed Secrets & Cloud KMS** | AWS Secrets Manager (`creatorconnect/staging/app`) + KMS Key                     | Zero `.env` files on disk; IAM role `creatorconnect-staging-api-role` scoped to secret ARN; task definition injects secrets in-memory   | DevSecOps Lead            | `aws secretsmanager describe-secret --secret-id creatorconnect/staging/app --query "RotationEnabled"`<br>Container inspection: `test ! -f /app/.env && echo "CLEAN"` $\to$ `"CLEAN"`                                                                              |
+| **7. TLS Ingress & Reverse Proxy** | AWS Application Load Balancer / Caddy Ingress Proxy                              | Enforce TLS 1.3 only; HSTS `max-age=31536000`; Fastify `trustProxy` bound to trusted private CIDRs; strip client `X-Forwarded-*`        | SRE / Network Lead        | `curl -Iv --tlsv1.3 https://api.staging.creatorconnect.com/health` $\to$ HTTP 200 TLS 1.3<br>Spoofing test: `curl -H "X-Forwarded-For: 1.1.1.1" ...` $\to$ client IP not spoofed                                                                                  |
+| **8. Razorpay Sandbox**            | Razorpay Sandbox Merchant Account (`rzp_test_*`)                                 | Strictly `rzp_test_*` credentials; dedicated sandbox webhook secret; live keys rejected at boot by config verifier                      | Financial Systems Lead    | Test order creation API $\to$ returns order with ID `order_...`<br>Trigger test webhook $\to$ signature verified and event ingested                                                                                                                               |
+| **9. Telemetry & Alert Routing**   | PagerDuty Service (`CreatorConnect-Staging-Alerts`) + Slack `#cc-staging-alerts` | Alertmanager webhook routing; P0 escalation policy (SRE $\to$ Secondary $\to$ Lead); delivery latency SLA $\le 60\text{s}$              | SRE Lead                  | Dispatch synthetic P0 alert $\to$ Slack receipt $\le 60\text{s}$ & PagerDuty page triggered; SRE ack $\le 5\text{m}$; resolve on recovery                                                                                                                         |
 
 ---
 
@@ -156,9 +173,127 @@ curl -X POST https://alertmanager.staging.creatorconnect.internal/api/v2/alerts 
 3. **Acknowledgement:** On-call engineer acknowledges the PagerDuty page within $5\text{ minutes}$.
 4. **Recovery & Auto-Resolution:** Send resolving payload (`endsAt` set to current timestamp) and verify PagerDuty incident automatically resolves.
 
-### 4.3 Gate B Operational Status: **`NOT_VERIFIED`**
+### 4.3 Authorized SRE Gate B Execution Checklist
 
-_Justification:_ Probe evaluator and delivery calculation logic are fully verified (`telemetry-alert-verifier.ts`, 47 tests passed), but live delivery to an external PagerDuty/Slack recipient requires provisioned staging webhooks.
+The authorized Site Reliability Engineer must execute the synthetic-alert validation drill in accordance with the following structured checklist:
+
+- [ ] **Prerequisite 1: Infrastructure Readiness**
+  - Staging Alertmanager reachable at `https://alertmanager.staging.creatorconnect.internal`.
+  - PagerDuty staging integration key active for service `CreatorConnect-Staging-Alerts`.
+  - Slack incoming webhook active in `#cc-staging-alerts`.
+- [ ] **Prerequisite 2: On-Call Synchronization**
+  - Designated primary SRE confirmed on-call in PagerDuty schedule.
+  - SRE mobile app / notification channels verified active.
+- [ ] **Step 1: Record Baseline & Dispatch Alert**
+  - Record exact system dispatch timestamp $T_{\text{dispatch}}$ via UTC NTP clock.
+  - Send the synthetic `LedgerDiscrepancyDetected` P0 alert via cURL payload (Section 4.2 Step 1).
+- [ ] **Step 2: Monitor Real-Time Ingress & Verify Delivery Latency**
+  - Measure timestamp $T_{\text{slack\_received}}$ of arrival in `#cc-staging-alerts`.
+  - Measure timestamp $T_{\text{pagerduty\_triggered}}$ of incident creation in PagerDuty.
+  - Compute delivery latency: $\Delta t_{\text{delivery}} = T_{\text{pagerduty\_triggered}} - T_{\text{dispatch}}$.
+  - Assert $\Delta t_{\text{delivery}} \le 60\text{ seconds}$ (Gate B requirement).
+- [ ] **Step 3: Alert Payload & Link Validation**
+  - Verify notification title: `CRITICAL: Double-entry financial ledger imbalance detected`.
+  - Confirm labels: `alertname: LedgerDiscrepancyDetected`, `severity: P0`, `environment: staging`.
+  - Click embedded `runbook_url` and verify navigation to `runbook-ledger-mismatch`.
+- [ ] **Step 4: Acknowledge Incident**
+  - SRE acknowledges incident via PagerDuty UI or mobile app.
+  - Record timestamp $T_{\text{acknowledged}}$. Assert $T_{\text{acknowledged}} - T_{\text{pagerduty\_triggered}} \le 300\text{ seconds}$ (5 minutes).
+- [ ] **Step 5: Dispatch Auto-Resolution & Verify Incident Closure**
+  - Dispatch resolving payload (`endsAt` set to current UTC timestamp):
+    ```bash
+    curl -X POST https://alertmanager.staging.creatorconnect.internal/api/v2/alerts \
+      -H "Content-Type: application/json" \
+      -d '[{
+        "labels": {
+          "alertname": "LedgerDiscrepancyDetected",
+          "severity": "P0",
+          "service": "creatorconnect-api",
+          "environment": "staging"
+        },
+        "startsAt": "'$INCIDENT_START'",
+        "endsAt": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"
+      }]'
+    ```
+  - Verify PagerDuty incident automatically marks as `RESOLVED`.
+  - Record timestamp $T_{\text{resolved}}$.
+- [ ] **Step 6: Complete and Archive Evidence Template**
+  - Complete the standardized Gate B Evidence Markdown Template below and commit to `docs/architecture/phase-6/evidence/gate-b-incident-<date>.md`.
+
+### 4.4 Gate B SRE Incident Delivery Evidence Template (Markdown)
+
+```markdown
+# Gate B — Synthetic Incident Alert Verification Evidence
+
+**Execution Date:** YYYY-MM-DD  
+**Executing SRE:** <Full Name> (<PagerDuty User ID>)  
+**Secondary Approver:** <Full Name> (Engineering Lead)  
+**Target Environment:** Staging Isolated VPC (`vpc-cc-staging`)  
+**Alert Name:** `LedgerDiscrepancyDetected`  
+**Alert Severity:** `P0`
+
+---
+
+## 1. Measured Delivery Timestamps
+
+| Event Boundary                                     | Timestamp (UTC ISO-8601)   | Epoch Milliseconds | Delta / Latency          |
+| :------------------------------------------------- | :------------------------- | :----------------- | :----------------------- |
+| **Alert Dispatched ($T_{\text{dispatch}}$)**       | `YYYY-MM-DDTHH:MM:SS.sssZ` | `<ms>`             | Baseline (0 ms)          |
+| **Slack Channel Received ($T_{\text{slack}}$)**    | `YYYY-MM-DDTHH:MM:SS.sssZ` | `<ms>`             | `<latency_slack_ms>`     |
+| **PagerDuty Triggered ($T_{\text{pd\_trigger}}$)** | `YYYY-MM-DDTHH:MM:SS.sssZ` | `<ms>`             | `<latency_pd_ms>`        |
+| **SRE Acknowledged ($T_{\text{ack}}$)**            | `YYYY-MM-DDTHH:MM:SS.sssZ` | `<ms>`             | `<ack_time_sec>`         |
+| **Incident Auto-Resolved ($T_{\text{resolved}}$)** | `YYYY-MM-DDTHH:MM:SS.sssZ` | `<ms>`             | `<resolution_delta_sec>` |
+
+- **Official Gate B Delivery Latency:** `____ ms` (Target: $\le 60,000\text{ ms}$)
+- **Time to Acknowledge (TTA):** `____ seconds` (Target: $\le 300\text{ seconds}$)
+
+---
+
+## 2. External Incident Identifiers
+
+- **PagerDuty Incident Number:** `#<PD_INCIDENT_NUMBER>`
+- **PagerDuty Incident URL:** `https://creatorconnect.pagerduty.com/incidents/<ID>`
+- **Slack Message Timestamp (ts):** `<slack_thread_ts>`
+
+---
+
+## 3. Sanitized Delivery Log Excerpt
+
+\`\`\`json
+{
+"alertmanager_dispatch_log": {
+"status": "success",
+"receiver": "pagerduty-p0-financial",
+"integration": "pagerduty",
+"http_status": 202,
+"response_duration_ms": 142
+},
+"pagerduty_webhook_event": {
+"event_type": "incident.trigger",
+"incident_id": "PXXXXXX",
+"summary": "CRITICAL: Double-entry financial ledger imbalance detected",
+"urgency": "high"
+}
+}
+\`\`\`
+
+---
+
+## 4. Acceptance Gate Assessment
+
+- [ ] Delivery latency $\le 60\text{s}$ achieved: **[PASS / FAIL]**
+- [ ] Runbook link functional and accurate: **[PASS / FAIL]**
+- [ ] On-call escalation policy triggered correctly: **[PASS / FAIL]**
+- [ ] Incident auto-resolved on resolving payload: **[PASS / FAIL]**
+
+**Gate B Sign-off Status:** **[PASS / FAIL]**  
+**SRE Signature:** ___________________________  
+**Date:** YYYY-MM-DD
+```
+
+### 4.5 Gate B Operational Status: **`NOT_VERIFIED`**
+
+_Justification:_ Probe evaluator and delivery calculation logic are fully verified (`telemetry-alert-verifier.ts`, 47 tests passed), but live delivery to an external PagerDuty/Slack recipient requires provisioned staging webhooks. Execution must be performed using the checklist and evidence template above upon staging infrastructure activation.
 
 ---
 
@@ -182,9 +317,17 @@ _Justification:_ Probe evaluator and delivery calculation logic are fully verifi
 
 To empirically verify $\text{RPO} \le 5\text{ seconds}$ and $\text{RTO} \le 900\text{ seconds}$ without relying on arbitrary historical rollback points, the staging drill follows this rigorous five-step protocol:
 
-#### Step 1: Continuous High-Frequency Canary Stream Ingestion
+#### Step 1: Clock Synchronization & Continuous High-Frequency Canary Stream Ingestion
 
-A background synthetic canary process commits timestamped records into `audit_logs` every second ($1.0\text{s}$ interval) leading up to failure:
+To guarantee that RPO measurement is impervious to client clock skew or distributed timestamp drift:
+
+1. **Clock Synchronization Architecture:**
+   - Both the canary probe client (ECS Fargate task / runner) and the PostgreSQL Aurora cluster are configured to synchronize against the **AWS Time Sync Service** via `chrony` (`server 169.254.169.123 prefer iburst minpoll 4 maxpoll 4`).
+   - Maximum allowable clock drift between instances: **$|\Delta t_{\text{drift}}| \le 1.0\text{ millisecond}$**.
+   - The commit timestamp stored in the canary payload is generated via PostgreSQL server-side **`clock_timestamp()`** rather than client system time. Unlike `NOW()` or `CURRENT_TIMESTAMP` (which return statement/transaction start time), `clock_timestamp()` records the actual real-time clock value at row insertion.
+
+2. **Canary Heartbeat Ingestion Stream:**
+   A dedicated background synthetic canary process commits timestamped probe records into `audit_logs` every second ($1.0\text{s}$ interval) leading up to failure:
 
 ```sql
 INSERT INTO "audit_logs" (id, action, entity, "entityId", metadata, "createdAt")
@@ -193,13 +336,18 @@ VALUES (
   'DR_CANARY_PROBE',
   'CanaryHeartbeat',
   'canary-heartbeat-01',
-  jsonb_build_object('sequence', 4210, 'client_committed_at', clock_timestamp()),
+  jsonb_build_object(
+    'sequence', 4210,
+    'client_dispatched_at', '2026-10-15T16:45:00.000Z',
+    'client_committed_at', clock_timestamp()
+  ),
   NOW()
 );
 ```
 
-- Client records the sequence stream: $(s_1, t_1), (s_2, t_2), \dots, (s_n, t_n)$.
-- The final client-acknowledged transaction prior to failure is recorded: $S_{\text{client\_last}}$ at $t_{\text{client\_last}}$.
+3. **Acknowledged Writes Logging:**
+   - The canary client records an acknowledged stream of tuples: $(s_1, t_{\text{ack}, 1}), (s_2, t_{\text{ack}, 2}), \dots, (s_n, t_{\text{ack}, n})$.
+   - The final client-acknowledged transaction successfully committed prior to failure is denoted as $S_{\text{client\_last}}$ at acknowledged timestamp $t_{\text{client\_last}}$.
 
 #### Step 2: Failure Simulation & Incident Start ($T_{\text{incident\_start}} \equiv T_{\text{failure}}$)
 
@@ -422,9 +570,9 @@ Following the Fastify 5 ecosystem migration and targeted root overrides (`brace-
 |                                          |                | files (624 tests), 23/23 E2E passed.      |
 +-------------------------------------------------------------------------------------------------------+
 | Gate G: Remote CI Workflow Verification  | PASS           | GitHub Actions CI passed on exact commit: |
-|                                          |                | 4facbb0b8536df3724b149b762be28254b6746be  |
-|                                          |                | PR Validation Run ID 38764285293 (PASS);  |
-|                                          |                | CodeQL Analysis Run ID 38764285217 (PASS).|
+|                                          |                | 284a36ae66f594bed54d1ef67f9b154003f36e5f  |
+|                                          |                | PR Validation Run ID 38769767655 (PASS);  |
+|                                          |                | CodeQL Analysis Run ID 38769767753 (PASS).|
 +-------------------------------------------------------------------------------------------------------+
 | Gate H: Cloud Disaster Recovery (RPO)    | NOT_VERIFIED   | Local dump verified (6.7s RTO, 48 tables).|
 |                                          |                | Cloud continuous WAL streaming and multi- |
