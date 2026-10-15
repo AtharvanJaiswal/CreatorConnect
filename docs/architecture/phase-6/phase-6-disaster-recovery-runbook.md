@@ -1,8 +1,8 @@
 # CreatorConnect — Phase 6 Disaster Recovery, Backup & Restoration Runbook
 
-**Document Version:** 1.1.0
-**Baseline Branch:** `audit/phase-6-operational-readiness`
-**Evaluation Commit SHA:** `a7858ec`
+**Document Version:** 1.2.0
+**Baseline Branch:** `dev`
+**Evaluation Commit SHA:** `2dd20f9bb93793317065fb0c9cf7860a5c148d6e`
 **Target Environment:** Isolated Test / Staging Database Rehearsal
 **Auditor Roles:** Site Reliability Engineer (SRE), Database Administrator (DBA), and Financial Systems Engineer
 
@@ -14,20 +14,37 @@
 
 #### Recovery Point Objective (RPO)
 
-$$\text{RPO} = t_{\text{failure}} - t_{\text{latest recoverable consistent committed data point}}$$
+$$\text{RPO} = T_{\text{failure}} - t_{\text{latest recoverable consistent committed data point}}$$
 
 - **Authoritative Production Target:** $\text{RPO} \le 5\text{ seconds}$ (near-zero data loss for financial ledgers via continuous PostgreSQL Write-Ahead Log [WAL] streaming to Aurora multi-AZ storage).
-- **Authoritative Approval:** Confirmed by Database Reliability Lead (October 15, 2026).
+- **Authoritative Approval:** Formally confirmed by Staff Database Reliability Engineer on October 15, 2026.
 - **Cloud Disaster Recovery Status:** **`NOT_VERIFIED`** (Cloud multi-region WAL archiving, S3 storage replication, and cross-region failover have not been exercised in this local/CI test environment; cloud drill required on staging).
 - **Measured Local Snapshot Metric:** In the isolated rehearsal drill (`database-restore-drill.spec.ts`), the snapshot generation execution duration was measured at $\approx 0.5\text{ seconds}$ ($520\text{ ms}$). This measurement represents the storage dump execution window, not an end-to-end cloud RPO. In the drill scenario where no writes occurred post-snapshot, zero transactions were lost between snapshot creation and verification.
 
 #### Recovery Time Objective (RTO)
 
-$$\text{RTO} = t_{\text{validated recovery completion}} - t_{\text{incident start}}$$
+$$\text{RTO} = T_{\text{recovery complete}} - T_{\text{incident start}}$$
 
-- **Production SLA Target:** $\text{RTO} \le 900\text{ seconds}$ (15 minutes) for full database restoration and operational verification.
+- **Production SLA Target:** $\text{RTO} \le 900\text{ seconds}$ (15 minutes) for full database restoration, schema verification, and double-entry ledger reconciliation.
 - **Measured Local Drill Metric:** Complete containerized dump, SHA-256 digest computation, isolated database provisioning, `pg_restore` execution, schema verification (48 tables), foreign key integrity checks, and double-entry ledger reconciliation completed in **$6.9\text{ seconds}$** (measured locally between $6.3\text{s}$ and $7.3\text{s}$ across test runs).
 - **Cloud RTO Extrapolation:** Local restore timing confirms tooling and schema automation efficiency, but production cloud RTO remains subject to EBS volume snapshot hydration and network transfer latency. Cloud disaster recovery validation is scheduled for isolated Staging.
+
+### 1.2 Authoritative Cloud PITR Measurement Protocol
+
+To ensure that empirical testing strictly demonstrates the $\le 5\text{s}$ RPO target rather than an arbitrary historical rollback:
+
+1. **Continuous Synthetic Canary Ingestion:** A background synthetic worker commits timestamped canary records to `audit_logs` every $1.0\text{ second}$ with sequence numbers and client timestamps $t_{\text{client commit}}$.
+2. **Failure Injection ($T_{\text{incident start}} \equiv T_{\text{failure}}$):** Primary instance failure is triggered. The RTO clock begins at this exact millisecond. The last acknowledged client write is recorded as $(S_{\text{client last}}, t_{\text{client last}})$.
+3. **Cloud Restoration to Latest Restorable State:** AWS Aurora Point-in-Time Recovery restores the cluster using `--use-latest-restorable-time` (or targeting $T_{\text{failure}}$), replaying streaming WAL to the crash boundary.
+4. **Validation & Ledger Reconciliation ($T_{\text{recovery complete}}$):**
+   - Verify all 48 tables and foreign key constraints exist.
+   - Execute double-entry ledger balancing: $\sum \text{Debit} - \sum \text{Credit} \equiv 0$ (must balance to 0 paise).
+   - Inspect recovered canaries: find latest recovered canary $(S_{\text{recovered}}, t_{\text{latest recoverable}})$.
+   - The RTO clock stops when all validations and ledger reconciliation complete successfully.
+5. **Exact Formulas & Acceptance Criteria:**
+   - $\text{RPO}_{\text{measured}} = T_{\text{failure}} - t_{\text{latest recoverable}} \le 5.0\text{ seconds}$.
+   - $\text{RTO}_{\text{measured}} = T_{\text{recovery complete}} - T_{\text{incident start}} \le 900.0\text{ seconds}$.
+6. **Separate Classification for Historical Rollback Tests:** Any test that intentionally restores to an older recovery point (such as $T_0 - 60\text{s}$ or $T_0 - 24\text{h}$ to recover from logical data corruption or bad migrations) is classified as a **"Historical Point-in-Time Rollback Drill"** and is tracked separately. It is **never** counted as proof of the $\le 5\text{s}$ RPO target.
 
 ---
 

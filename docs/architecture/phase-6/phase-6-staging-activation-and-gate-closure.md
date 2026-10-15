@@ -178,40 +178,102 @@ _Justification:_ Probe evaluator and delivery calculation logic are fully verifi
 > [!NOTE]
 > The local Docker dump/restore test (`database-restore-drill.spec.ts`) proves tooling, schema compatibility, foreign key integrity, and ledger verification speed. It **does not** count as cloud recovery evidence. Gate H remains **`NOT_VERIFIED`** until the cloud PITR drill is completed on staging infrastructure.
 
-### 5.2 Cloud Point-in-Time Recovery (PITR) Execution Steps in Staging
+### 5.2 Corrected Cloud Point-in-Time Recovery (PITR) Execution Protocol for Staging
 
-1. **Continuous WAL Archiving Verification:** Inspect AWS Aurora continuous backup metrics:
-   ```bash
-   aws rds describe-db-instances \
-     --db-instance-identifier creatorconnect-staging-db \
-     --query 'DBInstances[0].BackupRetentionPeriod'
-   # Must be >= 7 days
+To empirically verify $\text{RPO} \le 5\text{ seconds}$ and $\text{RTO} \le 900\text{ seconds}$ without relying on arbitrary historical rollback points, the staging drill follows this rigorous five-step protocol:
+
+#### Step 1: Continuous High-Frequency Canary Stream Ingestion
+
+A background synthetic canary process commits timestamped records into `audit_logs` every second ($1.0\text{s}$ interval) leading up to failure:
+
+```sql
+INSERT INTO "audit_logs" (id, action, entity, "entityId", metadata, "createdAt")
+VALUES (
+  gen_random_uuid(),
+  'DR_CANARY_PROBE',
+  'CanaryHeartbeat',
+  'canary-heartbeat-01',
+  jsonb_build_object('sequence', 4210, 'client_committed_at', clock_timestamp()),
+  NOW()
+);
+```
+
+- Client records the sequence stream: $(s_1, t_1), (s_2, t_2), \dots, (s_n, t_n)$.
+- The final client-acknowledged transaction prior to failure is recorded: $S_{\text{client\_last}}$ at $t_{\text{client\_last}}$.
+
+#### Step 2: Failure Simulation & Incident Start ($T_{\text{incident\_start}} \equiv T_{\text{failure}}$)
+
+- An abrupt crash or primary storage outage is triggered at timestamp $T_{\text{failure}}$:
+  ```bash
+  # Record the exact incident start timestamp (starts the RTO stopwatch)
+  INCIDENT_START=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  aws rds reboot-db-instance --db-instance-identifier creatorconnect-staging-db --force-failover
+  ```
+- **RTO Start Boundary:** $T_{\text{incident\_start}}$ is the precise millisecond when the primary database becomes unresponsive to clients.
+
+#### Step 3: Cloud Restoration to Latest Restorable State
+
+Rather than restoring to an arbitrary historical point ($T_0 - 60\text{s}$), the PITR drill instructs the storage engine to restore to the latest consistent restorable point up to $T_{\text{failure}}$:
+
+```bash
+# Restore staging Aurora snapshot with continuous WAL replay to the latest restorable time
+aws rds restore-db-instance-to-point-in-time \
+  --source-db-instance-identifier creatorconnect-staging-db \
+  --target-db-instance-identifier creatorconnect-staging-pitr-target \
+  --use-latest-restorable-time \
+  --db-subnet-group-name staging-isolated-subnet \
+  --vpc-security-group-ids sg-staging-isolated-db
+```
+
+#### Step 4: Schema Integrity, Reconciliation & Recovery Completion ($T_{\text{recovery\_complete}}$)
+
+The RTO stopwatch continues running while post-restore verification executes:
+
+1. **Schema & Constraint Audit:** Assert all 48 tables and foreign key constraints exist.
+2. **Double-Entry Ledger Reconciliation:**
+   ```sql
+   SELECT
+     SUM(CASE WHEN direction = 'DEBIT' THEN amount ELSE 0 END) AS total_debits,
+     SUM(CASE WHEN direction = 'CREDIT' THEN amount ELSE 0 END) AS total_credits
+   FROM "ledger_entries";
+   -- Invariant: total_debits == total_credits (difference must be exactly 0 paise)
    ```
-2. **Trigger Synthetic Failure Simulation:** Record timestamp $T_0$. Insert synthetic record into `payment_intents`.
-3. **Initiate Point-in-Time Restore:** Restore cluster to isolated target identifier `creatorconnect-staging-pitr-target` targeting timestamp $T_0 - 60\text{s}$:
-   ```bash
-   aws rds restore-db-instance-to-point-in-time \
-     --source-db-instance-identifier creatorconnect-staging-db \
-     --target-db-instance-identifier creatorconnect-staging-pitr-target \
-     --restore-time $(date -u -v -1M +"%Y-%m-%dT%H:%M:%SZ") \
-     --db-subnet-group-name staging-isolated-subnet
+3. **Canary Recovery & RPO Evaluation Query:**
+   ```sql
+   SELECT
+     (metadata->>'sequence')::int AS recovered_sequence,
+     (metadata->>'client_committed_at')::timestamptz AS latest_recoverable_timestamp
+   FROM "audit_logs"
+   WHERE action = 'DR_CANARY_PROBE'
+   ORDER BY (metadata->>'sequence')::int DESC
+   LIMIT 1;
    ```
-4. **Post-Restore Integrity Queries:**
-   - Table count: Exactly 48 tables.
-   - Migration status: 8 migrations applied.
-   - Double-entry ledger balance query:
-     ```sql
-     SELECT
-       SUM(CASE WHEN direction = 'DEBIT' THEN amount ELSE 0 END) AS total_debits,
-       SUM(CASE WHEN direction = 'CREDIT' THEN amount ELSE 0 END) AS total_credits
-     FROM "ledger_entries";
-     -- Must satisfy: total_debits == total_credits
-     ```
-5. **Measure Actual RPO and RTO:** Record exact timestamps and store sanitized logs in release artifacts.
+   - Yields the latest recoverable commit: $(S_{\text{recovered}}, t_{\text{latest\_recoverable}})$.
+4. **Mark Recovery Complete:**
+   ```bash
+   RECOVERY_COMPLETE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+   ```
+
+- **RTO End Boundary:** $T_{\text{recovery\_complete}}$ is the precise millisecond when the restored target database passes schema verification, passes ledger reconciliation, and is ready to accept read/write traffic.
+
+#### Step 5: Exact Metric Calculation & Acceptance Criteria
+
+$$\text{RPO}_{\text{measured}} = T_{\text{failure}} - t_{\text{latest\_recoverable}}$$
+
+$$\text{RTO}_{\text{measured}} = T_{\text{recovery\_complete}} - T_{\text{incident\_start}}$$
+
+- **RPO Acceptance Criteria:** $\text{RPO}_{\text{measured}} \le 5.0\text{ seconds}$. If $S_{\text{recovered}} == S_{\text{client\_last}}$, data loss is exactly $0\text{ seconds}$. If canaries are missing, data loss must be strictly $\le 5.0\text{s}$. If $> 5.0\text{s}$, Gate H **FAILS**.
+- **RTO Acceptance Criteria:** $\text{RTO}_{\text{measured}} \le 900.0\text{ seconds}$ ($15\text{ minutes}$). If $> 900.0\text{s}$, Gate H **FAILS**.
+- **Ledger Acceptance Criteria:** Double-entry ledger difference must be **$0\text{ paise}$**. Unbalanced journals cause immediate Gate H **FAIL**.
+
+#### Step 6: Separate Classification of Historical Rollback Tests
+
+Any intentionally older recovery-point test (e.g. restoring to $T_0 - 60\text{s}$ or $T_0 - 24\text{h}$ to undo a corrupted migration or operator error) is strictly labeled as a **"Historical Point-in-Time Rollback Drill"**. It is tracked separately in DR records and is **never presented as evidence for the $\le 5\text{s}$ RPO target**.
 
 ### 5.3 Gate H Operational Status: **`NOT_VERIFIED`**
 
-_Justification:_ Tooling and local drills pass 100%, but cloud WAL restore requires the staging cloud RDS infrastructure.
+- **Justification:** While the automated local container drill passed in $6.7\text{s}$ (verifying tooling, migrations, and schema constraints), empirical cloud continuous WAL streaming and multi-AZ PITR drill have not yet been executed on real staging AWS infrastructure.
+- **Required Action:** Database Reliability Engineer must execute the canary-based PITR drill on the staging Aurora cluster and record verified timestamps.
 
 ---
 
