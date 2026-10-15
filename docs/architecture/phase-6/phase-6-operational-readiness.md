@@ -96,9 +96,9 @@ Every requirement is mapped to its risk, implementation, test procedure, observe
 | Gate D: Regulatory, Banking & Compliance | BLOCKED        | Escrow banking & RBI nodal legal approval |
 |                                          |                | pending staging verification review.      |
 +-------------------------------------------------------------------------------------------------------+
-| Gate E: Dependency Security Audit        | PASS (Prod)    | Next.js, PostCSS, and Fast-URI patched.   |
-|                                          | ACCEPTED_RISK  | Vitest 2.1.9 devDependency isolated to    |
-|                                          | (DevOnly)      | test execution; 0 prod critical CVEs.     |
+| Gate E: Dependency Security Audit        | PASS (Prod)    | Next.js, PostCSS, Fast-URI, and Tinypool  |
+|                                          | ACCEPTED_RISK  | patched; Vitest 2.1.9 devDependency       |
+|                                          | (DevOnly)      | isolated (no @vitest/ui); 0 prod CVEs.    |
 +-------------------------------------------------------------------------------------------------------+
 | Gate F: Uncached Quality Gates           | PASS           | Format, lint, typecheck, build, 70/70 test|
 |                                          |                | files (616 tests), 23/23 E2E passed.      |
