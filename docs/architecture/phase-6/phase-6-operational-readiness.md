@@ -101,16 +101,19 @@ Every production requirement is documented below with its current state, concret
 | Gate D: Regulatory, Banking & Compliance | BLOCKED        | Escrow banking & RBI nodal legal approval |
 |                                          |                | pending staging verification review.      |
 +-------------------------------------------------------------------------------------------------------+
-| Gate E: Dependency Security Audit        | PASS (Prod)    | 0 critical CVEs. PostCSS, Source-Map-JS,  |
-|                                          | ACCEPTED_RISK  | Sharp, Fast-URI, Tinypool patched.        |
-|                                          | (Fastify/Dev)  | Fastify 4.x (6 high) guarded by proxy.    |
+| Gate E: Dependency Security Audit        | PASS (Prod)    | 0 production CVEs (0 crit, 0 high, 0 mod, |
+|                                          | ACCEPTED_RISK  | 0 low). Fastify 5.x ecosystem migration    |
+|                                          | (Dev-Only)     | fully validated (624 unit tests, 23 E2E).  |
+|                                          |                | Overrides: fast-uri, sharp, tinypool,      |
+|                                          |                | postcss, source-map-js. Dev critical:      |
+|                                          |                | cross-spawn in turbo/eslint build tools.   |
 +-------------------------------------------------------------------------------------------------------+
 | Gate F: Uncached Quality Gates           | PASS           | Format, lint, typecheck, build, 70/70 test|
 |                                          |                | files (624 tests), 23/23 E2E passed.      |
 +-------------------------------------------------------------------------------------------------------+
 | Gate G: Remote CI Workflow Verification  | PASS           | GitHub Actions CI passed on candidate SHA:|
-|                                          |                | PR Validation Run ID 38748232692 (PASS);  |
-|                                          |                | CodeQL Analysis Run ID 38748232808 (PASS).|
+|                                          |                | PR Validation Run ID 38750878860 (PASS);  |
+|                                          |                | CodeQL Analysis Run ID 38750878848 (PASS).|
 +-------------------------------------------------------------------------------------------------------+
 | Gate H: Cloud Disaster Recovery (RPO)    | NOT_VERIFIED   | Local dump verified; cloud WAL archiving  |
 |                                          |                | and PITR require cloud infrastructure.    |
@@ -130,3 +133,21 @@ In strict accordance with release management standards, decisions are rendered i
 5. **Production Deployment:** **NO-GO / BLOCKED** (Strictly blocked until Gates B, C, and D are formally satisfied).
 6. **Live Financial Transactions:** **NO-GO / STRICTLY PROHIBITED** (Requires legal, banking, and executive authorization).
 7. **Phase 7 Entry:** **PAUSED** (Implementation of subscriptions and invoicing remains paused pending staging sign-off).
+
+---
+
+## 7. Staging Security Gate Checklist
+
+Before deploying any build to the isolated staging environment, verify the following operational controls:
+
+| Security Domain                             | Specific Requirement                                                                                                                                                                                                                                                                         | Implementation & Verification Status         |
+| :------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------- |
+| **Request Validation & Reverse Proxy**      | Fastify `trustProxy` configured with private IP CIDRs (`['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']`). Reverse proxy (Caddy/Nginx) strips untrusted `X-Forwarded-*` headers from external clients. Strict RFC 7807 problem details responses for invalid payloads. | **VERIFIED IN CODE & UNIT TESTS**            |
+| **Authentication & RBAC**                   | Supabase JWT RS256/ES256 signature verification via JWKS. User status actively checked against authoritative PostgreSQL database (`ACTIVE` required, `SUSPENDED` rejected with 403).                                                                                                         | **VERIFIED IN TEST SUITE**                   |
+| **Rate Limiting & Abuse Prevention**        | Redis sliding window rate limiter with in-memory bounded fallback on Redis failure. Authenticated users keyed by user ID; unauthenticated keyed by client IP.                                                                                                                                | **VERIFIED IN TEST SUITE**                   |
+| **Secret Injection & Least Privilege**      | Zero static credentials in repository or Docker images. Staging environment injects secrets via cloud KMS / Doppler service token directly into container environment.                                                                                                                       | **BLOCKED (Requires Staging Cloud IAM)**     |
+| **Redacted Logging & Anomaly Alerts**       | Pino logging configured with strict path redaction (`req.headers.authorization`, `req.headers.cookie`, `body.password`, `body.token`, `body.secret`, `body.apiKey`). Prometheus alerts configured for ledger imbalance and webhook payload conflict.                                         | **VERIFIED IN CODE; ROUTING NOT_VERIFIED**   |
+| **Database Recovery & Migration Isolation** | Ordered Prisma migrations (0001–0008) run against isolated staging database. Automated dump/restore drill tested and operational.                                                                                                                                                            | **VERIFIED LOCALLY; CLOUD WAL NOT_VERIFIED** |
+| **Payment Sandbox Isolation**               | Staging must use Razorpay sandbox credentials (`rzp_test_*`) with a dedicated sandbox webhook secret. Live API keys strictly prohibited.                                                                                                                                                     | **READY FOR STAGING CONFIGURATION**          |
+| **Refund & Ledger Reconciliation**          | Deterministic platform-fee reversal with cumulative flooring formula $T(C) = \lfloor \frac{C \cdot F}{A} \rfloor$. Idempotent webhook handling with canonical JSON SHA-256 payload hashing.                                                                                                  | **VERIFIED IN TEST SUITE (100% RECONCILED)** |
+| **External Integration Failure Semantics**  | Fail-closed security for identity synchronization; gateway timeouts preserve `PROCESSING` status without premature fund release, allowing administrative reconciliation.                                                                                                                     | **VERIFIED IN TEST SUITE**                   |

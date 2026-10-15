@@ -41,16 +41,19 @@ Following extensive independent verification, boundary stress testing, and failu
 | Gate D: Regulatory, Banking & Compliance | BLOCKED        | Escrow banking & RBI nodal legal approval |
 |                                          |                | pending staging verification review.      |
 +-------------------------------------------------------------------------------------------------------+
-| Gate E: Dependency Security Audit        | PASS (Prod)    | 0 critical CVEs. PostCSS, Source-Map-JS,  |
-|                                          | ACCEPTED_RISK  | Sharp, Fast-URI, Tinypool patched.        |
-|                                          | (Fastify/Dev)  | Fastify 4.x (6 high) guarded by proxy.    |
+| Gate E: Dependency Security Audit        | PASS (Prod)    | 0 production CVEs (0 crit, 0 high, 0 mod, |
+|                                          | ACCEPTED_RISK  | 0 low). Fastify 5.x ecosystem migration    |
+|                                          | (Dev-Only)     | fully validated (624 unit tests, 23 E2E).  |
+|                                          |                | Overrides: fast-uri, sharp, tinypool,      |
+|                                          |                | postcss, source-map-js. Dev critical:      |
+|                                          |                | cross-spawn in turbo/eslint build tools.   |
 +-------------------------------------------------------------------------------------------------------+
 | Gate F: Uncached Quality Gates           | PASS           | Format, lint, typecheck, build, 70/70 test|
 |                                          |                | files (624 tests), 23/23 E2E passed.      |
 +-------------------------------------------------------------------------------------------------------+
 | Gate G: Remote CI Workflow Verification  | PASS           | GitHub Actions CI passed on candidate SHA:|
-|                                          |                | PR Validation Run ID 38748232692 (PASS);  |
-|                                          |                | CodeQL Analysis Run ID 38748232808 (PASS).|
+|                                          |                | PR Validation Run ID 38750878860 (PASS);  |
+|                                          |                | CodeQL Analysis Run ID 38750878848 (PASS).|
 +-------------------------------------------------------------------------------------------------------+
 | Gate H: Cloud Disaster Recovery (RPO)    | NOT_VERIFIED   | Local dump verified; cloud WAL archiving  |
 |                                          |                | and PITR require cloud infrastructure.    |

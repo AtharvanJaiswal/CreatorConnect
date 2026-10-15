@@ -1,4 +1,5 @@
 import fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import type * as http from 'node:http';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import sensible from '@fastify/sensible';
@@ -35,11 +36,11 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
         : process.env.TRUST_PROXY.split(',').map((s) => s.trim())
     : ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'];
 
-  const app = fastify({
+  const app: FastifyInstance = fastify<http.Server>({
     logger: loggerConfig,
-    disableRequestLogging: false,
     requestIdHeader: 'x-request-id',
     requestIdLogLabel: 'reqId',
+    disableRequestLogging: false,
     trustProxy: opts.trustProxy !== undefined ? opts.trustProxy : defaultTrustProxy,
     ajv: {
       customOptions: {
@@ -59,6 +60,7 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
               }
             },
           });
+          return ajv;
         },
       ],
     },
