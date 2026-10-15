@@ -185,7 +185,7 @@ All quality gates were executed on branch `dev`:
 
 ### Recommendation: **CONDITIONAL GO**
 
-The CreatorConnect Phase 6 codebase on branch `dev` at commit `5749bfca527aeb465fcf96ef066acbecaa900d88` is **approved for deployment to a controlled, isolated Staging environment** for operational rehearsal, user acceptance testing (UAT), and external webhook sandbox validation.
+The CreatorConnect Phase 6 codebase on branch `dev` at commit `2c444a2de2cb4146b95f4be12434fb9b6901b1f1` (code validation commit `79a6f17a03275b0acee12be6a94f9633c8a0ab02`) is **approved for deployment to a controlled, isolated Staging environment** for operational rehearsal, user acceptance testing (UAT), and external webhook sandbox validation.
 
 ### Strict Governance Restrictions:
 
