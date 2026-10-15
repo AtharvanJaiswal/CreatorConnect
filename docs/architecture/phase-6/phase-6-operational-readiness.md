@@ -153,3 +153,10 @@ Before deploying any build to the isolated staging environment, verify the follo
 | **Payment Sandbox Isolation**               | Staging must use Razorpay sandbox credentials (`rzp_test_*`) with a dedicated sandbox webhook secret. Live API keys strictly prohibited.                                                                                                                                                     | **READY FOR STAGING CONFIGURATION**          |
 | **Refund & Ledger Reconciliation**          | Deterministic platform-fee reversal with cumulative flooring formula $T(C) = \lfloor \frac{C \cdot F}{A} \rfloor$. Idempotent webhook handling with canonical JSON SHA-256 payload hashing.                                                                                                  | **VERIFIED IN TEST SUITE (100% RECONCILED)** |
 | **External Integration Failure Semantics**  | Fail-closed security for identity synchronization; gateway timeouts preserve `PROCESSING` status without premature fund release, allowing administrative reconciliation.                                                                                                                     | **VERIFIED IN TEST SUITE**                   |
+
+---
+
+## 8. Staging Activation & Operational Gate Closure Specification
+
+For the complete infrastructure activation procedure, cloud KMS IAM policies, synthetic alert dispatch protocols, cloud PITR drill execution steps, and RBI nodal escrow review packet, refer to:
+[phase-6-staging-activation-and-gate-closure.md](phase-6-staging-activation-and-gate-closure.md).

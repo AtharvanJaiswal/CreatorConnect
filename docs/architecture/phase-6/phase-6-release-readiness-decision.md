@@ -99,6 +99,7 @@ Prior to promoting this release beyond the staging environment, the following op
 
 ## 5. Release Governance Restrictions
 
-- **No Code Merges:** Branch `audit/phase-6-operational-readiness` has not been merged into `dev` or `main`.
-- **No Remote Deployment:** Automated deployment triggers remain disabled.
+- **Strict Branch Policy:** All integration work is committed strictly to `dev`. `dev` has **NOT** been merged into `main`.
+- **No Remote Production Deployment:** Automated production deployment triggers remain disabled.
 - **Production Safety:** Production secrets and live merchant accounts remain completely unconfigured.
+- **Detailed Staging Specification:** Refer to [phase-6-staging-activation-and-gate-closure.md](phase-6-staging-activation-and-gate-closure.md) for full operational runbooks.
