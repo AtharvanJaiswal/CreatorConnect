@@ -19,7 +19,7 @@ test.describe('Customer/Brand Profile End-to-End Persistence Audit', () => {
   async function provisionUser(role: 'BRAND' | 'CREATOR') {
     const userId = generateUuidV7();
     const sub = `sub_e2e_brand_${Date.now()}_${generateUuidV7().replace(/-/g, '')}`;
-    const email = `e2e_${role.toLowerCase()}_${Date.now()}@creatorconnect.test`;
+    const email = `e2e_${role.toLowerCase()}_${Date.now()}_${generateUuidV7().replace(/-/g, '')}@creatorconnect.test`;
 
     createdUserIds.push(userId);
 

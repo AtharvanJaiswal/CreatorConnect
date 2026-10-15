@@ -29,7 +29,7 @@ test.describe('Real Web → API Integration: Professional Profile Journey (Phase
   test.beforeAll(async () => {
     testUserId = generateUuidV7();
     testSub = `sub_e2e_pro_${Date.now()}_${generateUuidV7().replace(/-/g, '')}`;
-    testEmail = `e2e_pro_${Date.now()}@creatorconnect.test`;
+    testEmail = `e2e_pro_${Date.now()}_${generateUuidV7().replace(/-/g, '')}@creatorconnect.test`;
 
     // 1. Provision user directly in real PostgreSQL with ACTIVE status and PROFESSIONAL role
     await prisma.user.create({

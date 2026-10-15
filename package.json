@@ -51,7 +51,9 @@
       "tinypool": ">=2.1.2",
       "postcss": ">=8.5.30",
       "source-map-js": ">=1.2.2",
-      "sharp": ">=0.35.5"
+      "sharp": ">=0.35.5",
+      "brace-expansion": ">=2.1.7 <3.0.0",
+      "@grpc/grpc-js": ">=1.14.6 <2.0.0"
     }
   }
 }

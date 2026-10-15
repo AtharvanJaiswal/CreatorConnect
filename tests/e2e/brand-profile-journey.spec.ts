@@ -22,7 +22,7 @@ test.describe('Brand/Customer Profile User Journey End-to-End', () => {
   async function provisionUser(role: 'BRAND' | 'CREATOR' | 'PROFESSIONAL') {
     const userId = generateUuidV7();
     const sub = `sub_e2e_${role.toLowerCase()}_${Date.now()}_${generateUuidV7().replace(/-/g, '')}`;
-    const email = `e2e_${role.toLowerCase()}_${Date.now()}@creatorconnect.test`;
+    const email = `e2e_${role.toLowerCase()}_${Date.now()}_${generateUuidV7().replace(/-/g, '')}@creatorconnect.test`;
 
     createdUserIds.push(userId);
 
