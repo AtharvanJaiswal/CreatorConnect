@@ -83,32 +83,32 @@ The end-to-end integration and adversarial test suites assert the following non-
 
 ## 5. Priority 4 — Concrete Test Execution Evidence
 
-All quality gates were executed on branch `audit/phase-6-financial-security-readiness`:
+All quality gates were executed on branch `dev`:
 
 ### 5.1 Unit & Integration Suite (`pnpm test:unit`)
 
 - **Workspaces:** 13 packages/apps.
 - **Test Files:** **70 passed, 0 failed** (100% passing).
-- **Total Tests:** **616 passed, 0 failed, 0 skipped**.
-- **Duration:** 43.98 seconds.
+- **Total Tests:** **624 passed, 0 failed, 0 skipped**.
+- **Duration:** 90.07 seconds.
 - **Key Test Files:**
   - `phase-6-adversarial-verification.spec.ts`: **10 tests passed** (ledger balance, zero/negative bounds, webhook signatures, replay deduplication, conflicting payload anomaly detection, out-of-order event immutability, crash recovery, tenant isolation, suspended user rejection, mass assignment, refund caps, INT4 overflow rejection).
   - `phase-6-release-integration.spec.ts`: **10 comprehensive integration tests passed** (fee allocation, concurrent refunds, full lifecycle, review moderation, ambiguous timeouts, multi-step refunds, dispute locks).
-  - `packages/utils/src/currency.spec.ts`: **7 tests passed** (including BigInt precision and overflow safety).
+  - `packages/utils/src/currency.spec.ts`: **15 tests passed** (including BigInt precision, INT4 boundary, single full refund, 50 micro-refunds, and 100 randomized odd partitions using deterministic PRNG).
   - `packages/utils/src/json.spec.ts`: **4 tests passed** (deterministic key sorting and recursive canonicalization).
 
 ### 5.2 Operational & Database Resilience (`pnpm --filter @creatorconnect/testing test`)
 
 - **Test Files:** **8 passed, 0 failed**.
 - **Total Tests:** **47 passed, 0 failed**.
-- **Duration:** 7.29 seconds.
+- **Duration:** 7.97 seconds.
 - **Restore Drill:** `database-restore-drill.spec.ts` dynamically discovered PostgreSQL container, executed dump/restore cycle, and verified all 48 tables and relations.
 
 ### 5.3 Browser End-to-End Suite (`pnpm test:e2e`)
 
 - **Test Files:** 6 spec files using Playwright with 8 parallel workers.
 - **Total Tests:** **23 passed, 0 failed**.
-- **Duration:** 5.7 seconds.
+- **Duration:** 34.2 seconds.
 
 ### 5.4 Static Verification & Compilation
 
@@ -116,45 +116,63 @@ All quality gates were executed on branch `audit/phase-6-financial-security-read
 - `pnpm lint`: **13 workspaces clean** (0 lint warnings/errors).
 - `pnpm typecheck`: **20 TypeScript projects clean** (0 type errors).
 - `pnpm build`: **All 13 packages built successfully** (`turbo build`).
+- **Remote CI:** GitHub Actions runs `38748232692` (PR Validation) and `38748232808` (CodeQL) passed on SHA `5749bfca527aeb465fcf96ef066acbecaa900d88`.
 
 ---
 
 ## 6. Confirmed Findings & Corrections Register
 
-| Finding ID  | Scope             | Severity | Root Cause                                                                                | Implemented Fix                                                                            | Verification Test                                               |
-| :---------- | :---------------- | :------- | :---------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------- | :-------------------------------------------------------------- |
-| **CORR-01** | Documentation     | Low      | Shortened migration directory names in report.                                            | Corrected to exact directory names (`0001_init_identity_and_roles`, etc.).                 | `phase-6-operational-readiness.md`                              |
-| **CORR-02** | Documentation     | Medium   | Document claimed all monetary columns were `bigint`.                                      | Clarified `INTEGER` for individual transactions and `BIGINT` for ledger balances.          | `phase-6-financial-invariants.md`                               |
-| **CORR-03** | Documentation     | Low      | Route shorthand paths differed from Fastify routes.                                       | Updated routes to exact paths with full prefixes.                                          | `phase-6-security-audit.md`                                     |
-| **CORR-04** | Documentation     | Low      | Webhook signature rejection was described as 401.                                         | Corrected to RFC 7807 `400 BAD_REQUEST` (`INVALID_WEBHOOK_SIGNATURE`).                     | `phase-6-security-audit.md`                                     |
-| **CORR-05** | Security / Bounds | High     | Potential Postgres INT4 overflow on monetary amounts $> 2^{31}-1$.                        | Added `maximum: 2147483647` to `MinorUnitsSchema`.                                         | `phase-6-adversarial-verification.spec.ts:821`                  |
-| **CORR-06** | Financial / Math  | High     | Intermediate product $C \cdot F$ in fee calculation can exceed `Number.MAX_SAFE_INTEGER`. | Implemented `calculateCumulativeFeeReversal` using `BigInt` arithmetic.                    | `currency.spec.ts:34`                                           |
-| **CORR-07** | Security / Replay | High     | Postgres JSONB key-reordering caused false payload mismatches on webhook deduplication.   | Implemented `canonicalJsonStringify` with alphabetical key sorting before SHA-256 hashing. | `json.spec.ts` & `phase-6-adversarial-verification.spec.ts:481` |
-| **CORR-08** | Security / Replay | High     | Conflicting payload under same event ID was not flagged as anomaly.                       | Added `PAYMENT_WEBHOOK_PAYLOAD_MISMATCH_ANOMALY` audit log and rejected execution.         | `phase-6-adversarial-verification.spec.ts:500`                  |
-| **CORR-09** | Reliability       | Medium   | Stranded `PROCESSING` event on timeout was not recoverable on retry.                      | Allowed matching retries to resume execution to `PROCESSED`.                               | `phase-6-adversarial-verification.spec.ts:594`                  |
-| **CORR-10** | State Machine     | Medium   | Late `payment.failed` webhook could revert captured payments.                             | Added terminal status guards (`SUCCEEDED`, `PARTIALLY_REFUNDED`, `REFUNDED`).              | `phase-6-adversarial-verification.spec.ts:533`                  |
+| Finding ID  | Scope             | Severity | Root Cause                                                                                          | Implemented Fix                                                                                               | Verification Test                                               |
+| :---------- | :---------------- | :------- | :-------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------ | :-------------------------------------------------------------- |
+| **CORR-01** | Documentation     | Low      | Shortened migration directory names in report.                                                      | Corrected to exact directory names (`0001_init_identity_and_roles`, etc.).                                    | `phase-6-operational-readiness.md`                              |
+| **CORR-02** | Documentation     | Medium   | Document claimed all monetary columns were `bigint`.                                                | Clarified `INTEGER` for individual transactions and `BIGINT` for ledger balances.                             | `phase-6-financial-invariants.md`                               |
+| **CORR-03** | Documentation     | Low      | Route shorthand paths differed from Fastify routes.                                                 | Updated routes to exact paths with full prefixes.                                                             | `phase-6-security-audit.md`                                     |
+| **CORR-04** | Documentation     | Low      | Webhook signature rejection was described as 401.                                                   | Corrected to RFC 7807 `400 BAD_REQUEST` (`INVALID_WEBHOOK_SIGNATURE`).                                        | `phase-6-security-audit.md`                                     |
+| **CORR-05** | Security / Bounds | High     | Potential Postgres INT4 overflow on monetary amounts $> 2^{31}-1$.                                  | Added `maximum: 2147483647` to `MinorUnitsSchema`.                                                            | `phase-6-adversarial-verification.spec.ts:821`                  |
+| **CORR-06** | Financial / Math  | High     | Intermediate product $C \cdot F$ in fee calculation can exceed `Number.MAX_SAFE_INTEGER`.           | Implemented `calculateCumulativeFeeReversal` using `BigInt` arithmetic.                                       | `currency.spec.ts:34`                                           |
+| **CORR-07** | Security / Replay | High     | Postgres JSONB key-reordering caused false payload mismatches on webhook deduplication.             | Implemented `canonicalJsonStringify` with alphabetical key sorting before SHA-256 hashing.                    | `json.spec.ts` & `phase-6-adversarial-verification.spec.ts:481` |
+| **CORR-08** | Security / Replay | High     | Conflicting payload under same event ID was not flagged as anomaly.                                 | Added `PAYMENT_WEBHOOK_PAYLOAD_MISMATCH_ANOMALY` audit log and rejected execution.                            | `phase-6-adversarial-verification.spec.ts:500`                  |
+| **CORR-09** | Reliability       | Medium   | Stranded `PROCESSING` event on timeout was not recoverable on retry.                                | Allowed matching retries to resume execution to `PROCESSED`.                                                  | `phase-6-adversarial-verification.spec.ts:594`                  |
+| **CORR-10** | State Machine     | Medium   | Late `payment.failed` webhook could revert captured payments.                                       | Added terminal status guards (`SUCCEEDED`, `PARTIALLY_REFUNDED`, `REFUNDED`).                                 | `phase-6-adversarial-verification.spec.ts:533`                  |
+| **CORR-11** | Financial / Math  | High     | Intermediate floor accumulation across multiple partial refunds caused rounding drift.              | Added `calculateIncrementalFeeReversal` with telescoping identity $\Delta T = T(C_2) - T(C_1)$.               | `currency.spec.ts:66-180`, `payments.service.ts`                |
+| **CORR-12** | Supply-Chain      | High     | Transitive PostCSS, Source-Map-JS, Sharp, and Fast-URI advisories in production dependency closure. | Added targeted pnpm overrides and moved Testcontainers to devDependencies. 13 production findings remediated. | `pnpm audit --prod`                                             |
 
 ---
 
 ## 7. Staging Gate Status Summary
 
 ```
-+-----------------------------------------------------------------------------------------+
-| GATE                                     | STATUS         | JUSTIFICATION & EVIDENCE    |
-+-----------------------------------------------------------------------------------------+
-| Gate A: Database & Financial Resilience  | PASS           | Sequential migrations (1-8) |
-|                                          |                | Automated restore drill PASS|
-|                                          |                | Boundary & overflow tests OK|
-+-----------------------------------------------------------------------------------------+
-| Gate B: Telemetry & Incident Response    | NOT_VERIFIED   | Staging PagerDuty/Slack     |
-|                                          |                | channels not provisioned    |
-+-----------------------------------------------------------------------------------------+
-| Gate C: Production Secrets & KMS         | BLOCKED        | Production KMS secrets not  |
-|                                          |                | present in local/CI         |
-+-----------------------------------------------------------------------------------------+
-| Gate D: Regulatory, Banking & Compliance | BLOCKED        | Escrow banking & RBI nodal  |
-|                                          |                | sign-off required           |
-+-----------------------------------------------------------------------------------------+
++-------------------------------------------------------------------------------------------------------+
+| GATE                                     | STATUS         | JUSTIFICATION & EVIDENCE                  |
++-------------------------------------------------------------------------------------------------------+
+| Gate A: Database & Financial Resilience  | PASS           | All 8 migrations sequential.              |
+|                                          |                | Automated restore drill PASS (6.7s RTO).  |
+|                                          |                | 10 financial adversarial tests PASS.      |
+|                                          |                | Telescoping cumulative fee reversal PASS. |
++-------------------------------------------------------------------------------------------------------+
+| Gate B: Telemetry & Incident Response    | NOT_VERIFIED   | Staging PagerDuty/Slack channels not      |
+|                                          |                | provisioned in local test environment.    |
++-------------------------------------------------------------------------------------------------------+
+| Gate C: Production Secrets & Cloud KMS   | BLOCKED        | Staging/Production KMS secret manager not |
+|                                          |                | provisioned in local/CI environment.      |
++-------------------------------------------------------------------------------------------------------+
+| Gate D: Regulatory, Banking & Compliance | BLOCKED        | Escrow banking & RBI nodal legal approval |
+|                                          |                | pending staging verification review.      |
++-------------------------------------------------------------------------------------------------------+
+| Gate E: Dependency Security Audit        | PASS (Prod)    | 0 critical CVEs. PostCSS, Source-Map-JS,  |
+|                                          | ACCEPTED_RISK  | Sharp, Fast-URI, Tinypool patched.        |
+|                                          | (Fastify/Dev)  | Fastify 4.x (6 high) guarded by proxy.    |
++-------------------------------------------------------------------------------------------------------+
+| Gate F: Uncached Quality Gates           | PASS           | Format, lint, typecheck, build, 70/70 test|
+|                                          |                | files (624 tests), 23/23 E2E passed.      |
++-------------------------------------------------------------------------------------------------------+
+| Gate G: Remote CI Workflow Verification  | PASS           | GitHub Actions CI passed on candidate SHA:|
+|                                          |                | PR Validation Run ID 38748232692 (PASS);  |
+|                                          |                | CodeQL Analysis Run ID 38748232808 (PASS).|
++-------------------------------------------------------------------------------------------------------+
+| Gate H: Cloud Disaster Recovery (RPO)    | NOT_VERIFIED   | Local dump verified; cloud WAL archiving  |
+|                                          |                | and PITR require cloud infrastructure.    |
++-------------------------------------------------------------------------------------------------------+
 ```
 
 ---
@@ -163,7 +181,7 @@ All quality gates were executed on branch `audit/phase-6-financial-security-read
 
 ### Recommendation: **CONDITIONAL GO**
 
-The CreatorConnect Phase 6 codebase on branch `audit/phase-6-financial-security-readiness` is **approved for deployment to a controlled, isolated Staging environment** for operational rehearsal, user acceptance testing (UAT), and external webhook sandbox validation.
+The CreatorConnect Phase 6 codebase on branch `dev` at commit `5749bfca527aeb465fcf96ef066acbecaa900d88` is **approved for deployment to a controlled, isolated Staging environment** for operational rehearsal, user acceptance testing (UAT), and external webhook sandbox validation.
 
 ### Strict Governance Restrictions:
 

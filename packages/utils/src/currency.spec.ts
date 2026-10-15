@@ -114,9 +114,74 @@ describe('currency utilities', () => {
       expect(rev1 + rev2).toBe(maxFee);
     });
 
-    it('handles zero fee gracefully', () => {
-      expect(calculateIncrementalFeeReversal(0, 500, 0, 1000)).toBe(0);
-      expect(calculateIncrementalFeeReversal(500, 1000, 0, 1000)).toBe(0);
+    it('handles single full refund in one step returning exact total fee', () => {
+      expect(calculateIncrementalFeeReversal(0, 10000, 1500, 10000)).toBe(1500);
+      expect(calculateIncrementalFeeReversal(0, 7777, 999, 7777)).toBe(999);
+      expect(calculateIncrementalFeeReversal(0, 1, 1, 1)).toBe(1);
+    });
+
+    it('handles many micro-refunds (50 partial refunds) with exact conservation', () => {
+      const totalAmount = 5000;
+      const platformFee = 750;
+      const step = 100;
+      let cumulativeReversed = 0;
+      for (let c = 0; c < totalAmount; c += step) {
+        const rev = calculateIncrementalFeeReversal(c, c + step, platformFee, totalAmount);
+        expect(rev).toBeGreaterThanOrEqual(0);
+        cumulativeReversed += rev;
+      }
+      expect(cumulativeReversed).toBe(platformFee);
+    });
+
+    it('proves telescoping conservation across 100 randomized odd partitions using deterministic LCG PRNG', () => {
+      // Linear Congruential Generator for reproducible pseudo-random testing
+      let seed = 42;
+      function nextRandom() {
+        seed = (seed * 1664525 + 1013904223) % 4294967296;
+        return seed / 4294967296;
+      }
+
+      for (let iteration = 0; iteration < 100; iteration++) {
+        const total = Math.floor(nextRandom() * 50000) + 100; // 100 to 50,100 paise
+        const feeRate = nextRandom() * 0.3; // 0% to 30% fee
+        const fee = Math.floor(total * feeRate);
+
+        // Generate a random number of cuts (between 2 and 10 cuts)
+        const numCuts = Math.floor(nextRandom() * 8) + 2;
+        const cuts = new Set<number>([0, total]);
+        while (cuts.size < numCuts + 2) {
+          cuts.add(Math.floor(nextRandom() * (total - 1)) + 1);
+        }
+        const sortedCuts = Array.from(cuts).sort((a, b) => a - b);
+
+        let sumReversals = 0;
+        for (let i = 0; i < sortedCuts.length - 1; i++) {
+          const c1 = sortedCuts[i]!;
+          const c2 = sortedCuts[i + 1]!;
+          const rev = calculateIncrementalFeeReversal(c1, c2, fee, total);
+          expect(rev).toBeGreaterThanOrEqual(0);
+          expect(rev).toBeLessThanOrEqual(fee);
+          sumReversals += rev;
+        }
+        expect(sumReversals).toBe(fee);
+      }
+    });
+
+    it('rejects all boundary violation permutations with RangeError or TypeError', () => {
+      // Non-integers
+      expect(() => calculateIncrementalFeeReversal(0.5, 100, 10, 1000)).toThrow(TypeError);
+      expect(() => calculateIncrementalFeeReversal(0, 100.2, 10, 1000)).toThrow(TypeError);
+      expect(() => calculateIncrementalFeeReversal(0, 100, 10.9, 1000)).toThrow(TypeError);
+      expect(() => calculateIncrementalFeeReversal(0, 100, 10, 1000.1)).toThrow(TypeError);
+
+      // Bounds violations
+      expect(() => calculateIncrementalFeeReversal(-10, 100, 10, 1000)).toThrow(RangeError);
+      expect(() => calculateIncrementalFeeReversal(500, 400, 10, 1000)).toThrow(RangeError);
+      expect(() => calculateIncrementalFeeReversal(0, 1001, 10, 1000)).toThrow(RangeError);
+      expect(() => calculateIncrementalFeeReversal(0, 100, -1, 1000)).toThrow(RangeError);
+      expect(() => calculateIncrementalFeeReversal(0, 100, 1001, 1000)).toThrow(RangeError);
+      expect(() => calculateIncrementalFeeReversal(0, 100, 10, 0)).toThrow(RangeError);
+      expect(() => calculateIncrementalFeeReversal(0, 100, 10, -500)).toThrow(RangeError);
     });
   });
 });

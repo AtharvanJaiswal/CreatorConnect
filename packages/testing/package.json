@@ -18,13 +18,13 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@creatorconnect/utils": "workspace:*",
-    "@testcontainers/postgresql": "^10.13.2",
-    "@testcontainers/redis": "^10.13.2",
-    "testcontainers": "^10.13.2"
+    "@creatorconnect/utils": "workspace:*"
   },
   "devDependencies": {
     "@creatorconnect/config": "workspace:*",
+    "@testcontainers/postgresql": "^10.13.2",
+    "@testcontainers/redis": "^10.13.2",
+    "testcontainers": "^10.13.2",
     "@types/node": "^20.14.12",
     "typescript": "^5.5.4",
     "vitest": "^2.1.1"
