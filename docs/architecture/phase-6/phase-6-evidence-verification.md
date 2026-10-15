@@ -173,13 +173,15 @@ All quality gates were executed on branch `dev`:
 | Gate F: Uncached Quality Gates           | PASS           | Format, lint, typecheck, build, 70/70 test|
 |                                          |                | files (624 tests), 23/23 E2E passed.      |
 +-------------------------------------------------------------------------------------------------------+
-| Gate G: Remote CI Workflow Verification  | PASS           | GitHub Actions CI passed on current commit|
-|                                          |                | a103e9a22caf467e4ba46a4dbabfa07c85112aba: |
-|                                          |                | PR Validation Run ID 38760173873 (PASS);  |
-|                                          |                | CodeQL Analysis Run ID 38760169058 (PASS).|
+| Gate G: Remote CI Workflow Verification  | PASS           | GitHub Actions CI passed on exact commit: |
+|                                          |                | 4facbb0b8536df3724b149b762be28254b6746be  |
+|                                          |                | PR Validation Run ID 38764285293 (PASS);  |
+|                                          |                | CodeQL Analysis Run ID 38764285217 (PASS).|
 +-------------------------------------------------------------------------------------------------------+
-| Gate H: Cloud Disaster Recovery (RPO)    | NOT_VERIFIED   | Local dump verified; cloud WAL archiving  |
-|                                          |                | and PITR require cloud infrastructure.    |
+| Gate H: Cloud Disaster Recovery (RPO)    | NOT_VERIFIED   | Authoritative targets: RPO <= 5s,         |
+|                                          |                | RTO <= 900s. Local drill PASS (6.7s RTO). |
+|                                          |                | Cloud WAL archiving and staging PITR      |
+|                                          |                | drill require cloud infrastructure.       |
 +-------------------------------------------------------------------------------------------------------+
 ```
 

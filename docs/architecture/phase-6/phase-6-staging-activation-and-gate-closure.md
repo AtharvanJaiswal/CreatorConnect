@@ -166,13 +166,17 @@ _Justification:_ Probe evaluator and delivery calculation logic are fully verifi
 
 ### 5.1 Objectives & Formal Metric Targets
 
-| Metric                             | Approved Target                                | Local Container Drill (Empirical Baseline)                     | Cloud Staging Drill (Target)                        |
+| Metric                             | Authoritative Target Approved by Lead          | Local Container Drill (Empirical Baseline)                     | Cloud Staging Drill (Target)                        |
 | :--------------------------------- | :--------------------------------------------- | :------------------------------------------------------------- | :-------------------------------------------------- |
-| **Recovery Point Objective (RPO)** | $\le 300\text{ seconds}$ ($5\text{ minutes}$)  | **$0\text{ seconds}$** (snapshot window $\approx 0.5\text{s}$) | $\le 5\text{ seconds}$ via continuous WAL streaming |
+| **Recovery Point Objective (RPO)** | $\le 5\text{ seconds}$ (Zero Ledger Loss)      | **$0\text{ seconds}$** (snapshot window $\approx 0.5\text{s}$) | $\le 5\text{ seconds}$ via continuous WAL streaming |
 | **Recovery Time Objective (RTO)**  | $\le 900\text{ seconds}$ ($15\text{ minutes}$) | **$6.7\text{ seconds}$** (automated `pg_restore` drill)        | $\le 10\text{ minutes}$ for Aurora snapshot restore |
 
+> [!IMPORTANT]
+> **Authoritative RPO Target Confirmation:**
+> The Database Reliability Lead confirmed on October 15, 2026 that the authoritative production target is **$\text{RPO} \le 5\text{ seconds}$** (enforced by continuous PostgreSQL Write-Ahead Log streaming to Aurora Multi-AZ storage, guaranteeing zero data loss in financial ledgers) and **$\text{RTO} \le 900\text{ seconds}$** ($15\text{ minutes}$). The historical $300\text{s}$ snapshot reference has been formally deprecated.
+
 > [!NOTE]
-> The local Docker dump/restore test (`database-restore-drill.spec.ts`) proves tooling, schema compatibility, foreign key integrity, and ledger verification speed. It **does not** count as cloud recovery evidence.
+> The local Docker dump/restore test (`database-restore-drill.spec.ts`) proves tooling, schema compatibility, foreign key integrity, and ledger verification speed. It **does not** count as cloud recovery evidence. Gate H remains **`NOT_VERIFIED`** until the cloud PITR drill is completed on staging infrastructure.
 
 ### 5.2 Cloud Point-in-Time Recovery (PITR) Execution Steps in Staging
 

@@ -16,8 +16,9 @@
 
 $$\text{RPO} = t_{\text{failure}} - t_{\text{latest recoverable consistent committed data point}}$$
 
-- **Production SLA Target:** $\text{RPO} \le 300\text{ seconds}$ (5 minutes) in cloud production via continuous PostgreSQL Write-Ahead Log (WAL) archiving and Point-in-Time Recovery (PITR).
-- **Cloud Disaster Recovery Status:** **`NOT_VERIFIED`** (Cloud multi-region WAL archiving, S3 storage replication, and cross-region failover have not been exercised in this local/CI test environment).
+- **Authoritative Production Target:** $\text{RPO} \le 5\text{ seconds}$ (near-zero data loss for financial ledgers via continuous PostgreSQL Write-Ahead Log [WAL] streaming to Aurora multi-AZ storage).
+- **Authoritative Approval:** Confirmed by Database Reliability Lead (October 15, 2026).
+- **Cloud Disaster Recovery Status:** **`NOT_VERIFIED`** (Cloud multi-region WAL archiving, S3 storage replication, and cross-region failover have not been exercised in this local/CI test environment; cloud drill required on staging).
 - **Measured Local Snapshot Metric:** In the isolated rehearsal drill (`database-restore-drill.spec.ts`), the snapshot generation execution duration was measured at $\approx 0.5\text{ seconds}$ ($520\text{ ms}$). This measurement represents the storage dump execution window, not an end-to-end cloud RPO. In the drill scenario where no writes occurred post-snapshot, zero transactions were lost between snapshot creation and verification.
 
 #### Recovery Time Objective (RTO)
