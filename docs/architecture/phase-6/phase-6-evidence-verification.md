@@ -171,8 +171,8 @@ All quality gates were executed on branch `dev`:
 |                                          |                | files (624 tests), 23/23 E2E passed.      |
 +-------------------------------------------------------------------------------------------------------+
 | Gate G: Remote CI Workflow Verification  | PASS           | GitHub Actions CI passed on candidate SHA:|
-|                                          |                | PR Validation Run ID 38750878860 (PASS);  |
-|                                          |                | CodeQL Analysis Run ID 38750878848 (PASS).|
+|                                          |                | PR Validation Run ID 38757968172 (PASS);  |
+|                                          |                | CodeQL Analysis Run ID 38757968138 (PASS).|
 +-------------------------------------------------------------------------------------------------------+
 | Gate H: Cloud Disaster Recovery (RPO)    | NOT_VERIFIED   | Local dump verified; cloud WAL archiving  |
 |                                          |                | and PITR require cloud infrastructure.    |

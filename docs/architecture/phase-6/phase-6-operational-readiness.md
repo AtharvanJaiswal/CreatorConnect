@@ -77,7 +77,7 @@ Every production requirement is documented below with its current state, concret
 | **Operational Drill**  | `pnpm --filter @creatorconnect/testing test` | Operational resilience package   | **PASS** | 8 test files, **47 passed (100%)**   |
 | **Browser E2E**        | `pnpm test:e2e`                              | Playwright (8 workers)           | **PASS** | 6 spec files, **23 passed (100%)**   |
 | **Monorepo Build**     | `pnpm build`                                 | All packages & Next.js web shell | **PASS** | 12 turbo tasks successful (100%)     |
-| **Remote CI Gates**    | GitHub Actions CI                            | Workflow PR Validation & CodeQL  | **PASS** | Runs `38748232692` & `38748232808`   |
+| **Remote CI Gates**    | GitHub Actions CI                            | Workflow PR Validation & CodeQL  | **PASS** | Runs `38757968172` & `38757968138`   |
 
 ---
 
@@ -112,8 +112,8 @@ Every production requirement is documented below with its current state, concret
 |                                          |                | files (624 tests), 23/23 E2E passed.      |
 +-------------------------------------------------------------------------------------------------------+
 | Gate G: Remote CI Workflow Verification  | PASS           | GitHub Actions CI passed on candidate SHA:|
-|                                          |                | PR Validation Run ID 38750878860 (PASS);  |
-|                                          |                | CodeQL Analysis Run ID 38750878848 (PASS).|
+|                                          |                | PR Validation Run ID 38757968172 (PASS);  |
+|                                          |                | CodeQL Analysis Run ID 38757968138 (PASS).|
 +-------------------------------------------------------------------------------------------------------+
 | Gate H: Cloud Disaster Recovery (RPO)    | NOT_VERIFIED   | Local dump verified; cloud WAL archiving  |
 |                                          |                | and PITR require cloud infrastructure.    |
