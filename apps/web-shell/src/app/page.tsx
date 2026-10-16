@@ -1,155 +1,153 @@
+import React from 'react';
 import Link from 'next/link';
+import { SplashHero } from '../components/splash-hero';
+import { CapsuleBadge } from '../components/ui/cc-brand';
 import {
-  Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-  Badge,
-} from '@creatorconnect/ui';
-import {
-  Sparkles,
-  ArrowRight,
   Video,
-  Briefcase,
+  Clapperboard,
+  Mic,
   Building2,
-  ShieldCheck,
-  Zap,
+  ArrowRight,
   CheckCircle2,
-  Lock,
-  Layers,
+  Search,
 } from 'lucide-react';
 
 const PERSONAS = [
   {
-    title: 'Creator Hub',
+    title: 'Creator / Influencer',
     role: 'Content Creators & Influencers',
     description:
-      'Manage incoming brand deals, post production briefs, hire verified crew, and review video deliverables with milestone escrows.',
+      'Manage incoming brand deals, post production briefs, hire verified crew, and review deliverables with milestone escrows.',
     href: '/creator',
     icon: Video,
-    accent: 'from-indigo-500/20 to-purple-500/10 border-indigo-500/30',
-    badgeText: 'Creator Persona',
-    badgeVariant: 'default' as const,
+    iconBg: 'bg-[#FFEA9F]',
+    iconColor: 'text-[#8C6D00]',
+    badgeText: 'Creator Hub',
     highlights: ['Brief Posting', 'Crew Contracting', 'Milestone Approvals'],
   },
   {
-    title: 'Production Talent',
+    title: 'Production Professional',
     role: 'Editors, Colorists, VFX & DP',
     description:
       'Display verified showreels, set transparent rate cards, apply to high-value briefs, and receive guaranteed payouts upon sign-off.',
     href: '/pro',
-    icon: Briefcase,
-    accent: 'from-fuchsia-500/20 to-pink-500/10 border-fuchsia-500/30',
-    badgeText: 'Pro Persona',
-    badgeVariant: 'secondary' as const,
+    icon: Clapperboard,
+    iconBg: 'bg-[#E9E1FC]',
+    iconColor: 'text-[#5A38A8]',
+    badgeText: 'Pro Talent',
     highlights: ['Showreel Showcase', 'Contract Invoicing', 'Safe Escrow Funds'],
   },
   {
-    title: 'Brand Campaigns',
+    title: 'Brand / Sponsor',
     role: 'Enterprises & Agencies',
     description:
       'Launch multi-creator campaigns, review talent applications, fund milestone escrows via Razorpay, and verify raw footage deliverables.',
     href: '/brand',
     icon: Building2,
-    accent: 'from-emerald-500/20 to-teal-500/10 border-emerald-500/30',
-    badgeText: 'Brand Persona',
-    badgeVariant: 'success' as const,
+    iconBg: 'bg-[#E0DCF8]',
+    iconColor: 'text-[#4F469E]',
+    badgeText: 'Brand Portal',
     highlights: ['Escrow Protection', 'Talent Discovery', 'Audit Invoicing'],
   },
   {
-    title: 'Admin Cockpit',
-    role: 'Operations & Compliance',
+    title: 'Podcaster',
+    role: 'Audio & Video Hosts',
     description:
-      'Isolated operational cockpit for KYC verification, escrow release approvals, dispute arbitration, and real-time security audit trails.',
-    href: '/admin',
-    icon: ShieldCheck,
-    accent: 'from-amber-500/20 to-orange-500/10 border-amber-500/30',
-    badgeText: 'Admin Domain',
-    badgeVariant: 'warning' as const,
-    highlights: ['KYC Verification', 'Dispute Resolution', 'Audit Compliance'],
-  },
-];
-
-const ARCH_PILLARS = [
-  {
-    title: 'Multi-Zone Microfrontends',
-    description:
-      'Independently deployable Next.js route zones sharing a unified design system and TypeScript contracts.',
-    icon: Layers,
-  },
-  {
-    title: 'Library-First Design System',
-    description:
-      'Radix UI primitives and Tailwind tokens ensure zero WCAG 2.1 AA accessibility violations and unified aesthetics.',
-    icon: Sparkles,
-  },
-  {
-    title: 'Defense-in-Depth Security',
-    description:
-      'Zero-trust backend RBAC, CSP headers, OWASP protections, and strict escrow invariant verification.',
-    icon: Lock,
-  },
-  {
-    title: 'Sub-Millisecond Speed',
-    description:
-      'Fastify backend runtime, Turbo build caching, and Next.js 15.5 static rendering deliver peak performance.',
-    icon: Zap,
+      'Connect with industry guests, hire sound engineers and audio mixers, manage production schedules and distribute episodes.',
+    href: '/creator',
+    icon: Mic,
+    iconBg: 'bg-[#FDD9E4]',
+    iconColor: 'text-[#A63A5E]',
+    badgeText: 'Podcast Studio',
+    highlights: ['Guest Booking', 'Audio Engineering', 'Sponsorship Deals'],
   },
 ];
 
 export default function HomePage() {
   return (
-    <div className="flex flex-col gap-16 pb-16">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden pt-12 pb-16 md:pt-20 md:pb-24">
-        <div className="container max-w-7xl px-4 sm:px-8 flex flex-col items-center text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary mb-6 shadow-sm">
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Phase 2: Unified Design System & Microfrontends Live</span>
+    <div className="flex flex-col bg-[#FAF7F2] text-[#121212]">
+      {/* 1. Approved Splash Screen (SCR-SPLASH-01) */}
+      <SplashHero />
+
+      {/* 2. Design System Showcase / Quick Navigation Banner */}
+      <section className="border-y border-[#EAE3D5] bg-[#F7F2E9] py-6 px-4 sm:px-8">
+        <div className="container max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <CapsuleBadge variant="amber">APPROVED UI/UX SPECIFICATION</CapsuleBadge>
+            <span className="text-xs text-[#5C564E] font-medium hidden sm:inline">
+              Screen Catalogue Phase 1 & 2 Reconstructed
+            </span>
           </div>
 
-          <h1 className="font-heading font-extrabold text-4xl sm:text-5xl md:text-6xl max-w-4xl tracking-tight leading-tight sm:leading-none">
-            Where Creators, Production Pros & Brands{' '}
-            <span className="gradient-text">Build the Next Media Economy</span>
-          </h1>
-
-          <p className="mt-6 max-w-2xl text-base sm:text-lg text-muted-foreground leading-relaxed">
-            CreatorConnect unifies creators, crew, brands, and platform operations into dedicated,
-            high-performance microfrontend workspaces powered by verifiable escrow payments and
-            strong API contracts.
-          </p>
-
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <Link href="/creator">
-              <Button size="lg" className="gap-2 shadow-lg shadow-primary/25">
-                <span>Enter Creator Workspace</span>
-                <ArrowRight className="h-4 w-4" />
-              </Button>
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+            <Link
+              href="/onboarding"
+              className="bg-white hover:bg-[#F2ECE3] text-[#121212] px-3.5 py-1.5 rounded-full border border-[#EDE7DE] transition-colors"
+            >
+              SCR-ONB-01 (Onboarding)
             </Link>
-            <Link href="/brand">
-              <Button size="lg" variant="outline" className="gap-2">
-                <span>Explore Brand Portal</span>
-              </Button>
+            <Link
+              href="/register"
+              className="bg-[#FFCE38] hover:bg-[#F5C32C] text-[#121212] px-3.5 py-1.5 rounded-full transition-colors"
+            >
+              SCR-AUTH-01/02/03 (3-Step Registration)
+            </Link>
+            <Link
+              href="/discovery"
+              className="bg-white hover:bg-[#F2ECE3] text-[#121212] px-3.5 py-1.5 rounded-full border border-[#EDE7DE] transition-colors"
+            >
+              SCR-DISCOVERY-01 (Marketplace)
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Persona Portals Section */}
-      <section className="container max-w-7xl px-4 sm:px-8">
-        <div className="flex flex-col items-center text-center mb-12">
-          <Badge variant="outline" className="mb-3">
-            Domain Microfrontends
-          </Badge>
-          <h2 className="font-heading font-bold text-3xl sm:text-4xl tracking-tight">
-            Tailored Experiences for Every Persona
+      {/* 3. Hero Introduction */}
+      <section className="py-16 sm:py-24 px-4 sm:px-8">
+        <div className="container max-w-5xl mx-auto text-center">
+          <CapsuleBadge variant="default" className="mb-6">
+            FIND COLLABORATORS • INDIA&apos;S NETWORK
+          </CapsuleBadge>
+
+          <h1 className="font-heading font-extrabold text-4xl sm:text-6xl text-[#121212] tracking-tight leading-[1.1] mb-6">
+            Discover the <span className="font-serif italic font-normal text-[#121212]">right</span>{' '}
+            collaborators.
+          </h1>
+
+          <p className="text-[#5C564E] text-base sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+            CreatorConnect unifies creators, production pros, and brands into verified workspaces
+            backed by milestone escrows and age-verified identity protocols.
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <Link
+              href="/register"
+              className="bg-[#FFCE38] hover:bg-[#F5C32C] active:scale-[0.98] text-[#121212] font-semibold text-sm px-8 py-3.5 rounded-full shadow-sm inline-flex items-center gap-2 transition-all"
+            >
+              <span>Get Started</span>
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+
+            <Link
+              href="/discovery"
+              className="bg-white hover:bg-[#FDFBF7] text-[#121212] font-semibold text-sm px-8 py-3.5 rounded-full border border-[#D9D2C5] shadow-2xs inline-flex items-center gap-2 transition-all"
+            >
+              <Search className="h-4 w-4 text-[#7C756B]" />
+              <span>Explore Discovery</span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. Role / Persona Cards matching SCR-AUTH-ROLES-01 styling */}
+      <section className="container max-w-7xl mx-auto px-4 sm:px-8 pb-20">
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <h2 className="font-heading font-extrabold text-2xl sm:text-4xl text-[#121212] tracking-tight mb-3">
+            Tailored Experiences for Every{' '}
+            <span className="font-serif italic font-normal">Creative Node</span>
           </h2>
-          <p className="mt-2 text-muted-foreground max-w-xl">
-            Each persona operates within a dedicated domain shell, eliminating UI clutter and
-            delivering focused workflow efficiency.
+          <p className="text-xs sm:text-sm text-[#6B655C]">
+            Select your persona or explore dedicated domain workflows with role-based access.
           </p>
         </div>
 
@@ -157,87 +155,53 @@ export default function HomePage() {
           {PERSONAS.map((persona) => {
             const Icon = persona.icon;
             return (
-              <Card
+              <div
                 key={persona.title}
-                glass
-                className={`relative overflow-hidden transition-all duration-300 hover:border-primary/50 hover:shadow-xl hover:-translate-y-1 bg-gradient-to-br ${persona.accent}`}
+                className="bg-white rounded-3xl p-8 border border-[#EDE7DE] shadow-2xs hover:shadow-md hover:border-[#D6CEBF] transition-all flex flex-col justify-between"
               >
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-card/80 border border-border shadow-sm">
-                      <Icon className="h-6 w-6 text-primary" />
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <div
+                      className={`h-12 w-12 rounded-2xl flex items-center justify-center ${persona.iconBg} ${persona.iconColor}`}
+                    >
+                      <Icon className="h-6 w-6" />
                     </div>
-                    <Badge variant={persona.badgeVariant}>{persona.badgeText}</Badge>
+                    <CapsuleBadge variant="amber">{persona.badgeText}</CapsuleBadge>
                   </div>
-                  <CardTitle className="mt-4 text-2xl font-bold font-heading">
+
+                  <h3 className="font-heading font-bold text-xl text-[#121212] mb-1">
                     {persona.title}
-                  </CardTitle>
-                  <CardDescription className="text-sm font-medium text-foreground/80">
+                  </h3>
+                  <p className="text-xs font-semibold text-[#8C8479] uppercase tracking-wider mb-3">
                     {persona.role}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  </p>
+                  <p className="text-sm text-[#5C564E] leading-relaxed mb-6">
                     {persona.description}
                   </p>
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    {persona.highlights.map((highlight) => (
+
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {persona.highlights.map((item) => (
                       <span
-                        key={highlight}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground bg-card/60 border border-border/60 px-2.5 py-1 rounded-md"
+                        key={item}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#5C564E] bg-[#FAF7F2] border border-[#EAE3D5] px-3 py-1 rounded-full"
                       >
-                        <CheckCircle2 className="h-3 w-3 text-success" />
-                        {highlight}
+                        <CheckCircle2 className="h-3 w-3 text-[#1B7339]" />
+                        <span>{item}</span>
                       </span>
                     ))}
                   </div>
-                </CardContent>
-                <CardFooter className="pt-2">
-                  <Link href={persona.href} className="w-full">
-                    <Button variant="outline" className="w-full justify-between group">
-                      <span>Launch {persona.title}</span>
-                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                    </Button>
-                  </Link>
-                </CardFooter>
-              </Card>
+                </div>
+
+                <Link
+                  href={persona.href}
+                  className="w-full py-3 rounded-full border border-[#D9D2C5] bg-[#FAF7F2] hover:bg-white text-xs font-bold text-[#121212] flex items-center justify-between px-5 transition-colors"
+                >
+                  <span>Launch {persona.title}</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             );
           })}
-        </div>
-      </section>
-
-      {/* Architecture Pillars */}
-      <section className="container max-w-7xl px-4 sm:px-8 pt-6">
-        <div className="rounded-2xl border border-border/60 bg-card/40 p-8 sm:p-12 glass-card">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <h3 className="font-heading font-bold text-2xl sm:text-3xl">
-              Engineered with SOLID & Library-First Discipline
-            </h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Built on battle-tested foundations to guarantee high availability, strict security,
-              and zero dependency duplication.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {ARCH_PILLARS.map((pillar) => {
-              const Icon = pillar.icon;
-              return (
-                <div
-                  key={pillar.title}
-                  className="flex flex-col space-y-2 p-4 rounded-xl bg-background/50 border border-border/40"
-                >
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-2">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <h4 className="font-semibold text-base">{pillar.title}</h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {pillar.description}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </section>
     </div>

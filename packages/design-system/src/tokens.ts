@@ -5,29 +5,29 @@
 
 export const colors = {
   light: {
-    background: 'hsl(0, 0%, 100%)',
-    foreground: 'hsl(222.2, 84%, 4.9%)',
-    card: 'hsl(0, 0%, 100%)',
-    cardForeground: 'hsl(222.2, 84%, 4.9%)',
-    popover: 'hsl(0, 0%, 100%)',
-    popoverForeground: 'hsl(222.2, 84%, 4.9%)',
-    primary: 'hsl(243, 75%, 59%)', // Modern Indigo
-    primaryForeground: 'hsl(210, 40%, 98%)',
-    secondary: 'hsl(210, 40%, 96.1%)',
-    secondaryForeground: 'hsl(222.2, 47.4%, 11.2%)',
-    muted: 'hsl(210, 40%, 96.1%)',
-    mutedForeground: 'hsl(215.4, 16.3%, 46.9%)',
-    accent: 'hsl(270, 75%, 60%)', // Violet
-    accentForeground: 'hsl(210, 40%, 98%)',
+    background: 'hsl(40, 33%, 97%)', // Warm cream #FAF7F2
+    foreground: 'hsl(0, 0%, 7%)', // Rich black #121212
+    card: 'hsl(43, 44%, 98%)', // Warm white #FDFBF7
+    cardForeground: 'hsl(0, 0%, 7%)',
+    popover: 'hsl(43, 44%, 98%)',
+    popoverForeground: 'hsl(0, 0%, 7%)',
+    primary: 'hsl(45, 100%, 61%)', // CreatorConnect Signature Yellow #FFCE38
+    primaryForeground: 'hsl(0, 0%, 7%)',
+    secondary: 'hsl(38, 33%, 94%)', // Soft beige #F3EFE6
+    secondaryForeground: 'hsl(0, 0%, 7%)',
+    muted: 'hsl(38, 33%, 94%)',
+    mutedForeground: 'hsl(36, 8%, 42%)', // Soft charcoal #6E685F
+    accent: 'hsl(255, 77%, 94%)', // Soft lavender #EAE4FB
+    accentForeground: 'hsl(260, 50%, 25%)',
     destructive: 'hsl(0, 84.2%, 60.2%)',
     destructiveForeground: 'hsl(210, 40%, 98%)',
-    success: 'hsl(142.1, 76.2%, 36.3%)', // Emerald
+    success: 'hsl(142.1, 76.2%, 36.3%)', // Emerald #27AE60
     successForeground: 'hsl(355.7, 100%, 97.3%)',
-    warning: 'hsl(38, 92%, 50%)', // Amber
-    warningForeground: 'hsl(48, 96%, 89%)',
-    border: 'hsl(214.3, 31.8%, 91.4%)',
-    input: 'hsl(214.3, 31.8%, 91.4%)',
-    ring: 'hsl(243, 75%, 59%)',
+    warning: 'hsl(45, 100%, 61%)', // CreatorConnect Warm Amber
+    warningForeground: 'hsl(0, 0%, 7%)',
+    border: 'hsl(36, 21%, 89%)', // Soft border #EBE5DB
+    input: 'hsl(36, 21%, 89%)',
+    ring: 'hsl(45, 100%, 61%)',
   },
   dark: {
     background: 'hsl(224, 71%, 4%)', // Deep modern obsidian
@@ -78,6 +78,7 @@ export const typography = {
   fontFamily: {
     sans: 'var(--font-sans, "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif)',
     heading: 'var(--font-heading, "Outfit", "Inter", sans-serif)',
+    serif: 'var(--font-serif, "Newsreader", "Playfair Display", Georgia, serif)',
     mono: 'var(--font-mono, "JetBrains Mono", monospace)',
   },
 } as const;

@@ -67,6 +67,7 @@ export const creatorConnectPreset: Partial<Config> = {
       fontFamily: {
         sans: typography.fontFamily.sans.split(', '),
         heading: typography.fontFamily.heading.split(', '),
+        serif: typography.fontFamily.serif.split(', '),
         mono: typography.fontFamily.mono.split(', '),
       },
       keyframes: {
