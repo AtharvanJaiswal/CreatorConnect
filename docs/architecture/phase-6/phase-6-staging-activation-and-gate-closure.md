@@ -1,8 +1,8 @@
 # CreatorConnect — Staging Infrastructure Activation & Release Gate Closure Specification
 
-**Document Version:** 1.2.0  
+**Document Version:** 1.3.0  
 **Baseline Git Branch:** `dev`  
-**Verified Baseline Commit SHA:** `680d712623cf95fc8fca11208e019f0059e3a8c8`  
+**Verified Baseline Commit SHA:** `e869fb0d2ffbb19cdc14f2e430a1c4de28bcbee2`  
 **Evaluation Date:** October 16, 2026  
 **Auditor Roles:** Principal Software Architect, DevSecOps Lead, Financial Systems Engineer, Site Reliability Engineer (SRE), and Database Reliability Lead
 
@@ -10,15 +10,15 @@
 
 ## 1. Executive Summary & Baseline Ref
 
-The CreatorConnect Phase 6 platform integration was verified on branch `dev` at commit `680d712623cf95fc8fca11208e019f0059e3a8c8`, synchronized with `origin/dev`.
+The CreatorConnect Phase 6 platform integration was verified on branch `dev` at commit `e869fb0d2ffbb19cdc14f2e430a1c4de28bcbee2`, synchronized with `origin/dev`.
 
 - **Remote CI Verification (100% Green on Exact Current Commit):**
-  - **PR Validation & Quality Gates Run ID:** [`38772615845`](https://github.com/AtharvanJaiswal/CreatorConnect/actions/runs/38772615845) (`success`)
-    - _Job 116552069593:_ Semgrep SAST Security Scan (`success`)
-    - _Job 116552068684:_ Lint, Typecheck, Test, Build & Security Scan (`success`)
-    - _Job 116552069724:_ Playwright E2E Smoke Tests (`success`)
-  - **CodeQL Analysis Run ID:** [`38772615843`](https://github.com/AtharvanJaiswal/CreatorConnect/actions/runs/38772615843) (`success`)
-    - _Job 116552068233:_ Analyze JavaScript/TypeScript (javascript) (`success` - 0 alerts, 0 CWEs)
+  - **PR Validation & Quality Gates Run ID:** [`38893843810`](https://github.com/AtharvanJaiswal/CreatorConnect/actions/runs/38893843810) (`success`)
+    - _Job 116949499381:_ Semgrep SAST Security Scan (`success`)
+    - _Job 116949499187:_ Lint, Typecheck, Test, Build & Security Scan (`success`)
+    - _Job 116949499307:_ Playwright E2E Smoke Tests (`success`)
+  - **CodeQL Analysis Run ID:** [`38893843607`](https://github.com/AtharvanJaiswal/CreatorConnect/actions/runs/38893843607) (`success`)
+    - _Job 116949498197:_ Analyze JavaScript/TypeScript (javascript) (`success` - 0 alerts, 0 CWEs)
 - **Supply-Chain Dependency Security:**
   - `pnpm audit --prod`: **0 vulnerabilities** (0 critical, 0 high, 0 moderate, 0 low). Fastify 5 migration completely eliminated all production runtime CVEs.
   - `pnpm audit` (full tree): **10 finding instances across 9 unique advisory IDs**, all strictly confined to `devDependencies` (test and build tooling).
@@ -141,26 +141,34 @@ Critical telemetry events must be routed directly to the on-call engineer via au
 - **Incident Target:** PagerDuty Service `CreatorConnect-Staging-Alerts` (Escalation Policy: On-Call SRE $\to$ Secondary $\to$ Engineering Lead).
 - **Secondary Channel:** Slack Incoming Webhook `#cc-staging-alerts`.
 
-### 4.2 Synthetic Financial Ledger Imbalance Verification Protocol
+### 4.2 Synthetic Monitoring Verification Protocol (Non-Destructive Alert Routing Drill)
 
-To verify alert delivery, content, escalation, acknowledgement, and recovery on staging, the SRE must execute the following synthetic injection:
+> [!CRITICAL]
+> **Prohibition Against Real Financial Inconsistencies:**
+> SREs, operators, and test harnesses must **NEVER inject a real ledger discrepancy, unbalance double-entry ledger transactions, or modify database ledger tables (`ledger_entries`, `ledger_transactions`, `ledger_accounts`)** to test alert routing. Creating real financial corruption in database state violates core financial invariants, taints audit trails, and causes immediate Gate A and Gate H failures.
+> All alert delivery testing must be conducted **exclusively via dedicated synthetic alert events dispatched directly to Alertmanager (or via a test-only simulated telemetry alert hook)** without creating financial inconsistencies.
 
-#### Step 1: Dispatch Synthetic Alert Payload
+To verify alert delivery, content, escalation, acknowledgement, and recovery on staging, the SRE must execute the following non-destructive synthetic alert drill:
+
+#### Step 1: Dispatch Dedicated Synthetic Alert Payload
 
 ```bash
+# Dispatch synthetic test alert directly to Alertmanager API (zero database interaction)
 curl -X POST https://alertmanager.staging.creatorconnect.internal/api/v2/alerts \
   -H "Content-Type: application/json" \
   -d '[{
     "labels": {
-      "alertname": "LedgerDiscrepancyDetected",
+      "alertname": "SyntheticAlertRoutingCheck",
       "severity": "P0",
       "service": "creatorconnect-api",
-      "environment": "staging"
+      "environment": "staging",
+      "synthetic": "true",
+      "test_drill": "gate_b_verification"
     },
     "annotations": {
-      "summary": "CRITICAL: Double-entry financial ledger imbalance detected",
-      "description": "Synthetic drill: posted debits (₹10,000) do not equal posted credits (₹9,500) for payment intent pi_synth_test_01",
-      "runbook_url": "https://docs.creatorconnect.com/runbooks/runbook-ledger-mismatch"
+      "summary": "SYNTHETIC DRILL: Gate B automated alert routing and on-call paging test",
+      "description": "Non-destructive verification of staging Alertmanager -> PagerDuty & Slack routing path. Database state is untouched.",
+      "runbook_url": "https://docs.creatorconnect.com/runbooks/runbook-synthetic-alert-drill"
     },
     "startsAt": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"
   }]'
@@ -169,7 +177,7 @@ curl -X POST https://alertmanager.staging.creatorconnect.internal/api/v2/alerts 
 #### Step 2: Verification of Alert Flow
 
 1. **Delivery Latency:** Alert must arrive in Slack `#cc-staging-alerts` and trigger PagerDuty notification within **$\le 60\text{ seconds}$** ($100\%$ delivery rate).
-2. **Alert Content:** Verify alert payload contains exact `alertname`, `severity: P0`, `environment: staging`, and direct runbook URL.
+2. **Alert Content:** Verify alert payload contains exact `alertname: SyntheticAlertRoutingCheck`, `severity: P0`, `environment: staging`, `synthetic: true`, and direct runbook URL.
 3. **Acknowledgement:** On-call engineer acknowledges the PagerDuty page within $5\text{ minutes}$.
 4. **Recovery & Auto-Resolution:** Send resolving payload (`endsAt` set to current timestamp) and verify PagerDuty incident automatically resolves.
 
@@ -186,16 +194,16 @@ The authorized Site Reliability Engineer must execute the synthetic-alert valida
   - SRE mobile app / notification channels verified active.
 - [ ] **Step 1: Record Baseline & Dispatch Alert**
   - Record exact system dispatch timestamp $T_{\text{dispatch}}$ via UTC NTP clock.
-  - Send the synthetic `LedgerDiscrepancyDetected` P0 alert via cURL payload (Section 4.2 Step 1).
+  - Send the dedicated synthetic `SyntheticAlertRoutingCheck` P0 alert via cURL payload (Section 4.2 Step 1). Zero database modifications permitted.
 - [ ] **Step 2: Monitor Real-Time Ingress & Verify Delivery Latency**
   - Measure timestamp $T_{\text{slack\_received}}$ of arrival in `#cc-staging-alerts`.
   - Measure timestamp $T_{\text{pagerduty\_triggered}}$ of incident creation in PagerDuty.
   - Compute delivery latency: $\Delta t_{\text{delivery}} = T_{\text{pagerduty\_triggered}} - T_{\text{dispatch}}$.
   - Assert $\Delta t_{\text{delivery}} \le 60\text{ seconds}$ (Gate B requirement).
 - [ ] **Step 3: Alert Payload & Link Validation**
-  - Verify notification title: `CRITICAL: Double-entry financial ledger imbalance detected`.
-  - Confirm labels: `alertname: LedgerDiscrepancyDetected`, `severity: P0`, `environment: staging`.
-  - Click embedded `runbook_url` and verify navigation to `runbook-ledger-mismatch`.
+  - Verify notification title: `SYNTHETIC DRILL: Gate B automated alert routing and on-call paging test`.
+  - Confirm labels: `alertname: SyntheticAlertRoutingCheck`, `severity: P0`, `environment: staging`, `synthetic: true`.
+  - Click embedded `runbook_url` and verify navigation to `runbook-synthetic-alert-drill`.
 - [ ] **Step 4: Acknowledge Incident**
   - SRE acknowledges incident via PagerDuty UI or mobile app.
   - Record timestamp $T_{\text{acknowledged}}$. Assert $T_{\text{acknowledged}} - T_{\text{pagerduty\_triggered}} \le 300\text{ seconds}$ (5 minutes).
@@ -206,10 +214,11 @@ The authorized Site Reliability Engineer must execute the synthetic-alert valida
       -H "Content-Type: application/json" \
       -d '[{
         "labels": {
-          "alertname": "LedgerDiscrepancyDetected",
+          "alertname": "SyntheticAlertRoutingCheck",
           "severity": "P0",
           "service": "creatorconnect-api",
-          "environment": "staging"
+          "environment": "staging",
+          "synthetic": "true"
         },
         "startsAt": "'$INCIDENT_START'",
         "endsAt": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"
@@ -229,7 +238,7 @@ The authorized Site Reliability Engineer must execute the synthetic-alert valida
 **Executing SRE:** <Full Name> (<PagerDuty User ID>)  
 **Secondary Approver:** <Full Name> (Engineering Lead)  
 **Target Environment:** Staging Isolated VPC (`vpc-cc-staging`)  
-**Alert Name:** `LedgerDiscrepancyDetected`  
+**Alert Name:** `SyntheticAlertRoutingCheck`  
 **Alert Severity:** `P0`
 
 ---
@@ -326,16 +335,19 @@ To guarantee that RPO measurement is impervious to client clock skew or distribu
    - Maximum allowable clock drift between instances: **$|\Delta t_{\text{drift}}| \le 1.0\text{ millisecond}$**.
    - Timestamps are rigorously distinguished across client dispatch, database commit, and client acknowledgment domains.
 
-2. **Distinct Timestamp Definitions:**
+2. **Distinct Timestamp Definitions & Execution Boundaries:**
    - **Client Dispatch Timestamp ($t_{\text{client\_dispatch}, s}$):** Generated from the client's local synchronized clock immediately prior to issuing the synthetic write transaction for sequence number $s$.
-   - **Database Commit Timestamp ($t_{\text{db\_commit}, s}$):** Generated on the PostgreSQL Aurora primary using server-side **`clock_timestamp()`** inside the transaction. Unlike `NOW()` or `CURRENT_TIMESTAMP` (which freeze at transaction start), `clock_timestamp()` records the true real-time clock at row insertion, immediately before write-ahead log (WAL) emission.
-   - **Acknowledged Commit Outcome ($t_{\text{client\_ack}, s}$):** Recorded on the client when the database confirms commit success over the wire. A write is classified as **acknowledged** if and only if the client receives this acknowledgment prior to failure injection ($T_{\text{failure}}$). In-flight writes that do not receive acknowledgment before disconnection are classified as **unacknowledged**.
+   - **Database Row Insertion Timestamp ($t_{\text{db\_insert}, s}$):** Generated on the PostgreSQL Aurora primary using server-side **`clock_timestamp()`** at row insertion.
+     > [!IMPORTANT]
+     > **Row Insertion Timestamp vs. Exact Commit Timestamp:**
+     > The timestamp recorded at row insertion (`db_inserted_at`) marks statement evaluation time on the primary; it is **not** an exact commit completion timestamp. The true commit occurs when PostgreSQL appends and flushes the transaction commit record to the Write-Ahead Log (WAL). The client acknowledgement timestamp ($t_{\text{client\_ack}, s}$) bounds when the transaction was guaranteed committed and durable.
+   - **Acknowledged Commit Outcome ($t_{\text{client\_ack}, s}$):** Recorded on the client when the database confirms commit success over the wire. A write is classified as **acknowledged** if and only if the client receives this acknowledgment prior to failure injection ($T_{\text{failure}}$). In-flight writes that do not receive acknowledgment before disconnection are classified as **in-flight / unacknowledged**.
 
-3. **Canary Heartbeat Ingestion Stream:**
+3. **Canary Heartbeat Ingestion Stream (Exact Schema Alignment):**
    A dedicated background synthetic canary process commits timestamped probe records into `audit_logs` every second ($1.0\text{s}$ interval) leading up to failure:
 
 ```sql
-INSERT INTO "audit_logs" (id, action, entity, "entityId", metadata, "createdAt")
+INSERT INTO "audit_logs" (id, action, entity, entity_id, metadata, created_at)
 VALUES (
   gen_random_uuid(),
   'DR_CANARY_PROBE',
@@ -343,20 +355,20 @@ VALUES (
   'canary-heartbeat-01',
   jsonb_build_object(
     'sequence', 4210,
-    'client_dispatched_at', '2026-10-15T16:45:00.000Z',
-    'db_committed_at', clock_timestamp()
+    'client_dispatched_at', '2026-10-16T11:30:00.000Z',
+    'db_inserted_at', clock_timestamp()
   ),
   NOW()
 )
 RETURNING
   (metadata->>'sequence')::bigint AS committed_sequence,
-  (metadata->>'db_committed_at')::timestamptz AS db_committed_at;
+  (metadata->>'db_inserted_at')::timestamptz AS db_inserted_at;
 ```
 
 4. **Identification of Last Acknowledged Write ($S_{\text{last\_ack}}$):**
-   - The canary client records an acknowledged stream of tuples: $(s_1, t_{\text{client\_dispatch}, 1}, t_{\text{db\_commit}, 1}, t_{\text{client\_ack}, 1}), \dots, (s_n, t_{\text{client\_dispatch}, n}, t_{\text{db\_commit}, n}, t_{\text{client\_ack}, n})$.
+   - The canary client records an acknowledged stream of tuples: $(s_1, t_{\text{client\_dispatch}, 1}, t_{\text{db\_insert}, 1}, t_{\text{client\_ack}, 1}), \dots, (s_n, t_{\text{client\_dispatch}, n}, t_{\text{db\_insert}, n}, t_{\text{client\_ack}, n})$.
    - The **last acknowledged write** $S_{\text{last\_ack}}$ is identified as the canary record with the highest sequence number $s$ for which commit acknowledgment was received prior to $T_{\text{failure}}$.
-   - Its authoritative database commit timestamp is $t_{\text{db\_commit}}(S_{\text{last\_ack}})$ and its client acknowledgment timestamp is $t_{\text{client\_ack}}(S_{\text{last\_ack}})$.
+   - Its authoritative database insertion timestamp is $t_{\text{db\_insert}}(S_{\text{last\_ack}})$ and its client acknowledgment timestamp is $t_{\text{client\_ack}}(S_{\text{last\_ack}})$.
 
 #### Step 2: Failure Simulation & Incident Start ($T_{\text{incident\_start}} \equiv T_{\text{failure}}$)
 
@@ -400,14 +412,15 @@ The RTO stopwatch continues running while post-restore verification executes:
    ```sql
    SELECT
      (metadata->>'sequence')::bigint AS recovered_sequence,
-     (metadata->>'db_committed_at')::timestamptz AS recovered_db_commit_timestamp,
-     (metadata->>'client_dispatched_at')::timestamptz AS recovered_client_dispatch_timestamp
+     (metadata->>'db_inserted_at')::timestamptz AS recovered_db_insert_timestamp,
+     (metadata->>'client_dispatched_at')::timestamptz AS recovered_client_dispatch_timestamp,
+     created_at AS recovered_created_at
    FROM "audit_logs"
    WHERE action = 'DR_CANARY_PROBE'
    ORDER BY (metadata->>'sequence')::bigint DESC
    LIMIT 1;
    ```
-   - Yields the last recovered transaction: $(S_{\text{recovered}}, t_{\text{db\_commit}}(S_{\text{recovered}}))$.
+   - Yields the last recovered transaction: $(S_{\text{recovered}}, t_{\text{db\_insert}}(S_{\text{recovered}}))$.
 4. **Mark Recovery Complete ($T_{\text{recovery\_complete}}$):**
    ```bash
    RECOVERY_COMPLETE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -416,31 +429,32 @@ The RTO stopwatch continues running while post-restore verification executes:
 
 #### Step 5: Exact Metric Calculation & Acceptance Criteria
 
-**RPO Calculation Consistent with Failure Scenario and Recovered State:**
-The empirical RPO calculation directly measures the span of lost committed state between the last acknowledged write and the recovered database state:
+**Distinction Between RPO Metrics:**
 
-- **Case 1: Fully Consistent Recovery ($S_{\text{recovered}} \ge S_{\text{last\_ack}}$):**
-  Every transaction acknowledged to the client was successfully recovered from continuous WAL stream.
-  $$\text{RPO}_{\text{measured}} = 0.0\text{ seconds}$$
-  _(Zero committed data loss)._
+- **Metric 1: Recovery-Point Age Relative to Failure ($\Delta t_{\text{age}}$):**
+  $$\Delta t_{\text{age}} = T_{\text{failure}} - t_{\text{db\_insert}}(S_{\text{recovered}})$$
+  - **Why this is the primary approved RPO acceptance criterion:** RPO by standard definition specifies the maximum acceptable age of committed data that can be lost following a disaster. Under active continuous canary injection ($1.0\text{s}$ cadence), $\Delta t_{\text{age}}$ directly measures the maximum possible WAL archiving and multi-AZ storage replication lag. Using this metric prevents false-positive "zero data loss" claims that could occur during idle traffic windows.
+- **Metric 2: Span Between Lost Acknowledged Writes ($\Delta t_{\text{lost\_writes}}$):**
+  $$\Delta t_{\text{lost\_writes}} = \begin{cases} 0.0\text{ seconds}, & \text{if } S_{\text{recovered}} \ge S_{\text{last\_ack}} \text{ (zero sequence gap)} \\ t_{\text{client\_ack}}(S_{\text{last\_ack}}) - t_{\text{client\_ack}}(S_{\text{recovered}}), & \text{if } S_{\text{recovered}} < S_{\text{last\_ack}} \text{ (sequence gap of } k \text{ writes)} \end{cases}$$
+  - Directly measures customer-visible committed data loss between the last acknowledged write and the recovered state.
 
-- **Case 2: Partial Loss During Crash ($S_{\text{recovered}} < S_{\text{last\_ack}}$):**
-  Committed transactions between $S_{\text{recovered}} + 1$ and $S_{\text{last\_ack}}$ were acknowledged to the client but lost prior to durable WAL flush. The duration of lost committed state is calculated using synchronized database commit timestamps:
-  $$\text{RPO}_{\text{measured}} = t_{\text{db\_commit}}(S_{\text{last\_ack}}) - t_{\text{db\_commit}}(S_{\text{recovered}})$$
-  _(Or equivalently via synchronized client acknowledgment timestamps: $t_{\text{client\_ack}}(S_{\text{last\_ack}}) - t_{\text{client\_ack}}(S_{\text{recovered}})$)._
+**Accounting for Sequence Gaps, In-Flight Writes & Timestamp Uncertainty:**
 
-- **Upper-Bound Incident Drift Metric:**
-  To evaluate unacknowledged in-flight transactions up to the crash boundary:
-  $$\text{RPO}_{\text{upper\_bound}} = T_{\text{failure}} - t_{\text{db\_commit}}(S_{\text{recovered}})$$
+- **Sequence Gap:** $k = S_{\text{last\_ack}} - S_{\text{recovered}}$. If $k = 0$, zero acknowledged writes were lost. If $k > 0$, exactly $k$ writes were lost.
+- **In-Flight Writes:** Transactions dispatched between $T_{\text{failure}} - \text{RTT}$ and $T_{\text{failure}}$ that did not receive commit confirmation are unacknowledged and not counted in $\Delta t_{\text{lost\_writes}}$, but are bounded within $\Delta t_{\text{age}}$.
+- **Timestamp Uncertainty ($\epsilon_{\text{uncertainty}}$):**
+  - Synchronized clocks enforce $|\Delta t_{\text{drift}}| \le 1.0\text{ ms}$ via AWS Time Sync Service (`chrony`).
+  - Total measurement uncertainty: $\epsilon_{\text{uncertainty}} = \epsilon_{\text{drift}} + \epsilon_{\text{network}} + \epsilon_{\text{commit\_lag}} \le 10.0\text{ ms} \ll 5.0\text{ seconds}$.
 
 **RTO Metric:**
 $$\text{RTO}_{\text{measured}} = T_{\text{recovery\_complete}} - T_{\text{incident\_start}}$$
 
 **Acceptance Criteria:**
 
-- **RPO Acceptance Criteria:** Approved target is **$\text{RPO} \le 5.0\text{ seconds}$**. If $\text{RPO}_{\text{measured}} \le 5.0\text{s}$, RPO passes. If $\text{RPO}_{\text{measured}} > 5.0\text{s}$, Gate H **FAILS**.
+- **RPO Acceptance Criteria:** Approved target is **$\text{RPO} \le 5.0\text{ seconds}$**, evaluated via $\Delta t_{\text{age}} \le 5.0\text{s}$ under $1.0\text{s}$ canary injection cadence, with $\Delta t_{\text{lost\_writes}} \le 5.0\text{s}$.
 - **RTO Acceptance Criteria:** Approved target is **$\text{RTO} \le 900.0\text{ seconds}$** ($15\text{ minutes}$). If $\text{RTO}_{\text{measured}} \le 900.0\text{s}$, RTO passes. If $> 900.0\text{s}$, Gate H **FAILS**.
 - **Ledger Acceptance Criteria:** Double-entry ledger difference must be **$0\text{ paise}$**. Unbalanced journals cause immediate Gate H **FAIL**.
+- **Cloud Drill Requirement:** A 5-second RPO **must not be claimed as achieved** without an empirical cloud drill. Gate H remains strictly **`NOT_VERIFIED`** until executed on staging AWS Aurora.
 
 #### Step 6: Separate Classification of Historical Rollback Tests
 
@@ -598,9 +612,9 @@ Following the Fastify 5 ecosystem migration and targeted root overrides (`brace-
 |                                          |                | files (624 tests), 23/23 E2E passed.      |
 +-------------------------------------------------------------------------------------------------------+
 | Gate G: Remote CI Workflow Verification  | PASS           | GitHub Actions CI passed on exact commit: |
-|                                          |                | 680d712623cf95fc8fca11208e019f0059e3a8c8  |
-|                                          |                | PR Validation Run ID 38772615845 (PASS);  |
-|                                          |                | CodeQL Analysis Run ID 38772615843 (PASS).|
+|                                          |                | e869fb0d2ffbb19cdc14f2e430a1c4de28bcbee2  |
+|                                          |                | PR Validation Run ID 38893843810 (PASS);  |
+|                                          |                | CodeQL Analysis Run ID 38893843607 (PASS).|
 +-------------------------------------------------------------------------------------------------------+
 | Gate H: Cloud Disaster Recovery (RPO)    | NOT_VERIFIED   | Local dump verified (6.7s RTO, 48 tables).|
 |                                          |                | Cloud continuous WAL streaming and multi- |
