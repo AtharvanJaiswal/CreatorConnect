@@ -5,3 +5,4 @@ export * from './telemetry-alert-verifier.js';
 export * from './configuration-verifier.js';
 export * from './database-restore-drill.js';
 export * from './postgres-container-resolver.js';
+export * from './staging-preflight.js';
