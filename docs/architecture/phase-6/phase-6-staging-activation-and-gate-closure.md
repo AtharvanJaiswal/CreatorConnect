@@ -1,24 +1,24 @@
 # CreatorConnect — Staging Infrastructure Activation & Release Gate Closure Specification
 
-**Document Version:** 1.1.0  
+**Document Version:** 1.2.0  
 **Baseline Git Branch:** `dev`  
-**Verified Baseline Commit SHA:** `284a36ae66f594bed54d1ef67f9b154003f36e5f`  
-**Evaluation Date:** October 15, 2026  
+**Verified Baseline Commit SHA:** `680d712623cf95fc8fca11208e019f0059e3a8c8`  
+**Evaluation Date:** October 16, 2026  
 **Auditor Roles:** Principal Software Architect, DevSecOps Lead, Financial Systems Engineer, Site Reliability Engineer (SRE), and Database Reliability Lead
 
 ---
 
 ## 1. Executive Summary & Baseline Ref
 
-The CreatorConnect Phase 6 platform integration was verified on branch `dev` at commit `284a36ae66f594bed54d1ef67f9b154003f36e5f`, synchronized with `origin/dev`.
+The CreatorConnect Phase 6 platform integration was verified on branch `dev` at commit `680d712623cf95fc8fca11208e019f0059e3a8c8`, synchronized with `origin/dev`.
 
 - **Remote CI Verification (100% Green on Exact Current Commit):**
-  - **PR Validation & Quality Gates Run ID:** [`38769767655`](https://github.com/AtharvanJaiswal/CreatorConnect/actions/runs/38769767655) (`success`)
-    - _Job 116542207834:_ Semgrep SAST Security Scan (`success`)
-    - _Job 116542208097:_ Lint, Typecheck, Test, Build & Security Scan (`success`)
-    - _Job 116542208550:_ Playwright E2E Smoke Tests (`success`)
-  - **CodeQL Analysis Run ID:** [`38769767753`](https://github.com/AtharvanJaiswal/CreatorConnect/actions/runs/38769767753) (`success`)
-    - _Job 116542208255:_ Analyze JavaScript/TypeScript (`success` - 0 alerts, 0 CWEs)
+  - **PR Validation & Quality Gates Run ID:** [`38772615845`](https://github.com/AtharvanJaiswal/CreatorConnect/actions/runs/38772615845) (`success`)
+    - _Job 116552069593:_ Semgrep SAST Security Scan (`success`)
+    - _Job 116552068684:_ Lint, Typecheck, Test, Build & Security Scan (`success`)
+    - _Job 116552069724:_ Playwright E2E Smoke Tests (`success`)
+  - **CodeQL Analysis Run ID:** [`38772615843`](https://github.com/AtharvanJaiswal/CreatorConnect/actions/runs/38772615843) (`success`)
+    - _Job 116552068233:_ Analyze JavaScript/TypeScript (javascript) (`success` - 0 alerts, 0 CWEs)
 - **Supply-Chain Dependency Security:**
   - `pnpm audit --prod`: **0 vulnerabilities** (0 critical, 0 high, 0 moderate, 0 low). Fastify 5 migration completely eliminated all production runtime CVEs.
   - `pnpm audit` (full tree): **10 finding instances across 9 unique advisory IDs**, all strictly confined to `devDependencies` (test and build tooling).
@@ -36,17 +36,17 @@ The CreatorConnect Phase 6 platform integration was verified on branch `dev` at 
 
 Before activating or exposing the isolated staging deployment, the following infrastructure checklist must be satisfied in full:
 
-| Staging Domain                             | Specific Configuration Requirement                                                                                                                                                                                                 | Verification Method                                  | Enforcement Status         |
-| :----------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------- | :------------------------- |
-| **Dedicated PostgreSQL**                   | Dedicated staging Aurora PostgreSQL instance (`creatorconnect_staging`). Network-isolated within private VPC subnet. No shared tables or credentials with development or production.                                               | VPC route table & DB security group inspection       | **MANDATORY PREREQUISITE** |
-| **Dedicated Redis**                        | Dedicated staging AWS ElastiCache / Redis 7 cluster. Password-protected (`requirepass`), TLS-in-transit enabled. Append-Only File (`appendonly yes`) enabled for BullMQ queue resilience.                                          | Redis connection string & ping probe                 | **MANDATORY PREREQUISITE** |
-| **Object Storage**                         | Cloudflare R2 / S3 staging bucket (`creatorconnect-staging-media`). Enforce pre-signed PUT/GET URLs with expiration $\le 900\text{s}$. CORS restricted strictly to staging web-shell origin.                                       | S3 bucket policy & pre-signed URL test               | **MANDATORY PREREQUISITE** |
-| **Staging Authentication**                 | Supabase staging project with isolated user pool. Real RS256/ES256 JWKS verification over HTTPS. Test user provisioning automated via synthetic fixtures.                                                                          | JWKS endpoint reachability & token verifier          | **MANDATORY PREREQUISITE** |
-| **TLS Ingress & Reverse Proxy**            | Fastify `trustProxy` bound to trusted private CIDRs: `['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']`. Ingress proxy (Caddy/Nginx/ALB) enforces TLS 1.3, strips untrusted external `X-Forwarded-*` headers. | Header spoofing test (assert client cannot forge IP) | **MANDATORY PREREQUISITE** |
-| **Payment Sandbox Isolation**              | Provider configured exclusively with Razorpay Sandbox credentials (`rzp_test_*`). Webhook signature verification active with a dedicated sandbox secret. Live keys strictly prohibited.                                            | Application boot config validation                   | **MANDATORY PREREQUISITE** |
-| **Least-Privilege IAM & Secret Injection** | Zero `.env` files in container filesystem or image layers. Secrets injected into container memory at launch via AWS Secrets Manager / Doppler service token.                                                                       | Container filesystem inspection (`ls -la /app/.env`) | **MANDATORY PREREQUISITE** |
-| **Sequential Migrations & Backup**         | Ordered Prisma migrations (`0001_init_identity_and_roles` to `0008_drop_unused_media_columns`) executed sequentially. Baseline snapshot created prior to synthetic data seeding.                                                   | `prisma migrate status` & snapshot manifest          | **MANDATORY PREREQUISITE** |
-| **Synthetic UAT Data Only**                | Seed staging database strictly with anonymized, synthetic fixtures. No production customer data or PII copied to staging.                                                                                                          | Database content audit                               | **MANDATORY PREREQUISITE** |
+| Staging Domain                             | Specific Configuration Requirement                                                                                                                                                                                                                                                                                                                                                                                                                                     | Verification Method                                                           | Enforcement Status         |
+| :----------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------- | :------------------------- |
+| **Dedicated PostgreSQL**                   | Dedicated staging Aurora PostgreSQL instance (`creatorconnect_staging`). Network-isolated within private VPC subnet. No shared tables or credentials with development or production.                                                                                                                                                                                                                                                                                   | VPC route table & DB security group inspection                                | **MANDATORY PREREQUISITE** |
+| **Dedicated Redis**                        | Dedicated staging AWS ElastiCache Redis 7.1 replication group (`cc-staging-redis`). Multi-AZ with auto-failover across 2+ Availability Zones. Password-protected (`requirepass`/AUTH token), TLS-in-transit and at-rest encryption enabled. Daily automated RDB snapshot retention enabled (AOF disabled due to ElastiCache Multi-AZ mutual exclusivity). BullMQ queue durability achieved via cross-AZ replication, automated snapshots, and worker task idempotency. | AWS ElastiCache replication group status & Redis connection string ping probe | **MANDATORY PREREQUISITE** |
+| **Object Storage**                         | Cloudflare R2 / S3 staging bucket (`creatorconnect-staging-media`). Enforce pre-signed PUT/GET URLs with expiration $\le 900\text{s}$. CORS restricted strictly to staging web-shell origin.                                                                                                                                                                                                                                                                           | S3 bucket policy & pre-signed URL test                                        | **MANDATORY PREREQUISITE** |
+| **Staging Authentication**                 | Supabase staging project with isolated user pool. Real RS256/ES256 JWKS verification over HTTPS. Test user provisioning automated via synthetic fixtures.                                                                                                                                                                                                                                                                                                              | JWKS endpoint reachability & token verifier                                   | **MANDATORY PREREQUISITE** |
+| **TLS Ingress & Reverse Proxy**            | Fastify `trustProxy` bound to trusted private CIDRs: `['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']`. Ingress proxy (Caddy/Nginx/ALB) enforces TLS 1.3, strips untrusted external `X-Forwarded-*` headers.                                                                                                                                                                                                                                     | Header spoofing test (assert client cannot forge IP)                          | **MANDATORY PREREQUISITE** |
+| **Payment Sandbox Isolation**              | Provider configured exclusively with Razorpay Sandbox credentials (`rzp_test_*`). Webhook signature verification active with a dedicated sandbox secret. Live keys strictly prohibited.                                                                                                                                                                                                                                                                                | Application boot config validation                                            | **MANDATORY PREREQUISITE** |
+| **Least-Privilege IAM & Secret Injection** | Zero `.env` files in container filesystem or image layers. Secrets injected into container memory at launch via AWS Secrets Manager / Doppler service token.                                                                                                                                                                                                                                                                                                           | Container filesystem inspection (`ls -la /app/.env`)                          | **MANDATORY PREREQUISITE** |
+| **Sequential Migrations & Backup**         | Ordered Prisma migrations (`0001_init_identity_and_roles` to `0008_drop_unused_media_columns`) executed sequentially. Baseline snapshot created prior to synthetic data seeding.                                                                                                                                                                                                                                                                                       | `prisma migrate status` & snapshot manifest                                   | **MANDATORY PREREQUISITE** |
+| **Synthetic UAT Data Only**                | Seed staging database strictly with anonymized, synthetic fixtures. No production customer data or PII copied to staging.                                                                                                                                                                                                                                                                                                                                              | Database content audit                                                        | **MANDATORY PREREQUISITE** |
 
 > [!CRITICAL]
 > **Boundary Stopping Rule:**
@@ -56,17 +56,17 @@ Before activating or exposing the isolated staging deployment, the following inf
 
 To achieve authentic staging activation without guesswork, each infrastructure domain is assigned an accountable external owner, target cloud resource specifications, and non-negotiable acceptance verification commands:
 
-| Domain                             | Target Cloud Resource                                                            | Key Parameters & Constraints                                                                                                            | Accountable Owner         | Explicit Acceptance Verification Command                                                                                                                                                                                                                          |
-| :--------------------------------- | :------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------- | :------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1. Staging Networking & VPC**    | AWS VPC `vpc-cc-staging` (`10.100.0.0/16`) in `ap-south-1`                       | 2 Public, 2 Private App, 2 Isolated DB subnets; NAT Gateway; VPC Flow Logs active; DB/Redis subnets non-routable from Internet          | Cloud Infrastructure Lead | `aws ec2 describe-vpcs --vpc-ids <vpc_id> --query "Vpcs[0].State"` $\to$ `"available"`<br>`aws ec2 describe-security-group-rules --filters "Name=group-id,Values=<sg_db>"` $\to$ Ingress strictly from `sg_app:5432`                                              |
-| **2. PostgreSQL / Aurora**         | AWS Aurora PostgreSQL Serverless v2 (`creatorconnect_staging`)                   | PostgreSQL 16.3; Multi-AZ; 7-day continuous WAL retention; RDS Proxy active; `sslmode=require`; connection limit 100                    | Database Reliability Lead | `aws rds describe-db-clusters --db-cluster-identifier creatorconnect-staging-aurora --query "DBClusters[0].Status"` $\to$ `"available"`<br>`psql "$DATABASE_URL" -c "SHOW ssl;"` $\to$ `on`<br>`pnpm prisma migrate status` $\to$ `Database schema is up to date` |
-| **3. Dedicated Redis**             | AWS ElastiCache Redis 7.1 replication group (`cc-staging-redis`)                 | Multi-AZ with auto-failover; TLS in-transit enabled; `requirepass` auth token; AOF enabled (`appendonly yes`) for BullMQ durability     | SRE / Platform Lead       | `aws elasticache describe-replication-groups --replication-group-id cc-staging-redis --query "ReplicationGroups[0].Status"` $\to$ `"available"`<br>`redis-cli -u "$REDIS_URL" ping` $\to$ `PONG`                                                                  |
-| **4. Object Storage**              | Cloudflare R2 / AWS S3 staging bucket (`creatorconnect-staging-media`)           | CORS allowed origins strictly `https://staging.creatorconnect.com`; pre-signed PUT/GET URL TTL $\le 900\text{s}$; public access blocked | Cloud Platform Engineer   | `aws s3api head-bucket --bucket creatorconnect-staging-media`<br>Execute synthetic PUT via pre-signed URL $\to$ HTTP 200; verify expired URL $\to$ HTTP 403                                                                                                       |
-| **5. Staging Authentication**      | Supabase Staging Project / Dedicated JWKS Endpoint                               | RS256/ES256 asymmetric signing keys; HTTPS-only JWKS URL; `ALLOW_HTTP_JWKS=false`; isolated staging user pool                           | Application Security Lead | `curl -fsS https://auth.staging.creatorconnect.com/auth/v1/.well-known/jwks.json \| jq .keys[0].kty` $\to$ `"RSA"` / `"EC"`<br>Verify synthetic test JWT parses through Fastify auth hook $\to$ HTTP 200                                                          |
-| **6. Managed Secrets & Cloud KMS** | AWS Secrets Manager (`creatorconnect/staging/app`) + KMS Key                     | Zero `.env` files on disk; IAM role `creatorconnect-staging-api-role` scoped to secret ARN; task definition injects secrets in-memory   | DevSecOps Lead            | `aws secretsmanager describe-secret --secret-id creatorconnect/staging/app --query "RotationEnabled"`<br>Container inspection: `test ! -f /app/.env && echo "CLEAN"` $\to$ `"CLEAN"`                                                                              |
-| **7. TLS Ingress & Reverse Proxy** | AWS Application Load Balancer / Caddy Ingress Proxy                              | Enforce TLS 1.3 only; HSTS `max-age=31536000`; Fastify `trustProxy` bound to trusted private CIDRs; strip client `X-Forwarded-*`        | SRE / Network Lead        | `curl -Iv --tlsv1.3 https://api.staging.creatorconnect.com/health` $\to$ HTTP 200 TLS 1.3<br>Spoofing test: `curl -H "X-Forwarded-For: 1.1.1.1" ...` $\to$ client IP not spoofed                                                                                  |
-| **8. Razorpay Sandbox**            | Razorpay Sandbox Merchant Account (`rzp_test_*`)                                 | Strictly `rzp_test_*` credentials; dedicated sandbox webhook secret; live keys rejected at boot by config verifier                      | Financial Systems Lead    | Test order creation API $\to$ returns order with ID `order_...`<br>Trigger test webhook $\to$ signature verified and event ingested                                                                                                                               |
-| **9. Telemetry & Alert Routing**   | PagerDuty Service (`CreatorConnect-Staging-Alerts`) + Slack `#cc-staging-alerts` | Alertmanager webhook routing; P0 escalation policy (SRE $\to$ Secondary $\to$ Lead); delivery latency SLA $\le 60\text{s}$              | SRE Lead                  | Dispatch synthetic P0 alert $\to$ Slack receipt $\le 60\text{s}$ & PagerDuty page triggered; SRE ack $\le 5\text{m}$; resolve on recovery                                                                                                                         |
+| Domain                             | Target Cloud Resource                                                            | Key Parameters & Constraints                                                                                                                                                                                                                                                                                  | Accountable Owner         | Explicit Acceptance Verification Command                                                                                                                                                                                                                                                                                                                     |
+| :--------------------------------- | :------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :------------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. Staging Networking & VPC**    | AWS VPC `vpc-cc-staging` (`10.100.0.0/16`) in `ap-south-1`                       | 2 Public, 2 Private App, 2 Isolated DB subnets; NAT Gateway; VPC Flow Logs active; DB/Redis subnets non-routable from Internet                                                                                                                                                                                | Cloud Infrastructure Lead | `aws ec2 describe-vpcs --vpc-ids <vpc_id> --query "Vpcs[0].State"` $\to$ `"available"`<br>`aws ec2 describe-security-group-rules --filters "Name=group-id,Values=<sg_db>"` $\to$ Ingress strictly from `sg_app:5432`                                                                                                                                         |
+| **2. PostgreSQL / Aurora**         | AWS Aurora PostgreSQL Serverless v2 (`creatorconnect_staging`)                   | PostgreSQL 16.3; Multi-AZ; 7-day continuous WAL retention; RDS Proxy active; `sslmode=require`; connection limit 100                                                                                                                                                                                          | Database Reliability Lead | `aws rds describe-db-clusters --db-cluster-identifier creatorconnect-staging-aurora --query "DBClusters[0].Status"` $\to$ `"available"`<br>`psql "$DATABASE_URL" -c "SHOW ssl;"` $\to$ `on`<br>`pnpm prisma migrate status` $\to$ `Database schema is up to date`                                                                                            |
+| **3. Dedicated Redis**             | AWS ElastiCache Redis 7.1 replication group (`cc-staging-redis`)                 | Multi-AZ with auto-failover across 2+ AZs; TLS in-transit and at-rest encryption enabled; `requirepass` AUTH token; automated daily RDB snapshots (7-day retention); AOF disabled (unsupported on ElastiCache Multi-AZ); BullMQ durability provided via Multi-AZ replica failover and worker task idempotency | SRE / Platform Lead       | `aws elasticache describe-replication-groups --replication-group-id cc-staging-redis --query "ReplicationGroups[0].Status"` $\to$ `"available"`<br>`aws elasticache describe-replication-groups --replication-group-id cc-staging-redis --query "ReplicationGroups[0].AutomaticFailover"` $\to$ `"enabled"`<br>`redis-cli -u "$REDIS_URL" ping` $\to$ `PONG` |
+| **4. Object Storage**              | Cloudflare R2 / AWS S3 staging bucket (`creatorconnect-staging-media`)           | CORS allowed origins strictly `https://staging.creatorconnect.com`; pre-signed PUT/GET URL TTL $\le 900\text{s}$; public access blocked                                                                                                                                                                       | Cloud Platform Engineer   | `aws s3api head-bucket --bucket creatorconnect-staging-media`<br>Execute synthetic PUT via pre-signed URL $\to$ HTTP 200; verify expired URL $\to$ HTTP 403                                                                                                                                                                                                  |
+| **5. Staging Authentication**      | Supabase Staging Project / Dedicated JWKS Endpoint                               | RS256/ES256 asymmetric signing keys; HTTPS-only JWKS URL; `ALLOW_HTTP_JWKS=false`; isolated staging user pool                                                                                                                                                                                                 | Application Security Lead | `curl -fsS https://auth.staging.creatorconnect.com/auth/v1/.well-known/jwks.json \| jq .keys[0].kty` $\to$ `"RSA"` / `"EC"`<br>Verify synthetic test JWT parses through Fastify auth hook $\to$ HTTP 200                                                                                                                                                     |
+| **6. Managed Secrets & Cloud KMS** | AWS Secrets Manager (`creatorconnect/staging/app`) + KMS Key                     | Zero `.env` files on disk; IAM role `creatorconnect-staging-api-role` scoped to secret ARN; task definition injects secrets in-memory                                                                                                                                                                         | DevSecOps Lead            | `aws secretsmanager describe-secret --secret-id creatorconnect/staging/app --query "RotationEnabled"`<br>Container inspection: `test ! -f /app/.env && echo "CLEAN"` $\to$ `"CLEAN"`                                                                                                                                                                         |
+| **7. TLS Ingress & Reverse Proxy** | AWS Application Load Balancer / Caddy Ingress Proxy                              | Enforce TLS 1.3 only; HSTS `max-age=31536000`; Fastify `trustProxy` bound to trusted private CIDRs; strip client `X-Forwarded-*`                                                                                                                                                                              | SRE / Network Lead        | `curl -Iv --tlsv1.3 https://api.staging.creatorconnect.com/health` $\to$ HTTP 200 TLS 1.3<br>Spoofing test: `curl -H "X-Forwarded-For: 1.1.1.1" ...` $\to$ client IP not spoofed                                                                                                                                                                             |
+| **8. Razorpay Sandbox**            | Razorpay Sandbox Merchant Account (`rzp_test_*`)                                 | Strictly `rzp_test_*` credentials; dedicated sandbox webhook secret; live keys rejected at boot by config verifier                                                                                                                                                                                            | Financial Systems Lead    | Test order creation API $\to$ returns order with ID `order_...`<br>Trigger test webhook $\to$ signature verified and event ingested                                                                                                                                                                                                                          |
+| **9. Telemetry & Alert Routing**   | PagerDuty Service (`CreatorConnect-Staging-Alerts`) + Slack `#cc-staging-alerts` | Alertmanager webhook routing; P0 escalation policy (SRE $\to$ Secondary $\to$ Lead); delivery latency SLA $\le 60\text{s}$                                                                                                                                                                                    | SRE Lead                  | Dispatch synthetic P0 alert $\to$ Slack receipt $\le 60\text{s}$ & PagerDuty page triggered; SRE ack $\le 5\text{m}$; resolve on recovery                                                                                                                                                                                                                    |
 
 ---
 
@@ -324,9 +324,14 @@ To guarantee that RPO measurement is impervious to client clock skew or distribu
 1. **Clock Synchronization Architecture:**
    - Both the canary probe client (ECS Fargate task / runner) and the PostgreSQL Aurora cluster are configured to synchronize against the **AWS Time Sync Service** via `chrony` (`server 169.254.169.123 prefer iburst minpoll 4 maxpoll 4`).
    - Maximum allowable clock drift between instances: **$|\Delta t_{\text{drift}}| \le 1.0\text{ millisecond}$**.
-   - The commit timestamp stored in the canary payload is generated via PostgreSQL server-side **`clock_timestamp()`** rather than client system time. Unlike `NOW()` or `CURRENT_TIMESTAMP` (which return statement/transaction start time), `clock_timestamp()` records the actual real-time clock value at row insertion.
+   - Timestamps are rigorously distinguished across client dispatch, database commit, and client acknowledgment domains.
 
-2. **Canary Heartbeat Ingestion Stream:**
+2. **Distinct Timestamp Definitions:**
+   - **Client Dispatch Timestamp ($t_{\text{client\_dispatch}, s}$):** Generated from the client's local synchronized clock immediately prior to issuing the synthetic write transaction for sequence number $s$.
+   - **Database Commit Timestamp ($t_{\text{db\_commit}, s}$):** Generated on the PostgreSQL Aurora primary using server-side **`clock_timestamp()`** inside the transaction. Unlike `NOW()` or `CURRENT_TIMESTAMP` (which freeze at transaction start), `clock_timestamp()` records the true real-time clock at row insertion, immediately before write-ahead log (WAL) emission.
+   - **Acknowledged Commit Outcome ($t_{\text{client\_ack}, s}$):** Recorded on the client when the database confirms commit success over the wire. A write is classified as **acknowledged** if and only if the client receives this acknowledgment prior to failure injection ($T_{\text{failure}}$). In-flight writes that do not receive acknowledgment before disconnection are classified as **unacknowledged**.
+
+3. **Canary Heartbeat Ingestion Stream:**
    A dedicated background synthetic canary process commits timestamped probe records into `audit_logs` every second ($1.0\text{s}$ interval) leading up to failure:
 
 ```sql
@@ -339,15 +344,19 @@ VALUES (
   jsonb_build_object(
     'sequence', 4210,
     'client_dispatched_at', '2026-10-15T16:45:00.000Z',
-    'client_committed_at', clock_timestamp()
+    'db_committed_at', clock_timestamp()
   ),
   NOW()
-);
+)
+RETURNING
+  (metadata->>'sequence')::bigint AS committed_sequence,
+  (metadata->>'db_committed_at')::timestamptz AS db_committed_at;
 ```
 
-3. **Acknowledged Writes Logging:**
-   - The canary client records an acknowledged stream of tuples: $(s_1, t_{\text{ack}, 1}), (s_2, t_{\text{ack}, 2}), \dots, (s_n, t_{\text{ack}, n})$.
-   - The final client-acknowledged transaction successfully committed prior to failure is denoted as $S_{\text{client\_last}}$ at acknowledged timestamp $t_{\text{client\_last}}$.
+4. **Identification of Last Acknowledged Write ($S_{\text{last\_ack}}$):**
+   - The canary client records an acknowledged stream of tuples: $(s_1, t_{\text{client\_dispatch}, 1}, t_{\text{db\_commit}, 1}, t_{\text{client\_ack}, 1}), \dots, (s_n, t_{\text{client\_dispatch}, n}, t_{\text{db\_commit}, n}, t_{\text{client\_ack}, n})$.
+   - The **last acknowledged write** $S_{\text{last\_ack}}$ is identified as the canary record with the highest sequence number $s$ for which commit acknowledgment was received prior to $T_{\text{failure}}$.
+   - Its authoritative database commit timestamp is $t_{\text{db\_commit}}(S_{\text{last\_ack}})$ and its client acknowledgment timestamp is $t_{\text{client\_ack}}(S_{\text{last\_ack}})$.
 
 #### Step 2: Failure Simulation & Incident Start ($T_{\text{incident\_start}} \equiv T_{\text{failure}}$)
 
@@ -373,7 +382,7 @@ aws rds restore-db-instance-to-point-in-time \
   --vpc-security-group-ids sg-staging-isolated-db
 ```
 
-#### Step 4: Schema Integrity, Reconciliation & Recovery Completion ($T_{\text{recovery\_complete}}$)
+#### Step 4: Schema Integrity, Reconciliation & Identification of Last Recovered Write ($S_{\text{recovered}}$)
 
 The RTO stopwatch continues running while post-restore verification executes:
 
@@ -386,32 +395,51 @@ The RTO stopwatch continues running while post-restore verification executes:
    FROM "ledger_entries";
    -- Invariant: total_debits == total_credits (difference must be exactly 0 paise)
    ```
-3. **Canary Recovery & RPO Evaluation Query:**
+3. **Identification of Last Recovered Write ($S_{\text{recovered}}$):**
+   Query the restored target database for the highest recovered canary sequence:
    ```sql
    SELECT
-     (metadata->>'sequence')::int AS recovered_sequence,
-     (metadata->>'client_committed_at')::timestamptz AS latest_recoverable_timestamp
+     (metadata->>'sequence')::bigint AS recovered_sequence,
+     (metadata->>'db_committed_at')::timestamptz AS recovered_db_commit_timestamp,
+     (metadata->>'client_dispatched_at')::timestamptz AS recovered_client_dispatch_timestamp
    FROM "audit_logs"
    WHERE action = 'DR_CANARY_PROBE'
-   ORDER BY (metadata->>'sequence')::int DESC
+   ORDER BY (metadata->>'sequence')::bigint DESC
    LIMIT 1;
    ```
-   - Yields the latest recoverable commit: $(S_{\text{recovered}}, t_{\text{latest\_recoverable}})$.
-4. **Mark Recovery Complete:**
+   - Yields the last recovered transaction: $(S_{\text{recovered}}, t_{\text{db\_commit}}(S_{\text{recovered}}))$.
+4. **Mark Recovery Complete ($T_{\text{recovery\_complete}}$):**
    ```bash
    RECOVERY_COMPLETE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
    ```
-
-- **RTO End Boundary:** $T_{\text{recovery\_complete}}$ is the precise millisecond when the restored target database passes schema verification, passes ledger reconciliation, and is ready to accept read/write traffic.
+   - **RTO End Boundary:** $T_{\text{recovery\_complete}}$ is the precise millisecond when the restored target database passes schema verification, passes double-entry ledger reconciliation, and is ready to accept read/write traffic.
 
 #### Step 5: Exact Metric Calculation & Acceptance Criteria
 
-$$\text{RPO}_{\text{measured}} = T_{\text{failure}} - t_{\text{latest\_recoverable}}$$
+**RPO Calculation Consistent with Failure Scenario and Recovered State:**
+The empirical RPO calculation directly measures the span of lost committed state between the last acknowledged write and the recovered database state:
 
+- **Case 1: Fully Consistent Recovery ($S_{\text{recovered}} \ge S_{\text{last\_ack}}$):**
+  Every transaction acknowledged to the client was successfully recovered from continuous WAL stream.
+  $$\text{RPO}_{\text{measured}} = 0.0\text{ seconds}$$
+  _(Zero committed data loss)._
+
+- **Case 2: Partial Loss During Crash ($S_{\text{recovered}} < S_{\text{last\_ack}}$):**
+  Committed transactions between $S_{\text{recovered}} + 1$ and $S_{\text{last\_ack}}$ were acknowledged to the client but lost prior to durable WAL flush. The duration of lost committed state is calculated using synchronized database commit timestamps:
+  $$\text{RPO}_{\text{measured}} = t_{\text{db\_commit}}(S_{\text{last\_ack}}) - t_{\text{db\_commit}}(S_{\text{recovered}})$$
+  _(Or equivalently via synchronized client acknowledgment timestamps: $t_{\text{client\_ack}}(S_{\text{last\_ack}}) - t_{\text{client\_ack}}(S_{\text{recovered}})$)._
+
+- **Upper-Bound Incident Drift Metric:**
+  To evaluate unacknowledged in-flight transactions up to the crash boundary:
+  $$\text{RPO}_{\text{upper\_bound}} = T_{\text{failure}} - t_{\text{db\_commit}}(S_{\text{recovered}})$$
+
+**RTO Metric:**
 $$\text{RTO}_{\text{measured}} = T_{\text{recovery\_complete}} - T_{\text{incident\_start}}$$
 
-- **RPO Acceptance Criteria:** $\text{RPO}_{\text{measured}} \le 5.0\text{ seconds}$. If $S_{\text{recovered}} == S_{\text{client\_last}}$, data loss is exactly $0\text{ seconds}$. If canaries are missing, data loss must be strictly $\le 5.0\text{s}$. If $> 5.0\text{s}$, Gate H **FAILS**.
-- **RTO Acceptance Criteria:** $\text{RTO}_{\text{measured}} \le 900.0\text{ seconds}$ ($15\text{ minutes}$). If $> 900.0\text{s}$, Gate H **FAILS**.
+**Acceptance Criteria:**
+
+- **RPO Acceptance Criteria:** Approved target is **$\text{RPO} \le 5.0\text{ seconds}$**. If $\text{RPO}_{\text{measured}} \le 5.0\text{s}$, RPO passes. If $\text{RPO}_{\text{measured}} > 5.0\text{s}$, Gate H **FAILS**.
+- **RTO Acceptance Criteria:** Approved target is **$\text{RTO} \le 900.0\text{ seconds}$** ($15\text{ minutes}$). If $\text{RTO}_{\text{measured}} \le 900.0\text{s}$, RTO passes. If $> 900.0\text{s}$, Gate H **FAILS**.
 - **Ledger Acceptance Criteria:** Double-entry ledger difference must be **$0\text{ paise}$**. Unbalanced journals cause immediate Gate H **FAIL**.
 
 #### Step 6: Separate Classification of Historical Rollback Tests
@@ -570,9 +598,9 @@ Following the Fastify 5 ecosystem migration and targeted root overrides (`brace-
 |                                          |                | files (624 tests), 23/23 E2E passed.      |
 +-------------------------------------------------------------------------------------------------------+
 | Gate G: Remote CI Workflow Verification  | PASS           | GitHub Actions CI passed on exact commit: |
-|                                          |                | 284a36ae66f594bed54d1ef67f9b154003f36e5f  |
-|                                          |                | PR Validation Run ID 38769767655 (PASS);  |
-|                                          |                | CodeQL Analysis Run ID 38769767753 (PASS).|
+|                                          |                | 680d712623cf95fc8fca11208e019f0059e3a8c8  |
+|                                          |                | PR Validation Run ID 38772615845 (PASS);  |
+|                                          |                | CodeQL Analysis Run ID 38772615843 (PASS).|
 +-------------------------------------------------------------------------------------------------------+
 | Gate H: Cloud Disaster Recovery (RPO)    | NOT_VERIFIED   | Local dump verified (6.7s RTO, 48 tables).|
 |                                          |                | Cloud continuous WAL streaming and multi- |

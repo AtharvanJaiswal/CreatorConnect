@@ -1,8 +1,8 @@
 # CreatorConnect — Phase 6 Disaster Recovery, Backup & Restoration Runbook
 
-**Document Version:** 1.3.0
+**Document Version:** 1.4.0
 **Baseline Branch:** `dev`
-**Evaluation Commit SHA:** `284a36ae66f594bed54d1ef67f9b154003f36e5f`
+**Evaluation Commit SHA:** `680d712623cf95fc8fca11208e019f0059e3a8c8`
 **Target Environment:** Isolated Test / Staging Database Rehearsal
 **Auditor Roles:** Site Reliability Engineer (SRE), Database Administrator (DBA), and Financial Systems Engineer
 
@@ -35,19 +35,40 @@ To ensure that empirical testing strictly demonstrates the $\le 5\text{s}$ RPO t
 
 1. **Clock Synchronization & Continuous Synthetic Canary Ingestion:**
    - Both the canary probe client and PostgreSQL Aurora cluster synchronize against the AWS Time Sync Service (`chrony` NTP server `169.254.169.123`) with enforced drift bound $|\Delta t_{\text{drift}}| \le 1.0\text{ ms}$.
-   - Canary records inserted into `audit_logs` record the transaction commit timestamp using PostgreSQL server-side `clock_timestamp()` to prevent client clock skew.
-   - Canary worker commits probe records every $1.0\text{ second}$ with sequential monotonically increasing sequence numbers and client dispatch timestamps.
-   - The canary client records an acknowledged stream of tuples $(s_n, t_{\text{ack}, n})$. The last acknowledged write prior to failure is denoted as $(S_{\text{client last}}, t_{\text{client last}})$.
-2. **Failure Injection ($T_{\text{incident start}} \equiv T_{\text{failure}}$):** Primary instance failure is triggered. The RTO clock begins at this exact millisecond. The last acknowledged client write is recorded as $(S_{\text{client last}}, t_{\text{client last}})$.
+   - Timestamps are rigorously distinguished across three domains:
+     - **Client Dispatch Timestamp ($t_{\text{client\_dispatch}, s}$):** Generated from the client's local synchronized clock before sending the synthetic transaction for sequence number $s$.
+     - **Database Commit Timestamp ($t_{\text{db\_commit}, s}$):** Generated on the PostgreSQL primary using server-side **`clock_timestamp()`** at row insertion and WAL emission.
+     - **Acknowledged Commit Outcome ($t_{\text{client\_ack}, s}$):** Recorded on the client when the database confirms commit completion. Transactions that receive confirmation prior to failure are classified as **acknowledged writes**. Transactions without confirmation before crash disconnection are classified as **unacknowledged**.
+   - Canary worker commits probe records every $1.0\text{ second}$ with monotonically increasing sequence numbers $s$ into `audit_logs`.
+   - The canary client records an acknowledged stream of tuples $(s_n, t_{\text{client\_dispatch}, n}, t_{\text{db\_commit}, n}, t_{\text{client\_ack}, n})$.
+2. **Failure Injection ($T_{\text{incident start}} \equiv T_{\text{failure}}$):** Primary instance failure is triggered. The RTO clock begins at this exact millisecond.
+   - The **last acknowledged write** is identified as $S_{\text{last\_ack}}$ (the highest sequence number $s$ acknowledged prior to $T_{\text{failure}}$), with database commit time $t_{\text{db\_commit}}(S_{\text{last\_ack}})$ and client acknowledgment time $t_{\text{client\_ack}}(S_{\text{last\_ack}})$.
 3. **Cloud Restoration to Latest Restorable State:** AWS Aurora Point-in-Time Recovery restores the cluster using `--use-latest-restorable-time` (or targeting $T_{\text{failure}}$), replaying streaming WAL to the crash boundary.
-4. **Validation & Ledger Reconciliation ($T_{\text{recovery complete}}$):**
+4. **Validation, Ledger Reconciliation & Recovery Completion ($T_{\text{recovery complete}}$):**
    - Verify all 48 tables and foreign key constraints exist.
    - Execute double-entry ledger balancing: $\sum \text{Debit} - \sum \text{Credit} \equiv 0$ (must balance to 0 paise).
-   - Inspect recovered canaries: find latest recovered canary $(S_{\text{recovered}}, t_{\text{latest recoverable}})$.
-   - The RTO clock stops when all validations and ledger reconciliation complete successfully.
-5. **Exact Formulas & Acceptance Criteria:**
-   - $\text{RPO}_{\text{measured}} = T_{\text{failure}} - t_{\text{latest recoverable}} \le 5.0\text{ seconds}$.
-   - $\text{RTO}_{\text{measured}} = T_{\text{recovery complete}} - T_{\text{incident start}} \le 900.0\text{ seconds}$.
+   - Inspect recovered canaries to identify the **last recovered write**:
+     ```sql
+     SELECT
+       (metadata->>'sequence')::bigint AS recovered_sequence,
+       (metadata->>'db_committed_at')::timestamptz AS recovered_db_commit_timestamp,
+       (metadata->>'client_dispatched_at')::timestamptz AS recovered_client_dispatch_timestamp
+     FROM "audit_logs"
+     WHERE action = 'DR_CANARY_PROBE'
+     ORDER BY (metadata->>'sequence')::bigint DESC
+     LIMIT 1;
+     ```
+     Yields $(S_{\text{recovered}}, t_{\text{db\_commit}}(S_{\text{recovered}}))$.
+   - The RTO clock stops ($T_{\text{recovery complete}}$) when all validations and ledger reconciliation complete successfully.
+5. **Exact Metric Calculation Consistent with Recovered State:**
+   - **Case 1 ($S_{\text{recovered}} \ge S_{\text{last\_ack}}$):** Zero acknowledged writes lost; recovery is completely lossless:
+     $$\text{RPO}_{\text{measured}} = 0.0\text{ seconds}$$
+   - **Case 2 ($S_{\text{recovered}} < S_{\text{last\_ack}}$):** Acknowledged writes lost during crash. RPO measures the span of lost committed state:
+     $$\text{RPO}_{\text{measured}} = t_{\text{db\_commit}}(S_{\text{last\_ack}}) - t_{\text{db\_commit}}(S_{\text{recovered}})$$
+     _(or $t_{\text{client\_ack}}(S_{\text{last\_ack}}) - t_{\text{client\_ack}}(S_{\text{recovered}})$ under synchronized clocks)._
+   - **Upper-Bound Incident Drift Metric:** $\text{RPO}_{\text{upper\_bound}} = T_{\text{failure}} - t_{\text{db\_commit}}(S_{\text{recovered}})$.
+   - **RTO Metric:** $\text{RTO}_{\text{measured}} = T_{\text{recovery complete}} - T_{\text{incident start}} \le 900.0\text{ seconds}$.
+   - **Acceptance Criteria:** Target $\text{RPO} \le 5.0\text{ seconds}$, target $\text{RTO} \le 900.0\text{ seconds}$, ledger difference exactly $0\text{ paise}$.
 6. **Separate Classification for Historical Rollback Tests:** Any test that intentionally restores to an older recovery point (such as $T_0 - 60\text{s}$ or $T_0 - 24\text{h}$ to recover from logical data corruption or bad migrations) is classified as a **"Historical Point-in-Time Rollback Drill"** and is tracked separately. It is **never** counted as proof of the $\le 5\text{s}$ RPO target.
 
 ---
