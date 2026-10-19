@@ -1,8 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/env_config.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final config = EnvironmentConfig.current;
+  if (config.supabaseAnonKey.isNotEmpty) {
+    try {
+      await Supabase.initialize(
+        url: config.supabaseUrl,
+        publishableKey: config.supabaseAnonKey,
+      );
+    } catch (e) {
+      debugPrint('Supabase initialization notice: $e');
+    }
+  }
+
   runApp(const CreatorConnectApp());
 }
 
@@ -82,6 +96,7 @@ class AppTemplateHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeConfig = EnvironmentConfig.current;
+    final isSupabaseConfigured = activeConfig.supabaseAnonKey.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
@@ -107,13 +122,16 @@ class AppTemplateHomeScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          // Environment Connection Card
+          // Supabase Connection Status Card
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFEDE7DE)),
+              border: Border.all(
+                color: isSupabaseConfigured ? const Color(0xFF27AE60) : const Color(0xFFE5A100),
+                width: 1.5,
+              ),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x06000000),
@@ -125,17 +143,50 @@ class AppTemplateHomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Environment & Connection',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF121212),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Supabase Connection',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF121212),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isSupabaseConfigured
+                            ? const Color(0xFFE8F7ED)
+                            : const Color(0xFFFFF6D9),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        isSupabaseConfigured ? 'CONNECTED' : 'URL SET • AWAITING ANON KEY',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: isSupabaseConfigured
+                              ? const Color(0xFF27AE60)
+                              : const Color(0xFF7A5B00),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Project URL: ${activeConfig.supabaseUrl}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontFamily: 'monospace',
+                    color: Color(0xFF6E685F),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Target Base URL: ${activeConfig.apiBaseUrl}',
+                  'Target Base API: ${activeConfig.apiBaseUrl}',
                   style: const TextStyle(
                     fontSize: 12,
                     fontFamily: 'monospace',

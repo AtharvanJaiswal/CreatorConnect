@@ -9,7 +9,7 @@ void main() {
     // Verify app title
     expect(find.text('CreatorConnect'), findsOneWidget);
 
-    // Verify environment card
-    expect(find.text('Environment & Connection'), findsOneWidget);
+    // Verify Supabase Connection status card
+    expect(find.text('Supabase Connection'), findsOneWidget);
   });
 }
