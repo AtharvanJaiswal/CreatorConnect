@@ -1,6 +1,28 @@
 import { getPrismaClient, Prisma } from '@creatorconnect/database';
 import type { ProjectStatus } from '@creatorconnect/contracts';
 
+export type DeliverableWithDetails = Prisma.ProjectDeliverableGetPayload<{
+  include: {
+    project: true;
+    submittedAsset: true;
+    submissions: {
+      orderBy: { version: 'desc' };
+    };
+  };
+}>;
+
+export type DeliverableSubmissionWithDetails = Prisma.ProjectDeliverableSubmissionGetPayload<{
+  include: {
+    submittedAsset: true;
+    submittedBy: {
+      select: { id: true; firstName: true; lastName: true; email: true };
+    };
+    reviewedBy: {
+      select: { id: true; firstName: true; lastName: true; email: true };
+    };
+  };
+}>;
+
 export class ProjectsRepository {
   constructor(private prisma = getPrismaClient()) {}
 
@@ -82,12 +104,43 @@ export class ProjectsRepository {
     });
   }
 
-  async findDeliverableById(deliverableId: string) {
+  async findDeliverableById(deliverableId: string): Promise<DeliverableWithDetails | null> {
     return this.prisma.projectDeliverable.findUnique({
       where: { id: deliverableId },
       include: {
         project: true,
+        submittedAsset: true,
+        submissions: {
+          orderBy: { version: 'desc' },
+        },
       },
+    });
+  }
+
+  async findSubmissions(deliverableId: string): Promise<DeliverableSubmissionWithDetails[]> {
+    return this.prisma.projectDeliverableSubmission.findMany({
+      where: { deliverableId },
+      include: {
+        submittedAsset: true,
+        submittedBy: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        reviewedBy: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
+      orderBy: { version: 'asc' },
+    });
+  }
+
+  async createDeliverable(data: Prisma.ProjectDeliverableUncheckedCreateInput) {
+    return this.prisma.projectDeliverable.create({ data });
+  }
+
+  async updateDeliverable(id: string, data: Prisma.ProjectDeliverableUncheckedUpdateInput) {
+    return this.prisma.projectDeliverable.update({
+      where: { id },
+      data,
     });
   }
 }

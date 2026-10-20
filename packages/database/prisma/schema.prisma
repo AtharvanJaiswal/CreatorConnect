@@ -159,6 +159,12 @@ enum NotificationType {
   REVIEW_RECEIVED
   REVIEW_REPORTED
   REVIEW_MODERATED
+
+  // Phase 11 Notification Types
+  INVITATION_RECEIVED
+  INVITATION_ACCEPTED
+  INVITATION_DECLINED
+  INVITATION_WITHDRAWN
 }
 
 // ==============================================================================
@@ -223,6 +229,8 @@ model User {
   talentProjects            Project[]                 @relation("TalentProjects")
   clientPaymentIntents      PaymentIntent[]           @relation("ClientPaymentIntents")
   ledgerAccounts            LedgerAccount[]           @relation("UserLedgerAccounts")
+  submissionsSubmitted      ProjectDeliverableSubmission[] @relation("SubmissionsSubmitted")
+  submissionsReviewed       ProjectDeliverableSubmission[] @relation("SubmissionsReviewed")
 
   // Phase 6 Increment 3 Relations
   disputesOpened            Dispute[]                 @relation("DisputesOpened")
@@ -238,6 +246,14 @@ model User {
   reviewsReceived           Review[]                  @relation("ReviewsReceived")
   reviewReportsSubmitted    ReviewReport[]
   reviewModerationsTaken    ReviewModerationAudit[]
+
+  // Phase 11 Relations
+  savedCreatorsInitiated    SavedCreator[]            @relation("SavedCreatorsClient")
+  savedCreatorsReceived     SavedCreator[]            @relation("SavedCreatorsCreator")
+  shortlistsOwned           Shortlist[]               @relation("ShortlistOwner")
+  shortlistMemberships      ShortlistMember[]
+  invitationsSent           ProjectInvitation[]       @relation("InvitationsSent")
+  invitationsReceived       ProjectInvitation[]       @relation("InvitationsReceived")
 
   @@index([email])
   @@index([supabaseAuthId])
@@ -501,8 +517,9 @@ model MediaAsset {
   user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   portfolioMedia     PortfolioMedia[]
   messageAttachments MessageAttachment[]
-  deliverables       ProjectDeliverable[]
-  disputeEvidence    DisputeEvidence[]
+  deliverables           ProjectDeliverable[]
+  deliverableSubmissions ProjectDeliverableSubmission[]
+  disputeEvidence        DisputeEvidence[]
 
   @@index([userId])
   @@index([status])
@@ -851,6 +868,8 @@ model Project {
   cancellations  ProjectCancellation[]
   refunds        Refund[]
   reviews        Review[]
+  invitations    ProjectInvitation[]
+  shortlists     Shortlist[]
 
   @@index([clientId, status])
   @@index([talentId, status])
@@ -879,10 +898,37 @@ model ProjectDeliverable {
   submittedAsset MediaAsset?     @relation(fields: [submittedAssetId], references: [id], onDelete: SetNull)
   paymentIntents PaymentIntent[]
   disputes       Dispute[]
+  submissions    ProjectDeliverableSubmission[]
 
   @@index([projectId, status])
   @@index([submittedAssetId])
   @@map("project_deliverables")
+}
+
+model ProjectDeliverableSubmission {
+  id               String            @id @db.Uuid
+  deliverableId    String            @map("deliverable_id") @db.Uuid
+  version          Int
+  submittedById    String            @map("submitted_by_id") @db.Uuid
+  submittedAssetId String?           @map("submitted_asset_id") @db.Uuid
+  submissionNotes  String?           @map("submission_notes") @db.Text
+  reviewStatus     DeliverableStatus @default(SUBMITTED) @map("review_status")
+  reviewedById     String?           @map("reviewed_by_id") @db.Uuid
+  reviewNotes      String?           @map("review_notes") @db.Text
+  submittedAt      DateTime          @default(now()) @map("submitted_at")
+  reviewedAt       DateTime?         @map("reviewed_at")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  deliverable    ProjectDeliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  submittedBy    User               @relation("SubmissionsSubmitted", fields: [submittedById], references: [id], onDelete: Restrict)
+  reviewedBy     User?              @relation("SubmissionsReviewed", fields: [reviewedById], references: [id], onDelete: SetNull)
+  submittedAsset MediaAsset?        @relation(fields: [submittedAssetId], references: [id], onDelete: SetNull)
+
+  @@unique([deliverableId, version])
+  @@index([deliverableId])
+  @@index([submittedById])
+  @@map("project_deliverable_submissions")
 }
 
 // ==============================================================================
@@ -1324,4 +1370,93 @@ model ReviewModerationAudit {
   @@index([moderatorId])
   @@map("review_moderation_audits")
 }
+
+// ==============================================================================
+// Phase 11 Enums & Models: Saved Creators, Shortlists & Hiring Invitations
+// ==============================================================================
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  WITHDRAWN
+  EXPIRED
+}
+
+model SavedCreator {
+  id        String   @id @db.Uuid
+  clientId  String   @map("client_id") @db.Uuid
+  creatorId String   @map("creator_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  client  User @relation("SavedCreatorsClient", fields: [clientId], references: [id], onDelete: Cascade)
+  creator User @relation("SavedCreatorsCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, creatorId])
+  @@index([clientId, createdAt(sort: Desc)])
+  @@index([creatorId])
+  @@map("saved_creators")
+}
+
+model Shortlist {
+  id          String   @id @db.Uuid
+  ownerId     String   @map("owner_id") @db.Uuid
+  name        String   @db.VarChar(120)
+  description String?  @db.Text
+  projectId   String?  @map("project_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  owner       User                @relation("ShortlistOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  project     Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  members     ShortlistMember[]
+  invitations ProjectInvitation[]
+
+  @@unique([ownerId, name])
+  @@index([ownerId, updatedAt(sort: Desc)])
+  @@index([projectId])
+  @@map("shortlists")
+}
+
+model ShortlistMember {
+  id          String   @id @db.Uuid
+  shortlistId String   @map("shortlist_id") @db.Uuid
+  creatorId   String   @map("creator_id") @db.Uuid
+  note        String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  shortlist   Shortlist @relation(fields: [shortlistId], references: [id], onDelete: Cascade)
+  creator     User      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([shortlistId, creatorId])
+  @@index([shortlistId, createdAt(sort: Desc)])
+  @@index([creatorId])
+  @@map("shortlist_members")
+}
+
+model ProjectInvitation {
+  id          String           @id @db.Uuid
+  projectId   String           @map("project_id") @db.Uuid
+  inviterId   String           @map("inviter_id") @db.Uuid
+  inviteeId   String           @map("invitee_id") @db.Uuid
+  shortlistId String?          @map("shortlist_id") @db.Uuid
+  status      InvitationStatus @default(PENDING)
+  message     String           @db.Text
+  expiresAt   DateTime?        @map("expires_at")
+  respondedAt DateTime?        @map("responded_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  inviter     User       @relation("InvitationsSent", fields: [inviterId], references: [id], onDelete: Restrict)
+  invitee     User       @relation("InvitationsReceived", fields: [inviteeId], references: [id], onDelete: Restrict)
+  shortlist   Shortlist? @relation(fields: [shortlistId], references: [id], onDelete: SetNull)
+
+  @@index([inviteeId, status, createdAt(sort: Desc)])
+  @@index([inviterId, status, createdAt(sort: Desc)])
+  @@index([projectId, status])
+  @@index([status, expiresAt])
+  @@map("project_invitations")
+}
+
 

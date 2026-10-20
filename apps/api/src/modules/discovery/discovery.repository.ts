@@ -128,9 +128,13 @@ export class DiscoveryRepository {
     query?: string | undefined;
     categoryId?: string | undefined;
     skillId?: string | undefined;
+    skillIds?: string[] | undefined;
     locationCountry?: string | undefined;
     locationCity?: string | undefined;
     isRemote?: boolean | undefined;
+    rateMin?: number | undefined;
+    rateMax?: number | undefined;
+    isVerified?: boolean | undefined;
     cursor?: KeysetCursor | undefined;
     limit: number;
   }) {
@@ -149,6 +153,7 @@ export class DiscoveryRepository {
           cp.id, cp.user_id, cp.tagline, cp.bio, cp.location_country, cp.location_city,
           cp.is_remote, cp.starting_rate, cp.currency, cp.visibility, cp.is_verified,
           cp.social_links, cp.completion_score, cp.created_at, cp.updated_at,
+          u.first_name, u.last_name, u.avatar_url,
           ROUND(
             (
               COALESCE(ts_rank(cp.search_vector, plainto_tsquery('english', ${q})), 0.0) * 0.7 +
@@ -168,6 +173,9 @@ export class DiscoveryRepository {
           AND (${params.locationCountry}::text IS NULL OR cp.location_country = ${params.locationCountry}::text)
           AND (${params.locationCity}::text IS NULL OR cp.location_city = ${params.locationCity}::text)
           AND (${params.isRemote}::boolean IS NULL OR cp.is_remote = ${params.isRemote}::boolean)
+          AND (${params.rateMin}::integer IS NULL OR cp.starting_rate >= ${params.rateMin}::integer)
+          AND (${params.rateMax}::integer IS NULL OR cp.starting_rate <= ${params.rateMax}::integer)
+          AND (${params.isVerified}::boolean IS NULL OR cp.is_verified = ${params.isVerified}::boolean)
           AND (
             cp.search_vector @@ plainto_tsquery('english', ${q})
             OR cp.tagline % ${q}
@@ -205,7 +213,7 @@ export class DiscoveryRepository {
               AND cp.id < ${cursorId}::uuid
             )
           )
-        GROUP BY cp.id, u.id
+        GROUP BY cp.id, u.id, u.first_name, u.last_name, u.avatar_url
         ORDER BY computed_rank DESC, cp.created_at DESC, cp.id DESC
         LIMIT ${params.limit + 1};
       `;
@@ -220,6 +228,7 @@ export class DiscoveryRepository {
         cp.id, cp.user_id, cp.tagline, cp.bio, cp.location_country, cp.location_city,
         cp.is_remote, cp.starting_rate, cp.currency, cp.visibility, cp.is_verified,
         cp.social_links, cp.completion_score, cp.created_at, cp.updated_at,
+        u.first_name, u.last_name, u.avatar_url,
         0.0::float8 AS computed_rank
       FROM creator_profiles cp
       JOIN users u ON u.id = cp.user_id
@@ -233,12 +242,15 @@ export class DiscoveryRepository {
         AND (${params.locationCountry}::text IS NULL OR cp.location_country = ${params.locationCountry}::text)
         AND (${params.locationCity}::text IS NULL OR cp.location_city = ${params.locationCity}::text)
         AND (${params.isRemote}::boolean IS NULL OR cp.is_remote = ${params.isRemote}::boolean)
+        AND (${params.rateMin}::integer IS NULL OR cp.starting_rate >= ${params.rateMin}::integer)
+        AND (${params.rateMax}::integer IS NULL OR cp.starting_rate <= ${params.rateMax}::integer)
+        AND (${params.isVerified}::boolean IS NULL OR cp.is_verified = ${params.isVerified}::boolean)
         AND (
           (${cursorCreatedAt}::timestamptz IS NULL)
           OR (cp.created_at < ${cursorCreatedAt}::timestamptz)
           OR (cp.created_at = ${cursorCreatedAt}::timestamptz AND cp.id < ${cursorId}::uuid)
         )
-      GROUP BY cp.id, u.id
+      GROUP BY cp.id, u.id, u.first_name, u.last_name, u.avatar_url
       ORDER BY cp.created_at DESC, cp.id DESC
       LIMIT ${params.limit + 1};
     `;

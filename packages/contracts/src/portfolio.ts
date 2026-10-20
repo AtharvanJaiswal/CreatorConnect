@@ -34,6 +34,17 @@ export const ReorderPortfolioMediaInputSchema = Type.Object({
 });
 export type ReorderPortfolioMediaInput = Static<typeof ReorderPortfolioMediaInputSchema>;
 
+export const ReorderPortfolioItemsInputSchema = Type.Object({
+  items: Type.Array(
+    Type.Object({
+      id: UuidSchema,
+      displayOrder: Type.Integer({ minimum: 0 }),
+    }),
+    { minItems: 1, maxItems: 100 },
+  ),
+});
+export type ReorderPortfolioItemsInput = Static<typeof ReorderPortfolioItemsInputSchema>;
+
 export const PortfolioMediaResponseSchema = Type.Object({
   id: UuidSchema,
   mediaAssetId: UuidSchema,

@@ -15,10 +15,16 @@ describe('Messaging REST API Integration Tests (Increment 6)', () => {
   let userA: { id: string; supabaseAuthId: string; email: string };
   let userB: { id: string; supabaseAuthId: string; email: string };
   let userC: { id: string; supabaseAuthId: string; email: string };
+  let userAdmin: { id: string; supabaseAuthId: string; email: string };
+  let userSuspended: { id: string; supabaseAuthId: string; email: string };
+  let userDeactivated: { id: string; supabaseAuthId: string; email: string };
 
   let tokenA: string;
   let tokenB: string;
   let tokenC: string;
+  let tokenAdmin: string;
+  let tokenSuspended: string;
+  let tokenDeactivated: string;
 
   beforeAll(async () => {
     const testKeySet = await createTestKeySet();
@@ -109,10 +115,70 @@ describe('Messaging REST API Integration Tests (Increment 6)', () => {
       },
     });
     tokenC = await createTestJwt({ sub: subC, email: emailC });
+
+    // 4. Create User Admin
+    const idAdmin = generateUuidV7();
+    const subAdmin = `sub_api_admin_${ts}`;
+    const emailAdmin = `admin_api_${ts}@test.com`;
+    userAdmin = await prisma.user.create({
+      data: {
+        id: idAdmin,
+        supabaseAuthId: subAdmin,
+        email: emailAdmin,
+        firstName: 'Admin',
+        lastName: 'User',
+        status: 'ACTIVE',
+        userRoles: {
+          create: {
+            id: generateUuidV7(),
+            role: {
+              connectOrCreate: {
+                where: { name: 'ADMIN' },
+                create: { id: generateUuidV7(), name: 'ADMIN' },
+              },
+            },
+          },
+        },
+      },
+    });
+    tokenAdmin = await createTestJwt({ sub: subAdmin, email: emailAdmin });
+
+    // 5. Create Suspended User
+    const idSuspended = generateUuidV7();
+    const subSuspended = `sub_api_suspended_${ts}`;
+    const emailSuspended = `suspended_api_${ts}@test.com`;
+    userSuspended = await prisma.user.create({
+      data: {
+        id: idSuspended,
+        supabaseAuthId: subSuspended,
+        email: emailSuspended,
+        firstName: 'Suspended',
+        lastName: 'User',
+        status: 'SUSPENDED',
+      },
+    });
+    tokenSuspended = await createTestJwt({ sub: subSuspended, email: emailSuspended });
+
+    // 6. Create Deactivated User
+    const idDeactivated = generateUuidV7();
+    const subDeactivated = `sub_api_deactivated_${ts}`;
+    const emailDeactivated = `deactivated_api_${ts}@test.com`;
+    userDeactivated = await prisma.user.create({
+      data: {
+        id: idDeactivated,
+        supabaseAuthId: subDeactivated,
+        email: emailDeactivated,
+        firstName: 'Deactivated',
+        lastName: 'User',
+        status: 'DEACTIVATED',
+      },
+    });
+    tokenDeactivated = await createTestJwt({ sub: subDeactivated, email: emailDeactivated });
   });
 
   afterAll(async () => {
     // Cleanup test data
+    await prisma.report.deleteMany({});
     await prisma.messageReaction.deleteMany({});
     await prisma.messageAttachment.deleteMany({});
     await prisma.message.deleteMany({});
@@ -120,11 +186,19 @@ describe('Messaging REST API Integration Tests (Increment 6)', () => {
     await prisma.conversationParticipant.deleteMany({});
     await prisma.conversation.deleteMany({});
     await prisma.userBlock.deleteMany({});
+    const allUserIds = [
+      userA.id,
+      userB.id,
+      userC.id,
+      userAdmin.id,
+      userSuspended.id,
+      userDeactivated.id,
+    ];
     await prisma.userRole.deleteMany({
-      where: { userId: { in: [userA.id, userB.id, userC.id] } },
+      where: { userId: { in: allUserIds } },
     });
     await prisma.user.deleteMany({
-      where: { id: { in: [userA.id, userB.id, userC.id] } },
+      where: { id: { in: allUserIds } },
     });
 
     await app.close();
@@ -942,6 +1016,506 @@ describe('Messaging REST API Integration Tests (Increment 6)', () => {
       });
 
       expect(res.statusCode).toBe(401);
+    });
+  });
+
+  // ==============================================================================
+  // 8. Message Edit & Soft-Delete Lifecycles (Increment 11)
+  // ==============================================================================
+  describe('8. Message Edit & Soft-Delete Lifecycles', () => {
+    let convId: string;
+    let messageId: string;
+
+    beforeAll(async () => {
+      const convRes = await app.inject({
+        method: 'POST',
+        url: '/api/v1/conversations',
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: { recipientId: userB.id },
+      });
+      convId = convRes.json().id;
+    });
+
+    it('allows message author (Alice) to edit content within 15-minute window', async () => {
+      // 1. Send message
+      const sendRes = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${convId}/messages`,
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          clientMessageId: generateUuidV7(),
+          content: 'Initial unedited message content',
+        },
+      });
+      expect(sendRes.statusCode).toBe(201);
+      messageId = sendRes.json().id;
+
+      // 2. Edit message
+      const editRes = await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/conversations/${convId}/messages/${messageId}`,
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          content: 'Updated and corrected message content',
+        },
+      });
+
+      expect(editRes.statusCode).toBe(200);
+      const body = editRes.json();
+      expect(body.id).toBe(messageId);
+      expect(body.content).toBe('Updated and corrected message content');
+      expect(body.status).toBe('EDITED');
+
+      // 3. Verify outbox event emitted
+      const outboxEvent = await prisma.outboxEvent.findFirst({
+        where: {
+          eventType: 'message.updated.v1',
+          aggregateId: messageId,
+        },
+      });
+      expect(outboxEvent).not.toBeNull();
+      expect((outboxEvent?.payload as any)?.content).toBe('Updated and corrected message content');
+    });
+
+    it('rejects editing by non-author participant (Bob) with 404', async () => {
+      const res = await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/conversations/${convId}/messages/${messageId}`,
+        headers: { authorization: `Bearer ${tokenB}` },
+        payload: {
+          content: 'Attempted spoofed edit by Bob',
+        },
+      });
+
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('rejects editing by non-participant outsider (Charlie) with 404', async () => {
+      const res = await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/conversations/${convId}/messages/${messageId}`,
+        headers: { authorization: `Bearer ${tokenC}` },
+        payload: {
+          content: 'Attempted outsider edit by Charlie',
+        },
+      });
+
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('rejects editing message after 15-minute window with 400 MESSAGE_NOT_EDITABLE', async () => {
+      // Simulate expired message createdAt: 20 minutes ago
+      await prisma.message.update({
+        where: { id: messageId },
+        data: {
+          createdAt: new Date(Date.now() - 20 * 60 * 1000),
+        },
+      });
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/conversations/${convId}/messages/${messageId}`,
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          content: 'Late edit past 15 minutes',
+        },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe('MESSAGE_NOT_EDITABLE');
+    });
+
+    it('allows author (Alice) to soft-delete message with 204 and outbox emission', async () => {
+      const res = await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/conversations/${convId}/messages/${messageId}`,
+        headers: { authorization: `Bearer ${tokenA}` },
+      });
+
+      expect(res.statusCode).toBe(204);
+
+      // Verify DB state
+      const msg = await prisma.message.findUnique({
+        where: { id: messageId },
+      });
+      expect(msg?.status).toBe('DELETED');
+      expect(msg?.deletedAt).not.toBeNull();
+      expect(msg?.content).toBe('[This message was deleted]');
+
+      // Verify outbox event
+      const outboxEvent = await prisma.outboxEvent.findFirst({
+        where: {
+          eventType: 'message.deleted.v1',
+          aggregateId: messageId,
+        },
+      });
+      expect(outboxEvent).not.toBeNull();
+      expect((outboxEvent?.payload as any)?.deletedBy).toBe(userA.id);
+    });
+
+    it('rejects editing a deleted message with 404', async () => {
+      const res = await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/conversations/${convId}/messages/${messageId}`,
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          content: 'Cannot edit deleted message',
+        },
+      });
+
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('allows administrator to soft-delete any message', async () => {
+      // 1. Alice sends a new message
+      const sendRes = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${convId}/messages`,
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          clientMessageId: generateUuidV7(),
+          content: 'Message to be deleted by admin',
+        },
+      });
+      const newMsgId = sendRes.json().id;
+
+      // 2. Admin soft-deletes the message
+      const res = await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/conversations/${convId}/messages/${newMsgId}`,
+        headers: { authorization: `Bearer ${tokenAdmin}` },
+      });
+
+      expect(res.statusCode).toBe(204);
+
+      const msg = await prisma.message.findUnique({
+        where: { id: newMsgId },
+      });
+      expect(msg?.status).toBe('DELETED');
+      expect(msg?.deletedAt).not.toBeNull();
+    });
+
+    it('rejects non-author non-admin (Bob) from deleting message with 404', async () => {
+      // 1. Alice sends a message
+      const sendRes = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${convId}/messages`,
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          clientMessageId: generateUuidV7(),
+          content: 'Alice message that Bob cannot delete',
+        },
+      });
+      const testMsgId = sendRes.json().id;
+
+      // 2. Bob tries to delete
+      const res = await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/conversations/${convId}/messages/${testMsgId}`,
+        headers: { authorization: `Bearer ${tokenB}` },
+      });
+
+      expect(res.statusCode).toBe(404);
+    });
+  });
+
+  // ==============================================================================
+  // 9. User Blocks Keyset Listing (Increment 12)
+  // ==============================================================================
+  describe('9. User Blocks Keyset Listing', () => {
+    it('lists blocks initiated by authenticated user', async () => {
+      // Alice blocks Bob
+      const blockRes = await app.inject({
+        method: 'POST',
+        url: '/api/v1/blocks',
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          targetUserId: userB.id,
+          reason: 'Harassment in conversation',
+        },
+      });
+      expect(blockRes.statusCode).toBe(201);
+
+      // Alice lists blocks
+      const listRes = await app.inject({
+        method: 'GET',
+        url: '/api/v1/blocks',
+        headers: { authorization: `Bearer ${tokenA}` },
+      });
+
+      expect(listRes.statusCode).toBe(200);
+      const body = listRes.json();
+      expect(body.items.length).toBeGreaterThanOrEqual(1);
+      const found = body.items.find((item: any) => item.blockedId === userB.id);
+      expect(found).toBeDefined();
+      expect(found.reason).toBe('Harassment in conversation');
+      expect(body.hasMore).toBe(false);
+
+      // Unblock Bob
+      await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/blocks/${userB.id}`,
+        headers: { authorization: `Bearer ${tokenA}` },
+      });
+    });
+  });
+
+  // ==============================================================================
+  // 10. Abuse Reporting Subsystem (Increment 13)
+  // ==============================================================================
+  describe('10. Abuse Reporting Subsystem', () => {
+    it('allows a user (Alice) to report another user (Bob) with 201', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/reports',
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          targetType: 'USER',
+          targetId: userB.id,
+          category: 'HARASSMENT',
+          details: 'Repeated offensive remarks sent in direct message history.',
+        },
+      });
+
+      expect(res.statusCode).toBe(201);
+      const body = res.json();
+      expect(body.reporterId).toBe(userA.id);
+      expect(body.targetType).toBe('USER');
+      expect(body.targetId).toBe(userB.id);
+      expect(body.category).toBe('HARASSMENT');
+      expect(body.status).toBe('PENDING');
+    });
+
+    it('rejects self-reporting a user account with 400 SELF_REPORT_NOT_ALLOWED', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/reports',
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          targetType: 'USER',
+          targetId: userA.id,
+          category: 'SPAM',
+          details: 'Self-reporting attempt should be strictly rejected.',
+        },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe('SELF_REPORT_NOT_ALLOWED');
+    });
+
+    it('rejects reporting a non-existent target with 404 REPORT_TARGET_NOT_FOUND', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/reports',
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          targetType: 'USER',
+          targetId: generateUuidV7(),
+          category: 'SPAM',
+          details: 'Reporting non-existent target should fail with 404.',
+        },
+      });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json().code).toBe('REPORT_TARGET_NOT_FOUND');
+    });
+
+    it('allows recipient (Bob) to report an abusive message sent by Alice', async () => {
+      // 1. Alice sends a message to Bob
+      const convRes = await app.inject({
+        method: 'POST',
+        url: '/api/v1/conversations',
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: { recipientId: userB.id },
+      });
+      const convId = convRes.json().id;
+
+      const sendRes = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${convId}/messages`,
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          clientMessageId: generateUuidV7(),
+          content: 'Offensive harassment message to be reported',
+        },
+      });
+      const msgId = sendRes.json().id;
+
+      // 2. Bob reports Alice's message
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/reports',
+        headers: { authorization: `Bearer ${tokenB}` },
+        payload: {
+          targetType: 'MESSAGE',
+          targetId: msgId,
+          category: 'ABUSE',
+          details: 'Offensive language and personal threats in message body.',
+        },
+      });
+
+      expect(res.statusCode).toBe(201);
+      const body = res.json();
+      expect(body.reporterId).toBe(userB.id);
+      expect(body.targetType).toBe('MESSAGE');
+      expect(body.targetId).toBe(msgId);
+      expect(body.status).toBe('PENDING');
+    });
+
+    it('rejects reporting own message with 400 SELF_REPORT_NOT_ALLOWED', async () => {
+      // 1. Alice sends a message
+      const convRes = await app.inject({
+        method: 'POST',
+        url: '/api/v1/conversations',
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: { recipientId: userB.id },
+      });
+      const convId = convRes.json().id;
+
+      const sendRes = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${convId}/messages`,
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          clientMessageId: generateUuidV7(),
+          content: 'Alice message that Alice tries to self-report',
+        },
+      });
+      const msgId = sendRes.json().id;
+
+      // 2. Alice tries to report her own message
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/reports',
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          targetType: 'MESSAGE',
+          targetId: msgId,
+          category: 'SPAM',
+          details: 'Attempting to self-report own message should be blocked.',
+        },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe('SELF_REPORT_NOT_ALLOWED');
+    });
+
+    it('rejects outsider (Charlie) from reporting a message in a conversation they are not in', async () => {
+      // 1. Alice sends a message in Alice-Bob conversation
+      const convRes = await app.inject({
+        method: 'POST',
+        url: '/api/v1/conversations',
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: { recipientId: userB.id },
+      });
+      const convId = convRes.json().id;
+
+      const sendRes = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${convId}/messages`,
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          clientMessageId: generateUuidV7(),
+          content: 'Private conversation message',
+        },
+      });
+      const msgId = sendRes.json().id;
+
+      // 2. Charlie (not a participant) tries to report the message
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/reports',
+        headers: { authorization: `Bearer ${tokenC}` },
+        payload: {
+          targetType: 'MESSAGE',
+          targetId: msgId,
+          category: 'HARASSMENT',
+          details: 'Charlie snooping and attempting to report private message.',
+        },
+      });
+
+      expect(res.statusCode).toBe(403);
+      expect(res.json().code).toBe('NOT_CONVERSATION_PARTICIPANT');
+    });
+  });
+
+  // ==============================================================================
+  // 11. Suspended & Deactivated Account Status Enforcement (Increment 14)
+  // ==============================================================================
+  describe('11. Suspended & Deactivated Account Status Enforcement', () => {
+    it('denies suspended user from creating conversations with 403 USER_SUSPENDED', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/conversations',
+        headers: { authorization: `Bearer ${tokenSuspended}` },
+        payload: { recipientId: userB.id },
+      });
+
+      expect(res.statusCode).toBe(403);
+      expect(res.json().code).toBe('USER_SUSPENDED');
+    });
+
+    it('denies suspended user from listing conversations with 403 USER_SUSPENDED', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/conversations',
+        headers: { authorization: `Bearer ${tokenSuspended}` },
+      });
+
+      expect(res.statusCode).toBe(403);
+      expect(res.json().code).toBe('USER_SUSPENDED');
+    });
+
+    it('denies suspended user from blocking users with 403 USER_SUSPENDED', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/blocks',
+        headers: { authorization: `Bearer ${tokenSuspended}` },
+        payload: { targetUserId: userB.id },
+      });
+
+      expect(res.statusCode).toBe(403);
+      expect(res.json().code).toBe('USER_SUSPENDED');
+    });
+
+    it('denies suspended user from submitting reports with 403 USER_SUSPENDED', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/reports',
+        headers: { authorization: `Bearer ${tokenSuspended}` },
+        payload: {
+          targetType: 'USER',
+          targetId: userB.id,
+          category: 'SPAM',
+          details: 'Suspended user trying to file report.',
+        },
+      });
+
+      expect(res.statusCode).toBe(403);
+      expect(res.json().code).toBe('USER_SUSPENDED');
+    });
+
+    it('denies deactivated user from creating conversations with 403 USER_DEACTIVATED', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/conversations',
+        headers: { authorization: `Bearer ${tokenDeactivated}` },
+        payload: { recipientId: userB.id },
+      });
+
+      expect(res.statusCode).toBe(403);
+      expect(res.json().code).toBe('USER_DEACTIVATED');
+    });
+
+    it('denies deactivated user from listing conversations with 403 USER_DEACTIVATED', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/conversations',
+        headers: { authorization: `Bearer ${tokenDeactivated}` },
+      });
+
+      expect(res.statusCode).toBe(403);
+      expect(res.json().code).toBe('USER_DEACTIVATED');
     });
   });
 });

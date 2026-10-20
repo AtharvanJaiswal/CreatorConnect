@@ -17,6 +17,9 @@ import {
   type ListConversationsResponse,
   type MarkReadResponse,
   type UserBlockResponse,
+  type ListBlocksResponse,
+  type CreateReportInput,
+  type ReportResponse,
 } from '@creatorconnect/contracts';
 import {
   ConversationNotFoundError,
@@ -28,6 +31,11 @@ import {
   SelfMessagingNotAllowedError,
   SelfBlockNotAllowedError,
   InvalidMessageCursorError,
+  MessageNotFoundError,
+  MessageNotEditableError,
+  SelfReportNotAllowedError,
+  ReportTargetNotFoundError,
+  NotConversationParticipantError,
 } from './errors.js';
 
 export interface IMessagingRepository {
@@ -44,6 +52,20 @@ export interface IMessagingRepository {
     content: string;
     mediaAssetIds?: string[];
   }): Promise<MessageResponse>;
+
+  editMessage(params: {
+    conversationId: string;
+    messageId: string;
+    userId: string;
+    content: string;
+  }): Promise<MessageResponse>;
+
+  deleteMessage(params: {
+    conversationId: string;
+    messageId: string;
+    userId: string;
+    isAdmin: boolean;
+  }): Promise<void>;
 
   listMessages(params: {
     conversationId: string;
@@ -68,7 +90,13 @@ export interface IMessagingRepository {
 
   blockUser(blockerId: string, blockedId: string, reason?: string): Promise<UserBlockResponse>;
   unblockUser(blockerId: string, blockedId: string): Promise<void>;
+  listBlocks(
+    blockerId: string,
+    params?: { limit?: number; cursor?: string },
+  ): Promise<ListBlocksResponse>;
   isBlocked(userA: string, userB: string): Promise<boolean>;
+
+  createReport(reporterId: string, input: CreateReportInput): Promise<ReportResponse>;
 }
 
 export class MessagingRepository implements IMessagingRepository {
@@ -369,6 +397,140 @@ export class MessagingRepository implements IMessagingRepository {
 
       throw err;
     }
+  }
+
+  /**
+   * Updates message content within the authoritative 15-minute edit window.
+   * Enforces original author check and non-deleted state, transitioning status to EDITED
+   * and writing 'message.updated.v1' to outbox within the same transaction.
+   */
+  public async editMessage(params: {
+    conversationId: string;
+    messageId: string;
+    userId: string;
+    content: string;
+  }): Promise<MessageResponse> {
+    const { conversationId, messageId, userId, content } = params;
+
+    return await this.prisma.$transaction(
+      async (tx) => {
+        const message = await tx.message.findUnique({
+          where: { id: messageId },
+          include: { attachments: true },
+        });
+
+        if (!message || message.conversationId !== conversationId || message.deletedAt !== null) {
+          throw new MessageNotFoundError();
+        }
+
+        if (message.senderId !== userId) {
+          throw new MessageNotFoundError('You can only edit your own messages.');
+        }
+
+        const EDIT_WINDOW_MS = 15 * 60 * 1000;
+        if (Date.now() - message.createdAt.getTime() > EDIT_WINDOW_MS) {
+          throw new MessageNotEditableError();
+        }
+
+        const updated = await tx.message.update({
+          where: { id: messageId },
+          data: {
+            content,
+            status: 'EDITED',
+          },
+          include: { attachments: true },
+        });
+
+        const outboxEventId = generateUuidV7();
+        await tx.outboxEvent.create({
+          data: {
+            id: outboxEventId,
+            eventType: 'message.updated.v1',
+            aggregateType: 'Message',
+            aggregateId: messageId,
+            payload: {
+              messageId,
+              conversationId,
+              senderId: userId,
+              sequence: updated.sequence.toString(),
+              content,
+              updatedAt: updated.updatedAt.toISOString(),
+            },
+            status: 'PENDING',
+          },
+        });
+
+        return this.formatMessage(updated);
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+        timeout: 5000,
+      },
+    );
+  }
+
+  /**
+   * Soft-deletes a message by setting deletedAt and sanitizing content.
+   * Can be performed by the original sender or an administrator.
+   * Emits 'message.deleted.v1' to outbox in the same transaction.
+   */
+  public async deleteMessage(params: {
+    conversationId: string;
+    messageId: string;
+    userId: string;
+    isAdmin: boolean;
+  }): Promise<void> {
+    const { conversationId, messageId, userId, isAdmin } = params;
+
+    await this.prisma.$transaction(
+      async (tx) => {
+        const message = await tx.message.findUnique({
+          where: { id: messageId },
+        });
+
+        if (!message || message.conversationId !== conversationId || message.deletedAt !== null) {
+          throw new MessageNotFoundError();
+        }
+
+        if (message.senderId !== userId && !isAdmin) {
+          throw new MessageNotFoundError(
+            'Only the message author or an admin can delete this message.',
+          );
+        }
+
+        const deletedAt = new Date();
+        await tx.message.update({
+          where: { id: messageId },
+          data: {
+            deletedAt,
+            status: 'DELETED',
+            content: '[This message was deleted]',
+          },
+        });
+
+        const outboxEventId = generateUuidV7();
+        await tx.outboxEvent.create({
+          data: {
+            id: outboxEventId,
+            eventType: 'message.deleted.v1',
+            aggregateType: 'Message',
+            aggregateId: messageId,
+            payload: {
+              messageId,
+              conversationId,
+              deletedBy: userId,
+              sequence: message.sequence.toString(),
+              deletedAt: deletedAt.toISOString(),
+            },
+            status: 'PENDING',
+          },
+        });
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+        timeout: 5000,
+      },
+    );
   }
 
   /**
@@ -675,6 +837,128 @@ export class MessagingRepository implements IMessagingRepository {
       },
     });
     return !!block;
+  }
+
+  /**
+   * Lists blocks initiated by the authenticated user with cursor pagination.
+   */
+  public async listBlocks(
+    blockerId: string,
+    params?: { limit?: number; cursor?: string },
+  ): Promise<ListBlocksResponse> {
+    const limit = Math.min(Math.max(params?.limit || 20, 1), 100);
+
+    const where: Prisma.UserBlockWhereInput = {
+      blockerId,
+    };
+
+    if (params?.cursor) {
+      where.id = { lt: params.cursor };
+    }
+
+    const blocks = await this.prisma.userBlock.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: limit + 1,
+    });
+
+    const hasMore = blocks.length > limit;
+    const items = hasMore ? blocks.slice(0, limit) : blocks;
+    const lastItem = items[items.length - 1];
+    const nextCursor = hasMore && lastItem !== undefined ? lastItem.id : null;
+
+    return {
+      items: items.map((b) => ({
+        id: b.id,
+        blockerId: b.blockerId,
+        blockedId: b.blockedId,
+        reason: b.reason,
+        createdAt: b.createdAt.toISOString(),
+      })),
+      nextCursor,
+      hasMore,
+    };
+  }
+
+  /**
+   * Creates an abuse report against a user, message, or assignment with anti-abuse guards.
+   */
+  public async createReport(reporterId: string, input: CreateReportInput): Promise<ReportResponse> {
+    const { targetType, targetId, category, details } = input;
+
+    // 1. Self-reporting check
+    if (targetType === 'USER' && targetId === reporterId) {
+      throw new SelfReportNotAllowedError('You cannot report your own user account.');
+    }
+
+    // 2. Validate target existence and author checks
+    if (targetType === 'USER') {
+      const user = await this.prisma.user.findUnique({
+        where: { id: targetId },
+        select: { id: true },
+      });
+      if (!user) {
+        throw new ReportTargetNotFoundError('Target user was not found.');
+      }
+    } else if (targetType === 'MESSAGE') {
+      const message = await this.prisma.message.findUnique({
+        where: { id: targetId },
+        select: { id: true, senderId: true, conversationId: true, deletedAt: true },
+      });
+      if (!message || message.deletedAt !== null) {
+        throw new ReportTargetNotFoundError('Target message was not found or has been deleted.');
+      }
+      if (message.senderId === reporterId) {
+        throw new SelfReportNotAllowedError('You cannot report your own message.');
+      }
+      // Reporter must be a participant in the conversation
+      const participant = await this.prisma.conversationParticipant.findFirst({
+        where: {
+          conversationId: message.conversationId,
+          userId: reporterId,
+          leftAt: null,
+        },
+      });
+      if (!participant) {
+        throw new NotConversationParticipantError(
+          'You are not a participant in the conversation containing the reported message.',
+        );
+      }
+    } else if (targetType === 'ASSIGNMENT') {
+      const assignment = await this.prisma.assignment.findUnique({
+        where: { id: targetId },
+        select: { id: true },
+      });
+      if (!assignment) {
+        throw new ReportTargetNotFoundError('Target assignment was not found.');
+      }
+    }
+
+    // 3. Create Report in DB with status PENDING
+    const reportId = generateUuidV7();
+    const created = await this.prisma.report.create({
+      data: {
+        id: reportId,
+        reporterId,
+        targetType,
+        targetId,
+        category,
+        details,
+        status: 'PENDING',
+      },
+    });
+
+    return {
+      id: created.id,
+      reporterId: created.reporterId,
+      targetType: created.targetType as any,
+      targetId: created.targetId,
+      category: created.category as any,
+      details: created.details,
+      status: created.status as any,
+      createdAt: created.createdAt.toISOString(),
+      updatedAt: created.updatedAt.toISOString(),
+    };
   }
 
   private formatMessage(m: Message & { attachments?: MessageAttachment[] }): MessageResponse {

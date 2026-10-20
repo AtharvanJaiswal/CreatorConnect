@@ -76,9 +76,36 @@ export const shadows = {
 
 export const typography = {
   fontFamily: {
-    sans: 'var(--font-sans, "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif)',
-    heading: 'var(--font-heading, "Outfit", "Inter", sans-serif)',
-    serif: 'var(--font-serif, "Newsreader", "Playfair Display", Georgia, serif)',
+    sans: 'var(--font-sans, "Archivo Narrow", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif)',
+    heading: 'var(--font-heading, "Archivo Narrow", "Outfit", "Inter", sans-serif)',
+    serif:
+      'var(--font-serif, "Newsreader", "Instrument Serif", "Playfair Display", Georgia, serif)',
     mono: 'var(--font-mono, "JetBrains Mono", monospace)',
+  },
+} as const;
+
+export const stitchTokens = {
+  colors: {
+    backgroundPrimary: '#FAF6EF',
+    surface: '#FFFFFF',
+    surfaceContainerLowest: '#FFFFFF',
+    surfaceContainerLow: '#FAF2EE',
+    surfaceContainer: '#F5ECE8',
+    surfaceContainerHigh: '#EFE6E3',
+    surfaceContainerHighest: '#E9E1DD',
+    primary: '#FFD64A',
+    primaryHover: '#F5CB35',
+    secondary: '#C9B6F7',
+    accent: '#FFB6C8',
+    accentMint: '#B6E09B',
+    accentSky: '#A6CCF7',
+    textPrimary: '#14110F',
+    textSecondary: '#6F675E',
+    textMuted: '#A39A8F',
+    border: '#E7E0D5',
+    btnDisabled: '#D8D1C6',
+    error: '#D8483C',
+    success: '#2E9E6B',
+    warning: '#C98A16',
   },
 } as const;

@@ -377,3 +377,103 @@ export class NotProjectParticipantError extends AppError {
     super(403, 'NOT_PROJECT_PARTICIPANT', 'Not Project Participant', detail);
   }
 }
+
+export class DeliverableStateError extends AppError {
+  constructor(detail = 'Deliverable is not in a valid state for this operation.') {
+    super(400, 'DELIVERABLE_STATE_ERROR', 'Invalid Deliverable State', detail);
+  }
+}
+
+export class AttachmentScanPendingError extends AppError {
+  constructor(
+    detail = 'Deliverable attachment is still pending security and malware scanning. Please wait until verification completes.',
+  ) {
+    super(400, 'ATTACHMENT_SCAN_PENDING', 'Attachment Scan Pending', detail);
+  }
+}
+
+export class AttachmentRejectedError extends AppError {
+  constructor(
+    detail = 'Deliverable attachment was rejected by security scanning and cannot be submitted.',
+  ) {
+    super(400, 'ATTACHMENT_REJECTED', 'Attachment Security Scan Failed', detail);
+  }
+}
+
+export class MilestoneNotEditableError extends AppError {
+  constructor(detail = 'Milestone cannot be edited after work or submissions have commenced.') {
+    super(400, 'MILESTONE_NOT_EDITABLE', 'Milestone Not Editable', detail);
+  }
+}
+
+export class DeliverableNotFoundError extends AppError {
+  constructor(detail = 'Deliverable not found.') {
+    super(404, 'DELIVERABLE_NOT_FOUND', 'Deliverable Not Found', detail);
+  }
+}
+
+export class ProjectNotFoundError extends AppError {
+  constructor(detail = 'Project not found.') {
+    super(404, 'PROJECT_NOT_FOUND', 'Project Not Found', detail);
+  }
+}
+
+// ==============================================================================
+// Phase 11 Domain Errors: Saved Creators, Shortlists & Hiring Invitations
+// ==============================================================================
+
+export class ShortlistNotFoundError extends AppError {
+  constructor(detail = 'Shortlist not found.') {
+    super(404, 'SHORTLIST_NOT_FOUND', 'Shortlist Not Found', detail);
+  }
+}
+
+export class ShortlistAlreadyExistsError extends AppError {
+  constructor(detail = 'A shortlist with this name already exists for your account.') {
+    super(409, 'SHORTLIST_ALREADY_EXISTS', 'Shortlist Name Conflict', detail);
+  }
+}
+
+export class ShortlistMemberAlreadyExistsError extends AppError {
+  constructor(detail = 'Creator is already a member of this shortlist.') {
+    super(409, 'SHORTLIST_MEMBER_ALREADY_EXISTS', 'Shortlist Member Already Exists', detail);
+  }
+}
+
+export class ShortlistMemberNotFoundError extends AppError {
+  constructor(detail = 'Creator is not a member of this shortlist.') {
+    super(404, 'SHORTLIST_MEMBER_NOT_FOUND', 'Shortlist Member Not Found', detail);
+  }
+}
+
+export class InvitationNotFoundError extends AppError {
+  constructor(detail = 'Invitation not found.') {
+    super(404, 'INVITATION_NOT_FOUND', 'Invitation Not Found', detail);
+  }
+}
+
+export class InvitationStateError extends AppError {
+  constructor(detail = 'Invitation cannot be transitioned from its current state.') {
+    super(400, 'INVITATION_STATE_ERROR', 'Invalid Invitation State', detail);
+  }
+}
+
+export class InvitationExpiredError extends AppError {
+  constructor(detail = 'Invitation has expired and can no longer be accepted or modified.') {
+    super(400, 'INVITATION_EXPIRED', 'Invitation Expired', detail);
+  }
+}
+
+export class CreatorNotEligibleError extends AppError {
+  constructor(detail = 'Creator is not eligible for this invitation.') {
+    super(400, 'CREATOR_NOT_ELIGIBLE', 'Creator Not Eligible', detail);
+  }
+}
+
+export class DuplicateActiveInvitationError extends AppError {
+  constructor(
+    detail = 'An active pending invitation already exists for this creator on this project.',
+  ) {
+    super(409, 'DUPLICATE_ACTIVE_INVITATION', 'Active Invitation Exists', detail);
+  }
+}

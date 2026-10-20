@@ -12,6 +12,7 @@ import {
   ProjectReviewParamsSchema,
   ReviewIdParamsSchema,
   UserReviewParamsSchema,
+  PendingReviewsResponseSchema,
   type CreateReviewBody,
   type UpdateReviewBody,
   type ReportReviewBody,
@@ -305,6 +306,27 @@ export const reviewsRoutes: FastifyPluginAsync<ReviewsRoutesOptions> = async (fa
 
       const queue = await service.listModerationQueue(request.user.id, request.query);
       return reply.code(200).send(queue);
+    },
+  );
+
+  // GET /api/v1/reviews/pending
+  fastify.get(
+    '/api/v1/reviews/pending',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: "Retrieves the current user's eligible completed projects awaiting review",
+        tags: ['Reviews'],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: PendingReviewsResponseSchema,
+          401: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const pending = await service.getPendingReviews(request.user.id);
+      return reply.code(200).send(pending);
     },
   );
 };

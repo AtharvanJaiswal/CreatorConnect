@@ -136,6 +136,7 @@ export const ReputationSummaryResponseSchema = Type.Object({
   bayesianScore: Type.Union([Type.Number(), Type.Null()]),
   ratingDistribution: RatingDistributionSchema,
   categoryAverages: CategoryAveragesSchema,
+  completedProjectCount: Type.Optional(Type.Integer({ minimum: 0 })),
 });
 export type ReputationSummaryResponse = Static<typeof ReputationSummaryResponseSchema>;
 
@@ -167,3 +168,22 @@ export const UserReviewParamsSchema = Type.Object({
   userId: UuidSchema,
 });
 export type UserReviewParams = Static<typeof UserReviewParamsSchema>;
+
+export const PendingReviewCounterpartySchema = Type.Object({
+  id: UuidSchema,
+  name: Type.String(),
+  avatarUrl: Type.Union([Type.String(), Type.Null()]),
+  role: Type.String(),
+});
+export type PendingReviewCounterparty = Static<typeof PendingReviewCounterpartySchema>;
+
+export const PendingReviewProjectSchema = Type.Object({
+  projectId: UuidSchema,
+  projectTitle: Type.String(),
+  completedAt: Type.Union([IsoDateTimeSchema, Type.Null()]),
+  counterparty: PendingReviewCounterpartySchema,
+});
+export type PendingReviewProject = Static<typeof PendingReviewProjectSchema>;
+
+export const PendingReviewsResponseSchema = Type.Array(PendingReviewProjectSchema);
+export type PendingReviewsResponse = Static<typeof PendingReviewsResponseSchema>;

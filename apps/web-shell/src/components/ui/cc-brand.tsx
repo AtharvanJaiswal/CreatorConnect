@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function CcChainGlyph({ className = 'h-6 w-6 text-[#FFCE38]' }: { className?: string }) {
+export function CcChainGlyph({ className = 'h-6 w-6 text-[#FFD64A]' }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 48 48"
@@ -9,21 +9,17 @@ export function CcChainGlyph({ className = 'h-6 w-6 text-[#FFCE38]' }: { classNa
       className={className}
       aria-hidden="true"
     >
-      {/* Left link */}
       <path
-        d="M21.5 15.5C24.5 12.5 29.5 12.5 32.5 15.5C35.5 18.5 35.5 23.5 32.5 26.5L27.5 31.5C24.5 34.5 19.5 34.5 16.5 31.5"
+        d="M26 14C26 10.6863 23.3137 8 20 8C13.3726 8 8 13.3726 8 20C8 26.6274 13.3726 32 20 32C23.3137 32 26 29.3137 26 26"
         stroke="currentColor"
-        strokeWidth="4.5"
+        strokeWidth="5"
         strokeLinecap="round"
-        strokeLinejoin="round"
       />
-      {/* Right link */}
       <path
-        d="M26.5 32.5C23.5 35.5 18.5 35.5 15.5 32.5C12.5 29.5 12.5 24.5 15.5 21.5L20.5 16.5C23.5 13.5 28.5 13.5 31.5 16.5"
+        d="M22 34C22 37.3137 24.6863 40 28 40C34.6274 40 40 34.6274 40 28C40 21.3726 34.6274 16 28 16C24.6863 16 22 18.6863 22 22"
         stroke="currentColor"
-        strokeWidth="4.5"
+        strokeWidth="5"
         strokeLinecap="round"
-        strokeLinejoin="round"
       />
     </svg>
   );

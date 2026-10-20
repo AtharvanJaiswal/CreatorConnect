@@ -18,6 +18,10 @@ describe('Notifications REST API Integration Tests', () => {
   let userB: { id: string; supabaseAuthId: string; email: string };
   let tokenA: string;
   let tokenB: string;
+  let userSuspended: { id: string; supabaseAuthId: string; email: string };
+  let tokenSuspended: string;
+  let userDeactivated: { id: string; supabaseAuthId: string; email: string };
+  let tokenDeactivated: string;
 
   beforeAll(async () => {
     const testKeySet = await createTestKeySet();
@@ -73,6 +77,36 @@ describe('Notifications REST API Integration Tests', () => {
       },
     });
     tokenB = await createTestJwt({ sub: userB.supabaseAuthId, email: userB.email });
+
+    userSuspended = await prisma.user.create({
+      data: {
+        id: generateUuidV7(),
+        supabaseAuthId: `sub_notif_api_suspended_${ts}`,
+        email: `notif_api_suspended_${ts}@test.com`,
+        firstName: 'Suspended',
+        lastName: 'User',
+        status: 'SUSPENDED',
+      },
+    });
+    tokenSuspended = await createTestJwt({
+      sub: userSuspended.supabaseAuthId,
+      email: userSuspended.email,
+    });
+
+    userDeactivated = await prisma.user.create({
+      data: {
+        id: generateUuidV7(),
+        supabaseAuthId: `sub_notif_api_deactivated_${ts}`,
+        email: `notif_api_deactivated_${ts}@test.com`,
+        firstName: 'Deactivated',
+        lastName: 'User',
+        status: 'DEACTIVATED',
+      },
+    });
+    tokenDeactivated = await createTestJwt({
+      sub: userDeactivated.supabaseAuthId,
+      email: userDeactivated.email,
+    });
   });
 
   afterAll(async () => {
@@ -88,10 +122,40 @@ describe('Notifications REST API Integration Tests', () => {
       await prisma.userRole.deleteMany({ where: { userId: userB.id } });
       await prisma.user.deleteMany({ where: { id: userB.id } });
     }
+    if (userSuspended) {
+      await prisma.user.deleteMany({ where: { id: userSuspended.id } });
+    }
+    if (userDeactivated) {
+      await prisma.user.deleteMany({ where: { id: userDeactivated.id } });
+    }
     await app.close();
   });
 
   describe('Authentication and Security Gates', () => {
+    it('denies suspended user from listing notifications with 403 USER_SUSPENDED', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/notifications',
+        headers: { authorization: `Bearer ${tokenSuspended}` },
+      });
+
+      expect(res.statusCode).toBe(403);
+      const body = JSON.parse(res.payload);
+      expect(body.code).toBe('USER_SUSPENDED');
+    });
+
+    it('denies deactivated user from listing notifications with 403 USER_DEACTIVATED', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/notifications',
+        headers: { authorization: `Bearer ${tokenDeactivated}` },
+      });
+
+      expect(res.statusCode).toBe(403);
+      const body = JSON.parse(res.payload);
+      expect(body.code).toBe('USER_DEACTIVATED');
+    });
+
     it('rejects unauthenticated GET /api/v1/notifications with 401 Problem Details', async () => {
       const res = await app.inject({
         method: 'GET',

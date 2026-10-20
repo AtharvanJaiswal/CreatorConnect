@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import {
   Card,
   CardHeader,
@@ -12,6 +13,7 @@ import {
   TabsContent,
 } from '@creatorconnect/ui';
 import { Video, Plus, Clock, Users, ArrowUpRight, CheckCircle2 } from 'lucide-react';
+import { CreatorInvitationsPanel } from '../../components/collaboration/creator-invitations-panel';
 
 export default function CreatorPage() {
   return (
@@ -80,6 +82,7 @@ export default function CreatorPage() {
       <Tabs defaultValue="active" className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="active">Active Projects</TabsTrigger>
+          <TabsTrigger value="invitations">Hiring Invitations</TabsTrigger>
           <TabsTrigger value="applications">Applications (14)</TabsTrigger>
           <TabsTrigger value="crew">My Crew Roster</TabsTrigger>
         </TabsList>
@@ -103,12 +106,18 @@ export default function CreatorPage() {
                 <span>•</span>
                 <span>Budget: ₹45,000</span>
               </div>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <span>View Timeline</span>
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </Button>
+              <Link href="/projects/01a14580-c7e4-7c14-b64a-aa16beca7990">
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <span>View Timeline</span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </Button>
+              </Link>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="invitations" className="space-y-4">
+          <CreatorInvitationsPanel />
         </TabsContent>
 
         <TabsContent value="applications">

@@ -4,6 +4,7 @@ import type {
   UpdatePortfolioItemInput,
   AttachPortfolioMediaInput,
   ReorderPortfolioMediaInput,
+  ReorderPortfolioItemsInput,
   PortfolioItemResponse,
   PortfolioMediaResponse,
 } from '@creatorconnect/contracts';
@@ -188,6 +189,30 @@ export class PortfolioService {
     }
 
     await this.repo.reorderMedia(portfolioItemId, input.items);
+  }
+
+  async reorderItems(userId: string, input: ReorderPortfolioItemsInput): Promise<void> {
+    await this.repo.reorderItems(userId, input.items);
+  }
+
+  async detachMedia(userId: string, portfolioItemId: string, mediaAssetId: string): Promise<void> {
+    const item = await this.repo.findItemById(portfolioItemId);
+    if (!item || item.deletedAt) {
+      throw new NotFoundError('Portfolio item not found.');
+    }
+
+    if (item.userId !== userId) {
+      throw new ForbiddenError('You do not own this portfolio item.');
+    }
+
+    try {
+      await this.repo.detachMedia(portfolioItemId, mediaAssetId);
+    } catch (err: any) {
+      if (err.code === 'P2025') {
+        throw new NotFoundError('Media asset attachment not found on this portfolio item.');
+      }
+      throw err;
+    }
   }
 
   private async mapPortfolioItem(item: any): Promise<PortfolioItemResponse> {

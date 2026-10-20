@@ -20,6 +20,11 @@ import type {
   MarkReadResponse,
   CreateBlockInput,
   UserBlockResponse,
+  ListBlocksQuery,
+  ListBlocksResponse,
+  CreateReportInput,
+  ReportResponse,
+  EditMessageInput,
   AttachmentDownloadResponse,
 } from '@creatorconnect/contracts';
 import {
@@ -178,6 +183,62 @@ export class MessagingService {
 
     const targetUserId = block ? block.blockedId : targetIdOrBlockId;
     await this.repo.unblockUser(blockerId, targetUserId);
+  }
+
+  /**
+   * Lists blocks initiated by the authenticated user.
+   */
+  public async listBlocks(userId: string, query?: ListBlocksQuery): Promise<ListBlocksResponse> {
+    const params: { limit?: number; cursor?: string } = {};
+    if (query?.limit !== undefined) params.limit = query.limit;
+    if (query?.cursor !== undefined) params.cursor = query.cursor;
+
+    return await this.repo.listBlocks(userId, Object.keys(params).length > 0 ? params : undefined);
+  }
+
+  /**
+   * Edits a message within the 15-minute edit window.
+   */
+  public async editMessage(
+    conversationId: string,
+    messageId: string,
+    userId: string,
+    input: EditMessageInput,
+  ): Promise<MessageResponse> {
+    await this.authService.assertCanAccessConversation(conversationId, userId);
+    return await this.repo.editMessage({
+      conversationId,
+      messageId,
+      userId,
+      content: input.content,
+    });
+  }
+
+  /**
+   * Soft-deletes a message.
+   */
+  public async deleteMessage(
+    conversationId: string,
+    messageId: string,
+    userId: string,
+    isAdmin: boolean,
+  ): Promise<void> {
+    if (!isAdmin) {
+      await this.authService.assertCanAccessConversation(conversationId, userId);
+    }
+    await this.repo.deleteMessage({
+      conversationId,
+      messageId,
+      userId,
+      isAdmin,
+    });
+  }
+
+  /**
+   * Creates an abuse report against a user, message, or assignment.
+   */
+  public async createReport(reporterId: string, input: CreateReportInput): Promise<ReportResponse> {
+    return await this.repo.createReport(reporterId, input);
   }
 
   /**

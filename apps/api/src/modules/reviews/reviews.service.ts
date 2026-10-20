@@ -86,29 +86,38 @@ export class ReviewsService {
 
     const reviewId = generateUuidV7();
 
-    const review = await this.repo.createReview(
-      {
-        id: reviewId,
-        projectId,
-        reviewerId: callerUserId,
-        revieweeId,
-        rating: input.rating,
-        communicationRating: input.communicationRating ?? null,
-        qualityRating: input.qualityRating ?? null,
-        adherenceRating: input.adherenceRating ?? null,
-        feedback: input.feedback,
-        status: 'PUBLISHED',
-      },
-      {
-        reviewId,
-        projectId,
-        reviewerId: callerUserId,
-        revieweeId,
-        rating: input.rating,
-      },
-    );
+    try {
+      const review = await this.repo.createReview(
+        {
+          id: reviewId,
+          projectId,
+          reviewerId: callerUserId,
+          revieweeId,
+          rating: input.rating,
+          communicationRating: input.communicationRating ?? null,
+          qualityRating: input.qualityRating ?? null,
+          adherenceRating: input.adherenceRating ?? null,
+          feedback: input.feedback,
+          status: 'PUBLISHED',
+        },
+        {
+          reviewId,
+          projectId,
+          reviewerId: callerUserId,
+          revieweeId,
+          rating: input.rating,
+        },
+      );
 
-    return review;
+      return review;
+    } catch (err: any) {
+      if (err?.code === 'P2002' || err?.message?.includes('Unique constraint failed')) {
+        throw new ReviewAlreadyExistsError(
+          'You have already submitted a review for this project. Use edit within 48 hours to make changes.',
+        );
+      }
+      throw err;
+    }
   }
 
   async updateReview(callerUserId: string, reviewId: string, input: UpdateReviewBody) {
@@ -222,24 +231,33 @@ export class ReviewsService {
     const reportId = generateUuidV7();
     const shouldFlag = review.status === 'PUBLISHED';
 
-    const report = await this.repo.createReport(
-      {
-        id: reportId,
-        reviewId,
-        reporterId: callerUserId,
-        reason: input.reason,
-        details: input.details,
-      },
-      shouldFlag,
-      {
-        reportId,
-        reviewId,
-        reporterId: callerUserId,
-        reason: input.reason,
-      },
-    );
+    try {
+      const report = await this.repo.createReport(
+        {
+          id: reportId,
+          reviewId,
+          reporterId: callerUserId,
+          reason: input.reason,
+          details: input.details,
+        },
+        shouldFlag,
+        {
+          reportId,
+          reviewId,
+          reporterId: callerUserId,
+          reason: input.reason,
+        },
+      );
 
-    return report;
+      return report;
+    } catch (err: any) {
+      if (err?.code === 'P2002' || err?.message?.includes('Unique constraint failed')) {
+        throw new ReviewReportAlreadyExistsError(
+          'You have already submitted a report for this review.',
+        );
+      }
+      throw err;
+    }
   }
 
   async moderateReview(adminUserId: string, reviewId: string, input: ModerateReviewBody) {
@@ -301,5 +319,9 @@ export class ReviewsService {
 
   async listModerationQueue(_adminUserId: string, query: ModerationQueueQuery) {
     return this.repo.listModerationQueue(query);
+  }
+
+  async getPendingReviews(userId: string) {
+    return this.repo.findPendingReviewsForUser(userId);
   }
 }

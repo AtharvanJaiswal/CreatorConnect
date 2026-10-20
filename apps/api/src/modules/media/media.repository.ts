@@ -5,6 +5,56 @@ import {
   type Prisma,
 } from '@creatorconnect/database';
 
+export type MediaAssetWithParents = Prisma.MediaAssetGetPayload<{
+  include: {
+    user: {
+      select: {
+        id: true;
+        status: true;
+        creatorProfile: { select: { deletedAt: true } };
+      };
+    };
+    portfolioMedia: {
+      include: {
+        portfolioItem: {
+          select: {
+            id: true;
+            userId: true;
+            visibility: true;
+            deletedAt: true;
+          };
+        };
+      };
+    };
+    deliverables: {
+      include: {
+        project: {
+          select: {
+            id: true;
+            clientId: true;
+            talentId: true;
+          };
+        };
+      };
+    };
+    deliverableSubmissions: {
+      include: {
+        deliverable: {
+          include: {
+            project: {
+              select: {
+                id: true;
+                clientId: true;
+                talentId: true;
+              };
+            };
+          };
+        };
+      };
+    };
+  };
+}>;
+
 export class MediaRepository {
   constructor(private prisma = getPrismaClient()) {}
 
@@ -16,7 +66,7 @@ export class MediaRepository {
     return this.prisma.mediaAsset.findUnique({ where: { id } });
   }
 
-  async findByIdWithParents(id: string) {
+  async findByIdWithParents(id: string): Promise<MediaAssetWithParents | null> {
     return this.prisma.mediaAsset.findUnique({
       where: { id },
       include: {
@@ -35,6 +85,32 @@ export class MediaRepository {
                 userId: true,
                 visibility: true,
                 deletedAt: true,
+              },
+            },
+          },
+        },
+        deliverables: {
+          include: {
+            project: {
+              select: {
+                id: true,
+                clientId: true,
+                talentId: true,
+              },
+            },
+          },
+        },
+        deliverableSubmissions: {
+          include: {
+            deliverable: {
+              include: {
+                project: {
+                  select: {
+                    id: true,
+                    clientId: true,
+                    talentId: true,
+                  },
+                },
               },
             },
           },

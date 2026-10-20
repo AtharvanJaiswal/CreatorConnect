@@ -10,6 +10,10 @@ import {
   PodcasterProfileResponseSchema,
   UpdateUserSkillsInputSchema,
   UserSkillResponseSchema,
+  PublicCreatorProfileResponseSchema,
+  PublicBrandProfileResponseSchema,
+  ProfileCompletionBreakdownSchema,
+  BrandAuditLogResponseSchema,
   type UpdateCreatorProfileInput,
   type UpdateProfessionalProfileInput,
   type UpdateBrandProfileInput,
@@ -33,6 +37,83 @@ export const profilesRoutes: FastifyPluginAsync<ProfilesRoutesOptions> = async (
   // ==============================================================================
   // Creator Profile Routes
   // ==============================================================================
+
+  // GET /api/v1/profiles/creator/me
+  fastify.get(
+    '/api/v1/profiles/creator/me',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Retrieves authenticated user creator profile',
+        tags: ['Profiles'],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: CreatorProfileResponseSchema,
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = await service.getMyCreatorProfile(request.user.id);
+      return reply.status(200).send(result);
+    },
+  );
+
+  // GET /api/v1/profiles/creator/completion
+  fastify.get(
+    '/api/v1/profiles/creator/completion',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Retrieves profile completion score, diagnostics, and validation tips',
+        tags: ['Profiles'],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: ProfileCompletionBreakdownSchema,
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = await service.getCreatorProfileCompletion(request.user.id);
+      return reply.status(200).send(result);
+    },
+  );
+
+  // GET /api/v1/profiles/public/creator/:id
+  fastify.get<{ Params: IdParam }>(
+    '/api/v1/profiles/public/creator/:id',
+    {
+      schema: {
+        description:
+          'Retrieves public creator profile by ID or User ID (Strict Allowlist — zero auth leakage)',
+        tags: ['Profiles'],
+        params: IdParamSchema,
+        response: {
+          200: PublicCreatorProfileResponseSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      let callerId: string | undefined;
+      let isAdmin = false;
+      if (request.headers.authorization?.startsWith('Bearer ')) {
+        try {
+          await (fastify as any).authenticate(request, reply);
+          callerId = request.user?.id;
+          isAdmin = request.user?.roles?.includes('ADMIN') ?? false;
+        } catch {
+          // Public endpoint continues anonymously
+        }
+      }
+      const result = await service.getPublicCreatorProfile(request.params.id, callerId, isAdmin);
+      return reply.status(200).send(result);
+    },
+  );
 
   fastify.get<{ Params: IdParam }>(
     '/api/v1/profiles/creator/:id',
@@ -155,6 +236,83 @@ export const profilesRoutes: FastifyPluginAsync<ProfilesRoutesOptions> = async (
   // ==============================================================================
   // Brand Profile Routes
   // ==============================================================================
+
+  // GET /api/v1/profiles/brand/me
+  fastify.get(
+    '/api/v1/profiles/brand/me',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Retrieves authenticated user brand profile',
+        tags: ['Profiles'],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: BrandProfileResponseSchema,
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = await service.getMyBrandProfile(request.user.id);
+      return reply.status(200).send(result);
+    },
+  );
+
+  // GET /api/v1/profiles/brand/audit
+  fastify.get(
+    '/api/v1/profiles/brand/audit',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Retrieves brand profile audit logs for the authenticated owner or admin',
+        tags: ['Profiles'],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: Type.Array(BrandAuditLogResponseSchema),
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = await service.getBrandAuditLogs(request.user.id);
+      return reply.status(200).send(result);
+    },
+  );
+
+  // GET /api/v1/profiles/public/brand/:id
+  fastify.get<{ Params: IdParam }>(
+    '/api/v1/profiles/public/brand/:id',
+    {
+      schema: {
+        description:
+          'Retrieves public brand profile by ID or User ID (Strict Allowlist — zero auth leakage)',
+        tags: ['Profiles'],
+        params: IdParamSchema,
+        response: {
+          200: PublicBrandProfileResponseSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      let callerId: string | undefined;
+      let isAdmin = false;
+      if (request.headers.authorization?.startsWith('Bearer ')) {
+        try {
+          await (fastify as any).authenticate(request, reply);
+          callerId = request.user?.id;
+          isAdmin = request.user?.roles?.includes('ADMIN') ?? false;
+        } catch {
+          // Public endpoint continues anonymously
+        }
+      }
+      const result = await service.getPublicBrandProfile(request.params.id, callerId, isAdmin);
+      return reply.status(200).send(result);
+    },
+  );
 
   fastify.get<{ Params: IdParam }>(
     '/api/v1/profiles/brand/:id',

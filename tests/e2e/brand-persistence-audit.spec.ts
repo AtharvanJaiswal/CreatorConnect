@@ -101,7 +101,7 @@ test.describe('Customer/Brand Profile End-to-End Persistence Audit', () => {
     };
 
     // 1. Send PUT request to API
-    const putRes = await request.put('http://localhost:3000/api/v1/profiles/brand', {
+    const putRes = await request.put('/api/v1/profiles/brand', {
       headers: {
         Authorization: `Bearer ${customerA.token}`,
         'Content-Type': 'application/json',
@@ -149,21 +149,18 @@ test.describe('Customer/Brand Profile End-to-End Persistence Audit', () => {
     });
 
     // 3. Retrieve profile via GET /api/v1/profiles/brand/:id (using user ID)
-    const getRes = await request.get(
-      `http://localhost:3000/api/v1/profiles/brand/${customerA.userId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${customerA.token}`,
-        },
+    const getRes = await request.get(`/api/v1/profiles/brand/${customerA.userId}`, {
+      headers: {
+        Authorization: `Bearer ${customerA.token}`,
       },
-    );
+    });
 
     expect(getRes.status()).toBe(200);
     const getBody = await getRes.json();
     expect(getBody.companyName).toBe(brandPayload.companyName);
 
     // 4. Retrieve profile via GET /api/v1/profiles/me
-    const getMeRes = await request.get('http://localhost:3000/api/v1/profiles/me', {
+    const getMeRes = await request.get('/api/v1/profiles/me', {
       headers: {
         Authorization: `Bearer ${customerA.token}`,
       },
@@ -186,7 +183,7 @@ test.describe('Customer/Brand Profile End-to-End Persistence Audit', () => {
     const customerB = await provisionUser('BRAND');
 
     // Customer A sets profile to PRIVATE
-    const putResA = await request.put('http://localhost:3000/api/v1/profiles/brand', {
+    const putResA = await request.put('/api/v1/profiles/brand', {
       headers: {
         Authorization: `Bearer ${customerA.token}`,
         'Content-Type': 'application/json',
@@ -199,14 +196,11 @@ test.describe('Customer/Brand Profile End-to-End Persistence Audit', () => {
     expect(putResA.status()).toBe(200);
 
     // 1. Customer B attempts to view Customer A's private profile -> MUST BE REJECTED 403
-    const getPrivateRes = await request.get(
-      `http://localhost:3000/api/v1/profiles/brand/${customerA.userId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${customerB.token}`,
-        },
+    const getPrivateRes = await request.get(`/api/v1/profiles/brand/${customerA.userId}`, {
+      headers: {
+        Authorization: `Bearer ${customerB.token}`,
       },
-    );
+    });
 
     expect(getPrivateRes.status()).toBe(403);
     const getPrivateBody = await getPrivateRes.json();
@@ -217,7 +211,7 @@ test.describe('Customer/Brand Profile End-to-End Persistence Audit', () => {
     });
 
     // 2. Customer B attempts to modify profile -> Server-derived identity binds to B, NOT A
-    const putResB = await request.put('http://localhost:3000/api/v1/profiles/brand', {
+    const putResB = await request.put('/api/v1/profiles/brand', {
       headers: {
         Authorization: `Bearer ${customerB.token}`,
         'Content-Type': 'application/json',
@@ -250,7 +244,7 @@ test.describe('Customer/Brand Profile End-to-End Persistence Audit', () => {
   test('Non-brand user (CREATOR) cannot create or update Brand profile', async ({ request }) => {
     const creatorUser = await provisionUser('CREATOR');
 
-    const res = await request.put('http://localhost:3000/api/v1/profiles/brand', {
+    const res = await request.put('/api/v1/profiles/brand', {
       headers: {
         Authorization: `Bearer ${creatorUser.token}`,
         'Content-Type': 'application/json',

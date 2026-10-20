@@ -428,4 +428,174 @@ describe('Profiles Domain Integration Tests', () => {
       expect(patched.guestGuidelines).toBe('Seeking tech and media visionaries.');
     });
   });
+
+  describe('Creator & Brand Profiles — Dedicated /me, Diagnostics, Audit & Public Read Model', () => {
+    it('retrieves current authenticated creator profile via /creator/me', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/profiles/creator/me',
+        headers: { authorization: `Bearer ${creatorToken}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.userId).toBe(creatorUserId);
+      expect(body.tagline).toBeDefined();
+    });
+
+    it('retrieves creator profile completion diagnostics and validation recommendations', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/profiles/creator/completion',
+        headers: { authorization: `Bearer ${creatorToken}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.completionScore).toBeGreaterThanOrEqual(0);
+      expect(body.completionScore).toBeLessThanOrEqual(100);
+      expect(Array.isArray(body.completedSections)).toBe(true);
+      expect(Array.isArray(body.missingSections)).toBe(true);
+      expect(Array.isArray(body.sectionBreakdown)).toBe(true);
+      expect(Array.isArray(body.validationTips)).toBe(true);
+
+      const taglineSec = body.sectionBreakdown.find((s: any) => s.section === 'tagline');
+      expect(taglineSec).toBeDefined();
+      expect(taglineSec.isComplete).toBe(true);
+    });
+
+    it('retrieves current authenticated brand profile via /brand/me', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/profiles/brand/me',
+        headers: { authorization: `Bearer ${brandToken}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.userId).toBe(brandUserId);
+      expect(body.companyName).toBe('Acme Media Labs');
+    });
+
+    it('records audit log on brand profile update and exposes via /brand/audit', async () => {
+      // 1. Update brand profile
+      const updateRes = await app.inject({
+        method: 'PUT',
+        url: '/api/v1/profiles/brand',
+        headers: { authorization: `Bearer ${brandToken}` },
+        payload: {
+          companyName: 'Acme Media Labs International',
+          industry: 'Global Media & Film',
+        },
+      });
+      expect(updateRes.statusCode).toBe(200);
+
+      // 2. Query audit logs
+      const auditRes = await app.inject({
+        method: 'GET',
+        url: '/api/v1/profiles/brand/audit',
+        headers: { authorization: `Bearer ${brandToken}` },
+      });
+
+      expect(auditRes.statusCode).toBe(200);
+      const logs = auditRes.json();
+      expect(Array.isArray(logs)).toBe(true);
+      expect(logs.length).toBeGreaterThan(0);
+      expect(logs[0].entity).toBe('BrandProfile');
+      expect(logs[0].action).toBe('BRAND_PROFILE_UPDATED');
+      expect(logs[0].metadata.companyName).toBe('Acme Media Labs International');
+    });
+
+    it('retrieves public creator profile with strict allowlist (zero email/phone/sub leakage)', async () => {
+      // Ensure profile is PUBLIC
+      await app.inject({
+        method: 'PUT',
+        url: '/api/v1/profiles/creator',
+        headers: { authorization: `Bearer ${creatorToken}` },
+        payload: { visibility: 'PUBLIC' },
+      });
+
+      // Anonymous / public GET
+      const publicRes = await app.inject({
+        method: 'GET',
+        url: `/api/v1/profiles/public/creator/${creatorUserId}`,
+      });
+
+      expect(publicRes.statusCode).toBe(200);
+      const publicProfile = publicRes.json();
+
+      // Check expected public fields
+      expect(publicProfile.id).toBeDefined();
+      expect(publicProfile.displayName).toBeDefined();
+      expect(publicProfile.tagline).toBeDefined();
+      expect(publicProfile.bio).toBeDefined();
+      expect(publicProfile.locationCountry).toBe('IN');
+      expect(Array.isArray(publicProfile.categories)).toBe(true);
+      expect(Array.isArray(publicProfile.skills)).toBe(true);
+      expect(Array.isArray(publicProfile.portfolio)).toBe(true);
+
+      // STRICT PRIVACY ALLOWLIST ASSERTIONS:
+      // Must NOT leak user email, phone, supabaseAuthId, or internal audit fields
+      expect((publicProfile as any).email).toBeUndefined();
+      expect((publicProfile as any).phone).toBeUndefined();
+      expect((publicProfile as any).supabaseAuthId).toBeUndefined();
+      expect((publicProfile as any).completionScore).toBeUndefined();
+      expect((publicProfile as any).deletedAt).toBeUndefined();
+      expect((publicProfile as any).userId).toBeUndefined();
+    });
+
+    it('retrieves public brand profile with strict allowlist', async () => {
+      const publicRes = await app.inject({
+        method: 'GET',
+        url: `/api/v1/profiles/public/brand/${brandUserId}`,
+      });
+
+      expect(publicRes.statusCode).toBe(200);
+      const publicBrand = publicRes.json();
+
+      expect(publicBrand.id).toBeDefined();
+      expect(publicBrand.companyName).toBe('Acme Media Labs International');
+      expect(publicBrand.industry).toBe('Global Media & Film');
+
+      // STRICT PRIVACY ALLOWLIST ASSERTIONS:
+      expect((publicBrand as any).email).toBeUndefined();
+      expect((publicBrand as any).phone).toBeUndefined();
+      expect((publicBrand as any).supabaseAuthId).toBeUndefined();
+      expect((publicBrand as any).userId).toBeUndefined();
+      expect((publicBrand as any).deletedAt).toBeUndefined();
+    });
+
+    it('enforces privacy protections: PRIVATE creator profile returns 404 to anonymous callers', async () => {
+      // Set to PRIVATE
+      await app.inject({
+        method: 'PUT',
+        url: '/api/v1/profiles/creator',
+        headers: { authorization: `Bearer ${creatorToken}` },
+        payload: { visibility: 'PRIVATE' },
+      });
+
+      // Anonymous request returns 404 (does not leak resource existence)
+      const anonymousRes = await app.inject({
+        method: 'GET',
+        url: `/api/v1/profiles/public/creator/${creatorUserId}`,
+      });
+      expect(anonymousRes.statusCode).toBe(404);
+
+      // Other user returns 404
+      const otherUserRes = await app.inject({
+        method: 'GET',
+        url: `/api/v1/profiles/public/creator/${creatorUserId}`,
+        headers: { authorization: `Bearer ${brandToken}` },
+      });
+      expect(otherUserRes.statusCode).toBe(404);
+
+      // Restore to PUBLIC
+      await app.inject({
+        method: 'PUT',
+        url: '/api/v1/profiles/creator',
+        headers: { authorization: `Bearer ${creatorToken}` },
+        payload: { visibility: 'PUBLIC' },
+      });
+    });
+  });
 });

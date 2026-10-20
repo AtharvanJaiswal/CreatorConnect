@@ -404,7 +404,7 @@ export class ReviewsRepository {
 
   async aggregateReputation(userId: string) {
     // Strictly published reviews count towards public reputation
-    const [aggregates, ratingCounts] = await Promise.all([
+    const [aggregates, ratingCounts, completedProjectCount] = await Promise.all([
       this.prisma.review.aggregate({
         where: {
           revieweeId: userId,
@@ -430,6 +430,12 @@ export class ReviewsRepository {
           id: true,
         },
       }),
+      this.prisma.project.count({
+        where: {
+          OR: [{ clientId: userId }, { talentId: userId }],
+          status: 'COMPLETED',
+        },
+      }),
     ]);
 
     const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
@@ -446,6 +452,70 @@ export class ReviewsRepository {
       qualityAverage: aggregates._avg.qualityRating,
       adherenceAverage: aggregates._avg.adherenceRating,
       distribution,
+      completedProjectCount,
     };
+  }
+
+  async findPendingReviewsForUser(userId: string) {
+    const projects = await this.prisma.project.findMany({
+      where: {
+        status: 'COMPLETED',
+        OR: [{ clientId: userId }, { talentId: userId }],
+        reviews: {
+          none: {
+            reviewerId: userId,
+          },
+        },
+        disputes: {
+          none: {
+            status: {
+              in: ['OPEN', 'UNDER_REVIEW', 'EVIDENCE_REQUESTED'],
+            },
+          },
+        },
+      },
+      include: {
+        client: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+          },
+        },
+        talent: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+          },
+        },
+      },
+      orderBy: {
+        completedAt: 'desc',
+      },
+    });
+
+    return projects.map((p) => {
+      const isClient = p.clientId === userId;
+      const counterparty = isClient ? p.talent : p.client;
+      const counterpartyRole = isClient ? 'CREATOR' : 'CLIENT';
+      const counterpartyName =
+        [counterparty.firstName, counterparty.lastName].filter(Boolean).join(' ').trim() ||
+        (isClient ? 'Creator' : 'Client');
+
+      return {
+        projectId: p.id,
+        projectTitle: p.title,
+        completedAt: p.completedAt ? p.completedAt.toISOString() : null,
+        counterparty: {
+          id: counterparty.id,
+          name: counterpartyName,
+          avatarUrl: counterparty.avatarUrl,
+          role: counterpartyRole,
+        },
+      };
+    });
   }
 }

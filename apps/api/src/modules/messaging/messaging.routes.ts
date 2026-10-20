@@ -12,6 +12,11 @@ import {
   MarkReadResponseSchema,
   CreateBlockInputSchema,
   UserBlockResponseSchema,
+  ListBlocksQuerySchema,
+  ListBlocksResponseSchema,
+  CreateReportInputSchema,
+  ReportResponseSchema,
+  EditMessageInputSchema,
   AttachmentDownloadParamsSchema,
   AttachmentDownloadResponseSchema,
   type CreateDirectConversationInput,
@@ -20,10 +25,26 @@ import {
   type SendMessageInput,
   type MarkReadInput,
   type CreateBlockInput,
+  type ListBlocksQuery,
+  type CreateReportInput,
+  type EditMessageInput,
   type AttachmentDownloadParams,
 } from '@creatorconnect/contracts';
-import { IdParamSchema, type IdParam, ProblemDetailsSchema } from '@creatorconnect/validation';
+import {
+  IdParamSchema,
+  type IdParam,
+  ProblemDetailsSchema,
+  Type,
+  type Static,
+  UuidSchema,
+} from '@creatorconnect/validation';
 import { messagingService, MessagingService } from './messaging.service.js';
+
+export const ConversationMessageParamsSchema = Type.Object({
+  id: UuidSchema,
+  messageId: UuidSchema,
+});
+export type ConversationMessageParams = Static<typeof ConversationMessageParamsSchema>;
 
 export interface MessagingRoutesOptions {
   messagingSvc?: MessagingService;
@@ -181,6 +202,73 @@ export const messagingRoutes: FastifyPluginAsync<MessagingRoutesOptions> = async
   );
 
   // ==============================================================================
+  // 5b. PATCH /api/v1/conversations/:id/messages/:messageId — Edit Message Content
+  // ==============================================================================
+  fastify.patch<{ Params: ConversationMessageParams; Body: EditMessageInput }>(
+    '/api/v1/conversations/:id/messages/:messageId',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description:
+          'Updates message content within the 15-minute edit window for the original sender',
+        tags: ['Messaging'],
+        security: [{ bearerAuth: [] }],
+        params: ConversationMessageParamsSchema,
+        body: EditMessageInputSchema,
+        response: {
+          200: MessageResponseSchema,
+          400: ProblemDetailsSchema,
+          401: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = await service.editMessage(
+        request.params.id,
+        request.params.messageId,
+        request.user.id,
+        request.body,
+      );
+      return reply.status(200).send(result);
+    },
+  );
+
+  // ==============================================================================
+  // 5c. DELETE /api/v1/conversations/:id/messages/:messageId — Soft-Delete Message
+  // ==============================================================================
+  fastify.delete<{ Params: ConversationMessageParams }>(
+    '/api/v1/conversations/:id/messages/:messageId',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Soft-deletes a message by the original sender or an administrator',
+        tags: ['Messaging'],
+        security: [{ bearerAuth: [] }],
+        params: ConversationMessageParamsSchema,
+        response: {
+          204: {
+            type: 'null',
+            description: 'Successfully soft-deleted message',
+          },
+          401: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const isAdmin = request.user.roles.includes('ADMIN');
+      await service.deleteMessage(
+        request.params.id,
+        request.params.messageId,
+        request.user.id,
+        isAdmin,
+      );
+      return reply.status(204).send();
+    },
+  );
+
+  // ==============================================================================
   // 6. POST /api/v1/conversations/:id/read — Mark Conversation as Read
   // ==============================================================================
   fastify.post<{ Params: IdParam; Body: MarkReadInput }>(
@@ -261,6 +349,57 @@ export const messagingRoutes: FastifyPluginAsync<MessagingRoutesOptions> = async
     async (request, reply) => {
       await service.unblockUser(request.user.id, request.params.id);
       return reply.status(204).send();
+    },
+  );
+
+  // ==============================================================================
+  // 8b. GET /api/v1/blocks — List Blocked Users
+  // ==============================================================================
+  fastify.get<{ Querystring: ListBlocksQuery }>(
+    '/api/v1/blocks',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Lists users blocked by the authenticated user',
+        tags: ['Moderation'],
+        security: [{ bearerAuth: [] }],
+        querystring: ListBlocksQuerySchema,
+        response: {
+          200: ListBlocksResponseSchema,
+          401: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = await service.listBlocks(request.user.id, request.query);
+      return reply.status(200).send(result);
+    },
+  );
+
+  // ==============================================================================
+  // 8c. POST /api/v1/reports — Submit Abuse Report
+  // ==============================================================================
+  fastify.post<{ Body: CreateReportInput }>(
+    '/api/v1/reports',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Submits an abuse report against a user, message, or assignment',
+        tags: ['Moderation'],
+        security: [{ bearerAuth: [] }],
+        body: CreateReportInputSchema,
+        response: {
+          201: ReportResponseSchema,
+          400: ProblemDetailsSchema,
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = await service.createReport(request.user.id, request.body);
+      return reply.status(201).send(result);
     },
   );
 

@@ -4,15 +4,22 @@ import {
   UpdatePortfolioItemInputSchema,
   AttachPortfolioMediaInputSchema,
   ReorderPortfolioMediaInputSchema,
+  ReorderPortfolioItemsInputSchema,
   PortfolioItemResponseSchema,
   PortfolioMediaResponseSchema,
   type CreatePortfolioItemInput,
   type UpdatePortfolioItemInput,
   type AttachPortfolioMediaInput,
   type ReorderPortfolioMediaInput,
+  type ReorderPortfolioItemsInput,
 } from '@creatorconnect/contracts';
-import { Type } from '@sinclair/typebox';
-import { IdParamSchema, type IdParam, ProblemDetailsSchema } from '@creatorconnect/validation';
+import { Type, type Static } from '@sinclair/typebox';
+import {
+  IdParamSchema,
+  type IdParam,
+  ProblemDetailsSchema,
+  UuidSchema,
+} from '@creatorconnect/validation';
 import { portfolioService, PortfolioService } from './portfolio.service.js';
 
 export interface PortfolioRoutesOptions {
@@ -92,6 +99,30 @@ export const portfolioRoutes: FastifyPluginAsync<PortfolioRoutesOptions> = async
       const isAdmin = (request as any).user?.roles?.includes('ADMIN') ?? false;
       const result = await service.getUserItems(request.params.id, callerId, isAdmin);
       return reply.status(200).send(result);
+    },
+  );
+
+  // PUT /api/v1/portfolio/items/reorder
+  fastify.put<{ Body: ReorderPortfolioItemsInput }>(
+    '/api/v1/portfolio/items/reorder',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Reorders portfolio items belonging to the authenticated user',
+        tags: ['Portfolio'],
+        security: [{ bearerAuth: [] }],
+        body: ReorderPortfolioItemsInputSchema,
+        response: {
+          204: Type.Null(),
+          400: ProblemDetailsSchema,
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      await service.reorderItems(request.user.id, request.body);
+      return reply.status(204).send();
     },
   );
 
@@ -194,6 +225,36 @@ export const portfolioRoutes: FastifyPluginAsync<PortfolioRoutesOptions> = async
     },
     async (request, reply) => {
       await service.reorderMedia(request.user.id, request.params.id, request.body);
+      return reply.status(204).send();
+    },
+  );
+
+  // DELETE /api/v1/portfolio/items/:id/media/:mediaAssetId
+  const ItemMediaParamsSchema = Type.Object({
+    id: UuidSchema,
+    mediaAssetId: UuidSchema,
+  });
+  type ItemMediaParams = Static<typeof ItemMediaParamsSchema>;
+
+  fastify.delete<{ Params: ItemMediaParams }>(
+    '/api/v1/portfolio/items/:id/media/:mediaAssetId',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Detaches a media asset from an owned portfolio item',
+        tags: ['Portfolio'],
+        security: [{ bearerAuth: [] }],
+        params: ItemMediaParamsSchema,
+        response: {
+          204: Type.Null(),
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      await service.detachMedia(request.user.id, request.params.id, request.params.mediaAssetId);
       return reply.status(204).send();
     },
   );
