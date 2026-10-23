@@ -32,6 +32,16 @@ export class AuthService {
     // 1. Check if user already exists by supabaseAuthId
     const existingBySub = await this.userRepo.findBySub(sub);
     if (existingBySub) {
+      let currentRoles = existingBySub.roles;
+      if (
+        currentRoles.length === 0 &&
+        preferredRole &&
+        ALLOWED_SELF_ROLES.includes(preferredRole as SelfSelectableRole)
+      ) {
+        await this.userRepo.assignRole(existingBySub.id, preferredRole as RoleType);
+        currentRoles = [preferredRole as RoleType];
+      }
+
       return {
         user: {
           id: existingBySub.id,
@@ -41,7 +51,7 @@ export class AuthService {
           lastName: existingBySub.lastName ?? null,
           avatarUrl: null,
           status: existingBySub.status,
-          roles: existingBySub.roles,
+          roles: currentRoles,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },

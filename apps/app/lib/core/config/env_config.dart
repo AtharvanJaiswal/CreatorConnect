@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart'
+    show kIsWeb, kDebugMode, defaultTargetPlatform, TargetPlatform;
+
 enum AppEnvironment {
   local,
   dev,
@@ -34,19 +37,31 @@ class EnvironmentConfig {
   }
 
   static AppEnvironment _resolveDefaultEnvironment() {
-    const envString = String.fromEnvironment('ENV', defaultValue: 'dev');
-    switch (envString.toLowerCase()) {
-      case 'local':
-        return AppEnvironment.local;
-      case 'staging':
-        return AppEnvironment.staging;
-      case 'prod':
-      case 'production':
-        return AppEnvironment.prod;
-      case 'dev':
-      default:
-        return AppEnvironment.dev;
+    const envString = String.fromEnvironment('ENV', defaultValue: '');
+    if (envString.isNotEmpty) {
+      switch (envString.toLowerCase()) {
+        case 'local':
+          return AppEnvironment.local;
+        case 'staging':
+          return AppEnvironment.staging;
+        case 'prod':
+        case 'production':
+          return AppEnvironment.prod;
+        case 'dev':
+          return AppEnvironment.dev;
+      }
     }
+    return kDebugMode ? AppEnvironment.local : AppEnvironment.dev;
+  }
+
+  static String get _localHost {
+    const customHost = String.fromEnvironment('API_HOST', defaultValue: '');
+    if (customHost.isNotEmpty) return customHost;
+    if (kIsWeb) return '127.0.0.1';
+    // On Android emulators, 10.0.2.2 connects to host computer localhost
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) return '10.0.2.2';
+    // 127.0.0.1 works on desktop and iOS simulators.
+    return '127.0.0.1';
   }
 
   static EnvironmentConfig get current {
@@ -58,13 +73,21 @@ class EnvironmentConfig {
     final resolvedAnonKey =
         envAnonKey.isNotEmpty ? envAnonKey : defaultSupabaseAnonKey;
 
+    const customApiBaseUrl = String.fromEnvironment(
+      'API_BASE_URL',
+      defaultValue: '',
+    );
+
     switch (_currentEnv) {
       case AppEnvironment.local:
+        final host = _localHost;
         return EnvironmentConfig(
           environment: AppEnvironment.local,
-          apiBaseUrl: 'http://10.0.2.2:4000/api/v1',
-          realtimeUrl: 'http://10.0.2.2:4001',
-          supabaseUrl: 'http://10.0.2.2:54321',
+          apiBaseUrl: customApiBaseUrl.isNotEmpty
+              ? customApiBaseUrl
+              : 'http://$host:3000/api/v1',
+          realtimeUrl: 'http://$host:3001',
+          supabaseUrl: defaultSupabaseUrl,
           supabaseAnonKey: resolvedAnonKey,
         );
 

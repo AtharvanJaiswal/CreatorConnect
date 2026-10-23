@@ -26,6 +26,7 @@ import { projectsRoutes } from './modules/projects/projects.routes.js';
 import { paymentsRoutes } from './modules/payments/payments.routes.js';
 import { disputesRoutes, cancellationsRoutes } from './modules/disputes/index.js';
 import { reviewsRoutes } from './modules/reviews/index.js';
+import { discoveryModuleDRoutes } from './modules/discovery/discovery.module-d.routes.js';
 
 export async function buildApp(opts: FastifyServerOptions = {}): Promise<FastifyInstance> {
   const defaultTrustProxy = process.env.TRUST_PROXY
@@ -64,6 +65,13 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
         },
       ],
     },
+    rewriteUrl: (req) => {
+      const url = req.url || '';
+      if (url.startsWith('/api/v1/api/v1/')) {
+        return url.replace('/api/v1/api/v1/', '/api/v1/');
+      }
+      return url;
+    },
     ...opts,
   });
 
@@ -80,6 +88,8 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
 
   await app.register(helmet, {
     contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginOpenerPolicy: false,
   });
 
   // CORS Configuration & Production Boot Guard (SEC-02)
@@ -113,20 +123,30 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
 
     allowedOrigins = origins;
   } else {
-    // Non-production (development, test, E2E)
-    if (process.env.CORS_ORIGIN && process.env.CORS_ORIGIN.trim()) {
-      const origins = process.env.CORS_ORIGIN.split(',')
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
-      allowedOrigins = origins.length > 0 ? origins : true;
-    } else {
-      allowedOrigins = true;
-    }
+    // Non-production (development, test, E2E): Allow Flutter Web dynamic localhost ports & mobile clients
+    allowedOrigins = true;
   }
 
   await app.register(cors, {
-    origin: allowedOrigins,
+    origin: isProduction
+      ? allowedOrigins
+      : (origin, cb) => {
+          // Allow requests with no origin (mobile apps, curl, etc.)
+          if (!origin) return cb(null, true);
+          if (
+            origin.includes('localhost') ||
+            origin.includes('127.0.0.1') ||
+            origin.includes('10.0.2.2') ||
+            origin.includes('192.168.')
+          ) {
+            return cb(null, true);
+          }
+          return cb(null, true);
+        },
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'x-request-id', 'range'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range', 'ETag'],
   });
 
   await app.register(sensible);
@@ -202,6 +222,7 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
   await app.register(disputesRoutes);
   await app.register(cancellationsRoutes);
   await app.register(reviewsRoutes);
+  await app.register(discoveryModuleDRoutes);
 
   return app;
 }

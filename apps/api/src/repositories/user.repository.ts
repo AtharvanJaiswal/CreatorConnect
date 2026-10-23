@@ -36,6 +36,7 @@ export interface IUserRepository {
     ipAddress?: string,
     userAgent?: string,
   ): Promise<UserIdentity>;
+  assignRole(userId: string, roleName: RoleType): Promise<void>;
 }
 
 export class PrismaUserRepository implements IUserRepository {
@@ -313,6 +314,28 @@ export class PrismaUserRepository implements IUserRepository {
         status: updated.status as UserStatus,
         roles: updated.userRoles.map((ur) => ur.role.name as RoleType),
       };
+    });
+  }
+
+  public async assignRole(userId: string, roleName: RoleType): Promise<void> {
+    const role = await this.prisma.role.findUnique({
+      where: { name: roleName },
+    });
+    if (!role) return;
+
+    await this.prisma.userRole.upsert({
+      where: {
+        userId_roleId: {
+          userId,
+          roleId: role.id,
+        },
+      },
+      update: {},
+      create: {
+        id: generateUuidV7(),
+        userId,
+        roleId: role.id,
+      },
     });
   }
 }

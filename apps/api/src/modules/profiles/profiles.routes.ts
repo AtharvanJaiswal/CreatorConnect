@@ -311,4 +311,138 @@ export const profilesRoutes: FastifyPluginAsync<ProfilesRoutesOptions> = async (
       return reply.status(200).send(result);
     },
   );
+
+  // ==============================================================================
+  // Verification Endpoints (PostgreSQL Persisted)
+  // ==============================================================================
+
+  fastify.post<{ Body: { platform: string; handle: string; code: string } }>(
+    '/api/v1/profiles/verification/creator',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Submits creator profile verification request',
+        tags: ['Profiles'],
+        security: [{ bearerAuth: [] }],
+        body: Type.Object({
+          platform: Type.String(),
+          handle: Type.String(),
+          code: Type.String(),
+        }),
+      },
+    },
+    async (request, reply) => {
+      const { platform, handle, code } = request.body;
+      const prisma = (service as any).repo.prisma;
+      await prisma.creatorProfile.updateMany({
+        where: { userId: request.user.id },
+        data: {
+          socialLinks: {
+            verification: {
+              state: 'UNDER_REVIEW',
+              platform,
+              handle,
+              code,
+              submittedDate: new Date().toISOString(),
+            },
+          },
+        },
+      });
+      return reply.status(200).send({
+        success: true,
+        state: 'UNDER_REVIEW',
+        submittedAccount: `${platform} @${handle}`,
+        oneTimeCode: code,
+      });
+    },
+  );
+
+  fastify.post<{
+    Body: { businessName: string; regNumber: string; person: string; documents: string[] };
+  }>(
+    '/api/v1/profiles/verification/brand',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Submits brand business verification request',
+        tags: ['Profiles'],
+        security: [{ bearerAuth: [] }],
+        body: Type.Object({
+          businessName: Type.String(),
+          regNumber: Type.String(),
+          person: Type.String(),
+          documents: Type.Array(Type.String()),
+        }),
+      },
+    },
+    async (request, reply) => {
+      const { businessName, regNumber, person, documents } = request.body;
+      const prisma = (service as any).repo.prisma;
+      await prisma.brandProfile.updateMany({
+        where: { userId: request.user.id },
+        data: {
+          bio: `[VERIFICATION_PENDING] ${businessName} | Reg: ${regNumber} | Contact: ${person}`,
+        },
+      });
+      return reply.status(200).send({
+        success: true,
+        state: 'UNDER_REVIEW',
+        submittedAccount: businessName,
+        brandDocumentNames: documents,
+      });
+    },
+  );
+
+  fastify.get(
+    '/api/v1/profiles/verification/status',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Retrieves current user verification state from database',
+        tags: ['Profiles'],
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    async (request, reply) => {
+      const prisma = (service as any).repo.prisma;
+      const creator = await prisma.creatorProfile.findUnique({
+        where: { userId: request.user.id },
+      });
+      const brand = await prisma.brandProfile.findUnique({
+        where: { userId: request.user.id },
+      });
+
+      if (creator?.isVerified || brand?.isVerified) {
+        return reply.status(200).send({
+          state: 'APPROVED',
+          isVerified: true,
+          attemptsRemaining: 3,
+        });
+      }
+
+      const creatorMeta = (creator?.socialLinks as any)?.verification;
+      if (creatorMeta) {
+        return reply.status(200).send({
+          state: creatorMeta.state || 'UNDER_REVIEW',
+          submittedAccount: `${creatorMeta.platform} @${creatorMeta.handle}`,
+          oneTimeCode: creatorMeta.code,
+          submittedDate: creatorMeta.submittedDate,
+          attemptsRemaining: 2,
+        });
+      }
+
+      if (brand?.bio?.includes('[VERIFICATION_PENDING]')) {
+        return reply.status(200).send({
+          state: 'UNDER_REVIEW',
+          submittedAccount: brand.companyName,
+          attemptsRemaining: 2,
+        });
+      }
+
+      return reply.status(200).send({
+        state: 'NOT_STARTED',
+        attemptsRemaining: 3,
+      });
+    },
+  );
 };
