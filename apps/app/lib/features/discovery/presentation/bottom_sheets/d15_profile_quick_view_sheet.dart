@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/discovery_entities.dart';
+import '../../../../core/widgets/safe_image.dart';
 
 class D15ProfileQuickViewSheet extends StatelessWidget {
   final ProfileCardModel profile;
@@ -62,7 +63,13 @@ class D15ProfileQuickViewSheet extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 28,
-                backgroundImage: NetworkImage(profile.avatarUrl),
+                backgroundImage: safeNetworkImage(profile.avatarUrl),
+                child: safeNetworkImage(profile.avatarUrl) == null
+                    ? Text(
+                        profile.name.isNotEmpty ? profile.name[0] : 'U',
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+                      )
+                    : null,
               ),
               const SizedBox(width: 14),
               Expanded(

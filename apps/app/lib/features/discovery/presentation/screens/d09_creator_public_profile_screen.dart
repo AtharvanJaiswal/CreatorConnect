@@ -8,6 +8,7 @@ import '../bottom_sheets/d11_profile_more_options_sheet.dart';
 import '../dialogs/pop_dialogs.dart';
 import '../widgets/d16_connect_sent_overlay.dart';
 import 'd10_brand_public_profile_screen.dart';
+import '../../../../core/widgets/safe_image.dart';
 
 class D09CreatorPublicProfileScreen extends ConsumerWidget {
   final String profileId;
@@ -128,13 +129,23 @@ class D09CreatorPublicProfileScreen extends ConsumerWidget {
                               width: 76,
                               height: 76,
                               decoration: BoxDecoration(
+                                color: AppColors.surfacePure,
                                 shape: BoxShape.circle,
                                 border: Border.all(color: AppColors.backgroundPrimary, width: 4),
-                                image: DecorationImage(
-                                  image: NetworkImage(profile.avatarUrl),
-                                  fit: BoxFit.cover,
-                                ),
+                                image: safeDecorationImage(profile.avatarUrl),
                               ),
+                              child: safeDecorationImage(profile.avatarUrl) == null
+                                  ? Center(
+                                      child: Text(
+                                        profile.name.isNotEmpty ? profile.name[0] : 'U',
+                                        style: const TextStyle(
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                    )
+                                  : null,
                             ),
                             const Spacer(),
                             if (profile.isVerified)

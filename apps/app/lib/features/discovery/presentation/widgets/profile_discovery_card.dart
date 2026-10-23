@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/discovery_entities.dart';
+import '../../../../core/widgets/safe_image.dart';
 
 class ProfileDiscoveryCard extends StatelessWidget {
   final ProfileCardModel profile;
@@ -57,6 +58,7 @@ class ProfileDiscoveryCard extends StatelessWidget {
                       width: 46,
                       height: 46,
                       decoration: BoxDecoration(
+                        color: AppColors.surfacePure,
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 2),
                         boxShadow: [
@@ -65,11 +67,16 @@ class ProfileDiscoveryCard extends StatelessWidget {
                             blurRadius: 4,
                           ),
                         ],
-                        image: DecorationImage(
-                          image: NetworkImage(profile.avatarUrl),
-                          fit: BoxFit.cover,
-                        ),
+                        image: safeDecorationImage(profile.avatarUrl),
                       ),
+                      child: safeDecorationImage(profile.avatarUrl) == null
+                          ? Center(
+                              child: Text(
+                                profile.name.isNotEmpty ? profile.name[0] : 'U',
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                              ),
+                            )
+                          : null,
                     ),
                     if (profile.isOnline)
                       Positioned(

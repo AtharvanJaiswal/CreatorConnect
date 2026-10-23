@@ -7,6 +7,7 @@ import '../controllers/module_d_controllers.dart';
 import '../bottom_sheets/d15_profile_quick_view_sheet.dart';
 import '../dialogs/pop_dialogs.dart';
 import '../widgets/d16_connect_sent_overlay.dart';
+import '../../../../core/widgets/safe_image.dart';
 
 class D01CreatorHomeScreen extends ConsumerWidget {
   final VoidCallback onNavigateToNotifications;
@@ -315,7 +316,13 @@ class D01CreatorHomeScreen extends ConsumerWidget {
               children: [
                 CircleAvatar(
                   radius: 20,
-                  backgroundImage: NetworkImage(profile.avatarUrl),
+                  backgroundImage: safeNetworkImage(profile.avatarUrl),
+                  child: safeNetworkImage(profile.avatarUrl) == null
+                      ? Text(
+                          profile.name.isNotEmpty ? profile.name[0] : 'U',
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                        )
+                      : null,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -415,7 +422,10 @@ class D01CreatorHomeScreen extends ConsumerWidget {
             children: [
               CircleAvatar(
                 radius: 16,
-                backgroundImage: NetworkImage(opp.brandLogo),
+                backgroundImage: safeNetworkImage(opp.brandLogo),
+                child: safeNetworkImage(opp.brandLogo) == null
+                    ? const Icon(Icons.business_rounded, size: 16)
+                    : null,
               ),
               const SizedBox(width: 8),
               Expanded(

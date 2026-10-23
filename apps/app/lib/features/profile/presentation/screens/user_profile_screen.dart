@@ -6,6 +6,7 @@ import '../../domain/entities/profile_entities.dart';
 import '../../domain/entities/taxonomy_data.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../../data/repositories/profile_repository_impl.dart';
+import '../../../../core/widgets/safe_image.dart';
 
 /// Full-featured, production-ready Profile Screen for the authenticated user.
 ///
@@ -288,12 +289,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   CircleAvatar(
                     radius: 36,
                     backgroundColor: AppColors.primary,
-                    backgroundImage: _basicInfo.photoUrl != null &&
-                            _basicInfo.photoUrl!.isNotEmpty
-                        ? NetworkImage(_basicInfo.photoUrl!)
-                        : null,
-                    child: _basicInfo.photoUrl == null ||
-                            _basicInfo.photoUrl!.isEmpty
+                    backgroundImage: safeNetworkImage(_basicInfo.photoUrl),
+                    child: safeNetworkImage(_basicInfo.photoUrl) == null
                         ? Text(
                             _initials,
                             style: const TextStyle(

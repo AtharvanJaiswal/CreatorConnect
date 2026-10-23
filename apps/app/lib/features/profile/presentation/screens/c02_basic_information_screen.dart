@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -29,6 +30,7 @@ class _C02BasicInformationScreenState extends State<C02BasicInformationScreen> {
   late final TextEditingController _bioCtrl;
 
   String? _photoUrl;
+  Uint8List? _photoBytes;
   String _city = '';
   String _hubName = '';
   List<String> _languages = [];
@@ -127,6 +129,7 @@ class _C02BasicInformationScreenState extends State<C02BasicInformationScreen> {
     if (action == PhotoSourceAction.remove) {
       setState(() {
         _photoUrl = null;
+        _photoBytes = null;
         _isDirty = true;
       });
       _saveDraft();
@@ -143,7 +146,9 @@ class _C02BasicInformationScreenState extends State<C02BasicInformationScreen> {
         imageQuality: 85,
       );
       if (image != null && mounted) {
+        final bytes = await image.readAsBytes();
         setState(() {
+          _photoBytes = bytes;
           _photoUrl = image.path;
           _isDirty = true;
         });
@@ -295,12 +300,13 @@ class _C02BasicInformationScreenState extends State<C02BasicInformationScreen> {
                             Builder(
                               builder: (_) {
                                 ImageProvider? provider;
-                                if (_photoUrl != null && _photoUrl!.isNotEmpty) {
+                                if (_photoBytes != null && _photoBytes!.isNotEmpty) {
+                                  provider = MemoryImage(_photoBytes!);
+                                } else if (_photoUrl != null && _photoUrl!.isNotEmpty) {
                                   if (_photoUrl!.startsWith('http://') ||
-                                      _photoUrl!.startsWith('https://') ||
-                                      _photoUrl!.startsWith('blob:')) {
+                                      _photoUrl!.startsWith('https://')) {
                                     provider = NetworkImage(_photoUrl!);
-                                  } else if (!kIsWeb) {
+                                  } else if (!kIsWeb && !_photoUrl!.startsWith('blob:')) {
                                     provider = FileImage(File(_photoUrl!));
                                   }
                                 }

@@ -47,6 +47,13 @@ class _MultiSelectSheetState extends State<MultiSelectSheet> {
   final TextEditingController _searchCtrl = TextEditingController();
   late final Set<String> _selected;
   late List<String> _filtered;
+  bool _isPopping = false;
+
+  void _safePop([List<String>? result]) {
+    if (_isPopping || !mounted) return;
+    _isPopping = true;
+    Navigator.of(context).pop(result);
+  }
 
   @override
   void initState() {
@@ -145,7 +152,7 @@ class _MultiSelectSheetState extends State<MultiSelectSheet> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: _safePop,
                 ),
               ],
             ),
@@ -259,7 +266,7 @@ class _MultiSelectSheetState extends State<MultiSelectSheet> {
                   elevation: 0,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
                 ),
-                onPressed: () => Navigator.pop(context, _selected.toList()),
+                onPressed: () => _safePop(_selected.toList()),
                 child: Text(
                   'Done (${_selected.length} selected)',
                   style: const TextStyle(

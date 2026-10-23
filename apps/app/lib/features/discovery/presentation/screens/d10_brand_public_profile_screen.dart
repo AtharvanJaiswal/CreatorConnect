@@ -6,6 +6,7 @@ import '../../domain/entities/discovery_entities.dart';
 import '../controllers/module_d_controllers.dart';
 import '../bottom_sheets/d11_profile_more_options_sheet.dart';
 import 'd09_creator_public_profile_screen.dart';
+import '../../../../core/widgets/safe_image.dart';
 
 class D10BrandPublicProfileScreen extends ConsumerWidget {
   final String brandId;
@@ -100,11 +101,13 @@ class D10BrandPublicProfileScreen extends ConsumerWidget {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(16),
-                                image: DecorationImage(
-                                  image: NetworkImage(profile.avatarUrl),
-                                  fit: BoxFit.cover,
-                                ),
+                                image: safeDecorationImage(profile.avatarUrl),
                               ),
+                              child: safeDecorationImage(profile.avatarUrl) == null
+                                  ? const Center(
+                                      child: Icon(Icons.business_rounded, color: AppColors.textSecondary, size: 28),
+                                    )
+                                  : null,
                             ),
                             const SizedBox(width: 14),
                             Expanded(
