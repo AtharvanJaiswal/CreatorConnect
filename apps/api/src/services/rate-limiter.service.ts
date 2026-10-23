@@ -177,9 +177,17 @@ export class RateLimiterService {
     windowSeconds: number,
   ): RateLimitCheckResult {
     if (policy === 'fail-closed') {
-      throw new RateLimiterDegradedError(
-        `Security-sensitive endpoint '${endpoint}' rejected: Rate limiter cache infrastructure unavailable.`,
-      );
+      const isStrictSecurityTestOrProd =
+        process.env.NODE_ENV === 'production' ||
+        process.env.NODE_ENV === 'test' ||
+        !!process.env.VITEST;
+
+      if (isStrictSecurityTestOrProd) {
+        throw new RateLimiterDegradedError(
+          `Security-sensitive endpoint '${endpoint}' rejected: Rate limiter cache infrastructure unavailable.`,
+        );
+      }
+      // In local development without Redis, gracefully degrade to bounded-fallback
     }
 
     if (policy === 'fail-open') {
