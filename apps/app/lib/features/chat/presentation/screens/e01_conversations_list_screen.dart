@@ -155,13 +155,15 @@ class _E01ConversationsListScreenState extends ConsumerState<E01ConversationsLis
                 ),
               ),
 
-            // Content List / Empty State
+            // Content List / Empty State / Error State
             Expanded(
               child: state.isLoading
                   ? const Center(child: CircularProgressIndicator(color: AppColors.textPrimary))
-                  : state.activeItems.isEmpty
-                      ? _buildEmptyState(context, state.activeTab)
-                      : RefreshIndicator(
+                  : state.errorMessage != null && state.activeItems.isEmpty
+                      ? _buildErrorState(context, state.errorMessage!, notifier)
+                      : state.activeItems.isEmpty
+                          ? _buildEmptyState(context, state.activeTab)
+                          : RefreshIndicator(
                           color: AppColors.textPrimary,
                           onRefresh: () => notifier.loadInbox(),
                           child: ListView.builder(
@@ -344,6 +346,51 @@ class _E01ConversationsListScreenState extends ConsumerState<E01ConversationsLis
               child: const Text(
                 'Explore Collaborators',
                 style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14.5),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context, String message, ConversationsNotifier notifier) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.cloud_off_rounded, size: 48, color: AppColors.error),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Messaging Server Connection Error',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () => notifier.loadInbox(),
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Retry Connection', style: TextStyle(fontWeight: FontWeight.w800)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.textPrimary,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                elevation: 0,
               ),
             ),
           ],

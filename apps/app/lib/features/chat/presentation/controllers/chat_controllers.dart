@@ -17,6 +17,7 @@ class ConversationsState {
   final ChatTab activeTab;
   final bool isLoading;
   final String? searchQuery;
+  final String? errorMessage;
 
   const ConversationsState({
     this.primaryConversations = const [],
@@ -24,6 +25,7 @@ class ConversationsState {
     this.activeTab = ChatTab.primary,
     this.isLoading = false,
     this.searchQuery,
+    this.errorMessage,
   });
 
   List<ConversationItem> get activeItems => activeTab == ChatTab.primary ? primaryConversations : requestConversations;
@@ -34,6 +36,8 @@ class ConversationsState {
     ChatTab? activeTab,
     bool? isLoading,
     String? searchQuery,
+    String? errorMessage,
+    bool clearError = false,
   }) {
     return ConversationsState(
       primaryConversations: primaryConversations ?? this.primaryConversations,
@@ -41,6 +45,7 @@ class ConversationsState {
       activeTab: activeTab ?? this.activeTab,
       isLoading: isLoading ?? this.isLoading,
       searchQuery: searchQuery ?? this.searchQuery,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
 }
@@ -53,7 +58,7 @@ class ConversationsNotifier extends StateNotifier<ConversationsState> {
   }
 
   Future<void> loadInbox() async {
-    state = state.copyWith(isLoading: true);
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
       final primary = await _repo.getConversations(tab: ChatTab.primary, query: state.searchQuery);
       final requests = await _repo.getConversations(tab: ChatTab.requests, query: state.searchQuery);
@@ -61,9 +66,13 @@ class ConversationsNotifier extends StateNotifier<ConversationsState> {
         primaryConversations: primary,
         requestConversations: requests,
         isLoading: false,
+        clearError: true,
       );
-    } catch (_) {
-      state = state.copyWith(isLoading: false);
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Unable to connect to messaging server: ${e.toString().split('\n').first}',
+      );
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/safe_image.dart';
 import '../../domain/entities/chat_entities.dart';
 
 class MessageBubbleWidget extends StatelessWidget {
@@ -219,6 +220,27 @@ class MessageBubbleWidget extends StatelessWidget {
       );
     }
 
+    if (att.type == AttachmentType.image && att.url.isNotEmpty && safeNetworkImage(att.url) != null) {
+      return InkWell(
+        onTap: () => onOpenAttachment?.call(att),
+        borderRadius: BorderRadius.circular(12),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            height: 140,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: AppColors.backgroundSecondary,
+              image: DecorationImage(
+                image: safeNetworkImage(att.url)!,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     // Default image / brief preview
     return InkWell(
       onTap: () => onOpenAttachment?.call(att),
@@ -226,18 +248,27 @@ class MessageBubbleWidget extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          height: 120,
+          height: 110,
           width: double.infinity,
           color: AppColors.backgroundSecondary,
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.image_rounded, size: 36, color: AppColors.textMuted),
+                Icon(
+                  att.type == AttachmentType.brief ? Icons.link_rounded : Icons.image_rounded,
+                  size: 32,
+                  color: AppColors.textMuted,
+                ),
                 const SizedBox(height: 4),
-                Text(
-                  att.fileName,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    att.fileName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                  ),
                 ),
               ],
             ),

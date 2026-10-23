@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/safe_image.dart';
 import '../../domain/entities/chat_entities.dart';
 import '../controllers/chat_controllers.dart';
 import '../widgets/pinned_brief_banner_widget.dart';
@@ -17,10 +18,14 @@ import 'e07_attachment_viewer_screen.dart';
 /// double read receipt ticks, secure Cloudflare R2 file transfers, and anti-circumvention gating.
 class E04ChatThreadScreen extends ConsumerStatefulWidget {
   final String conversationId;
+  final PinnedBriefContext? initialBrief;
+  final ConversationItem? initialPeer;
 
   const E04ChatThreadScreen({
     super.key,
     required this.conversationId,
+    this.initialBrief,
+    this.initialPeer,
   });
 
   @override
@@ -131,10 +136,15 @@ class _E04ChatThreadScreenState extends ConsumerState<E04ChatThreadScreen> {
   }
 
   void _openAttachmentViewer(MessageAttachment att) {
+    final conv = ref.read(chatThreadProvider(widget.conversationId)).conversation ?? widget.initialPeer;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => E07AttachmentViewerScreen(attachment: att),
+        builder: (_) => E07AttachmentViewerScreen(
+          attachment: att,
+          sentBy: conv?.peerName,
+          timestamp: 'Today',
+        ),
       ),
     );
   }
@@ -192,26 +202,27 @@ class _E04ChatThreadScreenState extends ConsumerState<E04ChatThreadScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(chatThreadProvider(widget.conversationId));
-    final conv = state.conversation;
+    final conv = state.conversation ?? widget.initialPeer;
     final isRequestPending = conv != null && conv.isRequest && !conv.isAccepted;
+    final brief = conv?.pinnedBrief ?? widget.initialBrief;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       appBar: _buildAppBar(conv),
       body: SafeArea(
-        child: state.isLoading
+        child: state.isLoading && conv == null
             ? const Center(child: CircularProgressIndicator(color: AppColors.textPrimary))
             : Column(
                 children: [
                   // Pinned Brief Context Banner (SCR-E04)
-                  if (conv?.pinnedBrief != null)
+                  if (brief != null)
                     PinnedBriefBannerWidget(
-                      brief: conv!.pinnedBrief!,
+                      brief: brief,
                       onViewBrief: () {
                         Navigator.pushNamed(
                           context,
                           '/campaigns/brief-detail',
-                          arguments: conv.pinnedBrief!.id,
+                          arguments: brief.id,
                         );
                       },
                     ),
@@ -264,13 +275,11 @@ class _E04ChatThreadScreenState extends ConsumerState<E04ChatThreadScreen> {
               CircleAvatar(
                 radius: 18,
                 backgroundColor: AppColors.backgroundSecondary,
-                backgroundImage: conv != null && conv.peerAvatar.isNotEmpty
-                    ? NetworkImage(conv.peerAvatar)
-                    : null,
-                child: conv != null && conv.peerAvatar.isEmpty
+                backgroundImage: safeNetworkImage(conv?.peerAvatar),
+                child: safeNetworkImage(conv?.peerAvatar) == null
                     ? Text(
-                        conv.peerName.isNotEmpty ? conv.peerName[0] : '?',
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                        conv != null && conv.peerName.isNotEmpty ? conv.peerName[0].toUpperCase() : '?',
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.textPrimary),
                       )
                     : null,
               ),
@@ -385,6 +394,64 @@ class _E04ChatThreadScreenState extends ConsumerState<E04ChatThreadScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Caller Summary Card (SCR-E05)
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: AppColors.backgroundSecondary,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.borderLight),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: Colors.white,
+                  backgroundImage: safeNetworkImage(conv.peerAvatar),
+                  child: safeNetworkImage(conv.peerAvatar) == null
+                      ? Text(
+                          conv.peerName.isNotEmpty ? conv.peerName[0].toUpperCase() : '?',
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.textPrimary),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              conv.peerName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: AppColors.textPrimary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (conv.isPeerVerified) ...[
+                            const SizedBox(width: 4),
+                            const Icon(Icons.verified_rounded, size: 14, color: AppColors.primaryDark),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${conv.peerRole}${conv.location != null && conv.location!.isNotEmpty ? ' • ${conv.location}' : ''}${conv.followers != null && conv.followers!.isNotEmpty ? ' • ${conv.followers} followers' : ''}',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // Security Warning Banner (Anti-Circumvention)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/safe_image.dart';
 import '../../domain/entities/chat_entities.dart';
 
 class ConversationTileWidget extends StatelessWidget {
@@ -46,11 +47,12 @@ class ConversationTileWidget extends StatelessWidget {
                         CircleAvatar(
                           radius: 24,
                           backgroundColor: AppColors.backgroundSecondary,
-                          backgroundImage: conversation.peerAvatar.isNotEmpty
-                              ? NetworkImage(conversation.peerAvatar)
-                              : null,
-                          child: conversation.peerAvatar.isEmpty
-                              ? const Icon(Icons.person_rounded, color: AppColors.textPrimary)
+                          backgroundImage: safeNetworkImage(conversation.peerAvatar),
+                          child: safeNetworkImage(conversation.peerAvatar) == null
+                              ? Text(
+                                  conversation.peerName.isNotEmpty ? conversation.peerName[0].toUpperCase() : '?',
+                                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.textPrimary),
+                                )
                               : null,
                         ),
                         if (conversation.isOnline && !conversation.isRequest)
@@ -100,8 +102,10 @@ class ConversationTileWidget extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            conversation.peerRole,
-                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                            _buildSubtitle(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -183,5 +187,19 @@ class ConversationTileWidget extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _buildSubtitle() {
+    final parts = <String>[];
+    if (conversation.peerRole.isNotEmpty) {
+      parts.add(conversation.peerRole);
+    }
+    if (conversation.followers != null && conversation.followers!.isNotEmpty) {
+      parts.add('${conversation.followers} followers');
+    }
+    if (conversation.location != null && conversation.location!.isNotEmpty) {
+      parts.add(conversation.location!);
+    }
+    return parts.isEmpty ? 'Creator' : parts.join(' • ');
   }
 }
