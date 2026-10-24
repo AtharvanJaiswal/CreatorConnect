@@ -10,6 +10,7 @@ import {
   SelfMessagingNotAllowedError,
   SelfBlockNotAllowedError,
   UserNotFoundError,
+  MessageRequestRequiredError,
 } from '@creatorconnect/database';
 import { generateUuidV7 } from '@creatorconnect/utils';
 
@@ -230,10 +231,10 @@ describe('ConversationAuthorizationService PostgreSQL Integration Tests', () => 
   });
 
   describe('1. Direct Conversation Authorization (assertCanStartDirectConversation)', () => {
-    it('authorizes active peers to start a direct conversation', async () => {
+    it('rejects cold contact without consent or commercial exception with MessageRequestRequiredError (403)', async () => {
       await expect(
         authService.assertCanStartDirectConversation(alice.id, charlie.id),
-      ).resolves.toBeUndefined();
+      ).rejects.toThrow(MessageRequestRequiredError);
     });
 
     it('rejects self-messaging with SelfMessagingNotAllowedError (400)', async () => {

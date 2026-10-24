@@ -154,6 +154,14 @@ export {
   SelfBlockNotAllowedError,
   InvalidMessageCursorError,
   UserNotFoundError,
+  MessageRequestNotFoundError,
+  DuplicateMessageRequestError,
+  MessageRequestCooldownActiveError,
+  MessageRequestInvalidStateError,
+  SelfMessageRequestNotAllowedError,
+  MessageRequestLimitExceededError,
+  InvalidMessageRequestInputError,
+  MessageRequestRequiredError,
 } from '@creatorconnect/database';
 
 export class SelfReportNotAllowedError extends AppError {

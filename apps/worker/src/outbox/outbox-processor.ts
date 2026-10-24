@@ -7,10 +7,50 @@ import {
 } from '@creatorconnect/database';
 import {
   MessageCreatedV1PayloadSchema,
+  MessageUpdatedV1PayloadSchema,
+  MessageDeletedV1PayloadSchema,
   UserBlockCreatedV1PayloadSchema,
   UserBlockRemovedV1PayloadSchema,
+  MessageRequestCreatedV1PayloadSchema,
+  MessageRequestAcceptedV1PayloadSchema,
+  MessageRequestDeclinedV1PayloadSchema,
+  MessageRequestCancelledV1PayloadSchema,
+  MessageRequestExpiredV1PayloadSchema,
 } from '@creatorconnect/contracts';
 import { type IEventDispatcher, NoOpEventDispatcher } from './event-dispatcher.js';
+
+export const OUTBOX_PAYLOAD_SCHEMAS: Record<string, Parameters<typeof Value.Check>[0]> = {
+  'message.created.v1': MessageCreatedV1PayloadSchema,
+  'message.updated.v1': MessageUpdatedV1PayloadSchema,
+  'message.deleted.v1': MessageDeletedV1PayloadSchema,
+  'user.block.created.v1': UserBlockCreatedV1PayloadSchema,
+  'user.block.removed.v1': UserBlockRemovedV1PayloadSchema,
+  'message_request.created.v1': MessageRequestCreatedV1PayloadSchema,
+  'message_request.accepted.v1': MessageRequestAcceptedV1PayloadSchema,
+  'message_request.declined.v1': MessageRequestDeclinedV1PayloadSchema,
+  'message_request.cancelled.v1': MessageRequestCancelledV1PayloadSchema,
+  'message_request.expired.v1': MessageRequestExpiredV1PayloadSchema,
+};
+
+export const NOTIFICATION_ONLY_EVENT_TYPES = new Set([
+  'project.created.v1',
+  'project.deliverable.submitted.v1',
+  'project.deliverable.approved.v1',
+  'project.deliverable.revision_requested.v1',
+  'escrow.released.v1',
+  'dispute.opened.v1',
+  'dispute.status_updated.v1',
+  'dispute.resolved.v1',
+  'cancellation.requested.v1',
+  'cancellation.decided.v1',
+  'review.created.v1',
+  'review.reported.v1',
+  'review.moderated.v1',
+  'invitation.created.v1',
+  'invitation.accepted.v1',
+  'invitation.declined.v1',
+  'invitation.withdrawn.v1',
+]);
 
 export interface OutboxProcessorConfig {
   batchSize?: number;
@@ -175,10 +215,11 @@ export class OutboxProcessor {
    */
   private async processEvent(event: ClaimedOutboxEvent): Promise<void> {
     // 1. Schema & Event Type Policy Check
-    if (event.eventType === 'message.created.v1') {
-      const isValid = Value.Check(MessageCreatedV1PayloadSchema, event.payload);
+    const schema = OUTBOX_PAYLOAD_SCHEMAS[event.eventType];
+    if (schema) {
+      const isValid = Value.Check(schema, event.payload);
       if (!isValid) {
-        const errors = [...Value.Errors(MessageCreatedV1PayloadSchema, event.payload)];
+        const errors = [...Value.Errors(schema, event.payload)];
         const errorDetail = errors.map((e) => `${e.path}: ${e.message}`).join(', ');
 
         this.logger.error(
@@ -196,44 +237,18 @@ export class OutboxProcessor {
         });
         return;
       }
-    } else if (event.eventType === 'user.block.created.v1') {
-      const isValid = Value.Check(UserBlockCreatedV1PayloadSchema, event.payload);
-      if (!isValid) {
-        const errors = [...Value.Errors(UserBlockCreatedV1PayloadSchema, event.payload)];
-        const errorDetail = errors.map((e) => `${e.path}: ${e.message}`).join(', ');
-
+    } else if (NOTIFICATION_ONLY_EVENT_TYPES.has(event.eventType)) {
+      if (!event.payload || typeof event.payload !== 'object' || Array.isArray(event.payload)) {
         this.logger.error(
           {
             eventId: event.id,
             eventType: event.eventType,
-            errorDetail,
           },
           'Outbox event payload validation failed, moving to DEAD_LETTER',
         );
 
         await this.outboxRepo.markFailed(event.claimToken, {
-          error: `PAYLOAD_VALIDATION_FAILED: ${errorDetail}`,
-          isTerminal: true,
-        });
-        return;
-      }
-    } else if (event.eventType === 'user.block.removed.v1') {
-      const isValid = Value.Check(UserBlockRemovedV1PayloadSchema, event.payload);
-      if (!isValid) {
-        const errors = [...Value.Errors(UserBlockRemovedV1PayloadSchema, event.payload)];
-        const errorDetail = errors.map((e) => `${e.path}: ${e.message}`).join(', ');
-
-        this.logger.error(
-          {
-            eventId: event.id,
-            eventType: event.eventType,
-            errorDetail,
-          },
-          'Outbox event payload validation failed, moving to DEAD_LETTER',
-        );
-
-        await this.outboxRepo.markFailed(event.claimToken, {
-          error: `PAYLOAD_VALIDATION_FAILED: ${errorDetail}`,
+          error: 'PAYLOAD_VALIDATION_FAILED: Expected object payload',
           isTerminal: true,
         });
         return;

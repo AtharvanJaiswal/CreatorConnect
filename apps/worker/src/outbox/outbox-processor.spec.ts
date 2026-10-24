@@ -392,4 +392,231 @@ describe('Transactional Outbox Dispatcher Integration Tests (Increment 7)', () =
       expect(finalEvent?.status).toBe('PUBLISHED');
     });
   });
+
+  describe('5. Milestone 2C.1 Outbox Event Routing & Schema Validation Regression', () => {
+    it('validates, dispatches, and acknowledges message_request.created.v1 event successfully', async () => {
+      const requestId = generateUuidV7();
+      const senderId = generateUuidV7();
+      const recipientId = generateUuidV7();
+
+      const event = await prisma.outboxEvent.create({
+        data: {
+          id: generateUuidV7(),
+          eventType: 'message_request.created.v1',
+          aggregateType: 'MessageRequest',
+          aggregateId: requestId,
+          payload: {
+            requestId,
+            senderId,
+            recipientId,
+            initialMessage: 'Collaboration proposal',
+            expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+            createdAt: new Date().toISOString(),
+          },
+          status: 'PENDING',
+        },
+      });
+
+      const processed = await processor.processNextBatch();
+
+      expect(processed).toBe(1);
+      expect(dispatcher.dispatched).toHaveLength(1);
+      expect(dispatcher.dispatched[0].eventType).toBe('message_request.created.v1');
+
+      const dbEvent = await prisma.outboxEvent.findUnique({ where: { id: event.id } });
+      expect(dbEvent?.status).toBe('PUBLISHED');
+    });
+
+    it('validates, dispatches, and acknowledges message_request.accepted.v1 event successfully', async () => {
+      const requestId = generateUuidV7();
+      const senderId = generateUuidV7();
+      const recipientId = generateUuidV7();
+      const conversationId = generateUuidV7();
+
+      const event = await prisma.outboxEvent.create({
+        data: {
+          id: generateUuidV7(),
+          eventType: 'message_request.accepted.v1',
+          aggregateType: 'MessageRequest',
+          aggregateId: requestId,
+          payload: {
+            requestId,
+            senderId,
+            recipientId,
+            conversationId,
+            acceptedAt: new Date().toISOString(),
+          },
+          status: 'PENDING',
+        },
+      });
+
+      const processed = await processor.processNextBatch();
+
+      expect(processed).toBe(1);
+      expect(dispatcher.dispatched).toHaveLength(1);
+      expect(dispatcher.dispatched[0].eventType).toBe('message_request.accepted.v1');
+
+      const dbEvent = await prisma.outboxEvent.findUnique({ where: { id: event.id } });
+      expect(dbEvent?.status).toBe('PUBLISHED');
+    });
+
+    it('routes message_request.declined, cancelled, and expired events successfully', async () => {
+      const requestId1 = generateUuidV7();
+      const requestId2 = generateUuidV7();
+      const requestId3 = generateUuidV7();
+      const senderId = generateUuidV7();
+      const recipientId = generateUuidV7();
+
+      await prisma.outboxEvent.createMany({
+        data: [
+          {
+            id: generateUuidV7(),
+            eventType: 'message_request.declined.v1',
+            aggregateType: 'MessageRequest',
+            aggregateId: requestId1,
+            payload: {
+              requestId: requestId1,
+              senderId,
+              recipientId,
+              declinedAt: new Date().toISOString(),
+              reason: 'Not interested',
+            },
+            status: 'PENDING',
+          },
+          {
+            id: generateUuidV7(),
+            eventType: 'message_request.cancelled.v1',
+            aggregateType: 'MessageRequest',
+            aggregateId: requestId2,
+            payload: {
+              requestId: requestId2,
+              senderId,
+              recipientId,
+              cancelledAt: new Date().toISOString(),
+            },
+            status: 'PENDING',
+          },
+          {
+            id: generateUuidV7(),
+            eventType: 'message_request.expired.v1',
+            aggregateType: 'MessageRequest',
+            aggregateId: requestId3,
+            payload: {
+              requestId: requestId3,
+              senderId,
+              recipientId,
+              expiredAt: new Date().toISOString(),
+            },
+            status: 'PENDING',
+          },
+        ],
+      });
+
+      const processed = await processor.processNextBatch();
+
+      expect(processed).toBe(3);
+      expect(dispatcher.dispatched).toHaveLength(3);
+      const types = dispatcher.dispatched.map((e) => e.eventType);
+      expect(types).toContain('message_request.declined.v1');
+      expect(types).toContain('message_request.cancelled.v1');
+      expect(types).toContain('message_request.expired.v1');
+    });
+
+    it('routes message.updated.v1 and message.deleted.v1 events successfully', async () => {
+      const messageId1 = generateUuidV7();
+      const messageId2 = generateUuidV7();
+      const conversationId = generateUuidV7();
+      const senderId = generateUuidV7();
+
+      await prisma.outboxEvent.createMany({
+        data: [
+          {
+            id: generateUuidV7(),
+            eventType: 'message.updated.v1',
+            aggregateType: 'Message',
+            aggregateId: messageId1,
+            payload: {
+              messageId: messageId1,
+              conversationId,
+              senderId,
+              sequence: '2',
+              content: 'Updated content text',
+              updatedAt: new Date().toISOString(),
+            },
+            status: 'PENDING',
+          },
+          {
+            id: generateUuidV7(),
+            eventType: 'message.deleted.v1',
+            aggregateType: 'Message',
+            aggregateId: messageId2,
+            payload: {
+              messageId: messageId2,
+              conversationId,
+              deletedBy: senderId,
+              sequence: '3',
+              deletedAt: new Date().toISOString(),
+            },
+            status: 'PENDING',
+          },
+        ],
+      });
+
+      const processed = await processor.processNextBatch();
+
+      expect(processed).toBe(2);
+      expect(dispatcher.dispatched).toHaveLength(2);
+      const types = dispatcher.dispatched.map((e) => e.eventType);
+      expect(types).toContain('message.updated.v1');
+      expect(types).toContain('message.deleted.v1');
+    });
+
+    it('rejects malformed message_request payload as terminal failure moving to DEAD_LETTER', async () => {
+      const event = await prisma.outboxEvent.create({
+        data: {
+          id: generateUuidV7(),
+          eventType: 'message_request.created.v1',
+          aggregateType: 'MessageRequest',
+          aggregateId: generateUuidV7(),
+          payload: {
+            requestId: 'invalid-non-uuid-format',
+            senderId: 'invalid-sender',
+          },
+          status: 'PENDING',
+        },
+      });
+
+      const processed = await processor.processNextBatch();
+
+      expect(processed).toBe(1);
+      // Malformed event is rejected before reaching dispatcher
+      expect(dispatcher.dispatched).toHaveLength(0);
+
+      const dbEvent = await prisma.outboxEvent.findUnique({ where: { id: event.id } });
+      expect(dbEvent?.status).toBe('DEAD_LETTER');
+      expect(dbEvent?.lastError).toContain('PAYLOAD_VALIDATION_FAILED');
+    });
+
+    it('rejects unknown event types as terminal failures without silent drop', async () => {
+      const event = await prisma.outboxEvent.create({
+        data: {
+          id: generateUuidV7(),
+          eventType: 'totally.unknown.event.v99',
+          aggregateType: 'Unknown',
+          aggregateId: generateUuidV7(),
+          payload: { foo: 'bar' },
+          status: 'PENDING',
+        },
+      });
+
+      const processed = await processor.processNextBatch();
+
+      expect(processed).toBe(1);
+      expect(dispatcher.dispatched).toHaveLength(0);
+
+      const dbEvent = await prisma.outboxEvent.findUnique({ where: { id: event.id } });
+      expect(dbEvent?.status).toBe('DEAD_LETTER');
+      expect(dbEvent?.lastError).toContain('UNKNOWN_EVENT_TYPE: totally.unknown.event.v99');
+    });
+  });
 });

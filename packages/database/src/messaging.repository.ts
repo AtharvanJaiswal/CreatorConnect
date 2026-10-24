@@ -5,6 +5,8 @@ import {
   type ConversationParticipant,
   type Message,
   type MessageAttachment,
+  type MessageRequest,
+  type MessageRequestStatus,
 } from '@prisma/client';
 import { getPrismaClient } from './index.js';
 import { generateUuidV7 } from '@creatorconnect/utils';
@@ -20,6 +22,7 @@ import {
   type ListBlocksResponse,
   type CreateReportInput,
   type ReportResponse,
+  type ConversationParticipantProfile,
 } from '@creatorconnect/contracts';
 import {
   ConversationNotFoundError,
@@ -36,7 +39,89 @@ import {
   SelfReportNotAllowedError,
   ReportTargetNotFoundError,
   NotConversationParticipantError,
+  DuplicateReportError,
+  MessageRequestNotFoundError,
+  DuplicateMessageRequestError,
+  MessageRequestCooldownActiveError,
+  MessageRequestInvalidStateError,
+  SelfMessageRequestNotAllowedError,
+  MessageRequestLimitExceededError,
+  InvalidMessageRequestInputError,
+  UserNotFoundError,
 } from './errors.js';
+
+export const PARTICIPANT_USER_SELECT = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  avatarUrl: true,
+  creatorProfile: {
+    select: {
+      locationCity: true,
+      locationCountry: true,
+      isVerified: true,
+      deletedAt: true,
+    },
+  },
+  brandProfile: {
+    select: {
+      companyName: true,
+      isVerified: true,
+      deletedAt: true,
+    },
+  },
+  professionalProfile: {
+    select: {
+      headline: true,
+      locationCity: true,
+      locationCountry: true,
+      deletedAt: true,
+    },
+  },
+  podcasterProfile: {
+    select: {
+      podcastName: true,
+      deletedAt: true,
+    },
+  },
+  userRoles: {
+    select: {
+      role: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  },
+} as const;
+
+export type ParticipantWithUser = ConversationParticipant & {
+  user?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    avatarUrl: string | null;
+    creatorProfile?: {
+      locationCity: string | null;
+      locationCountry: string | null;
+      isVerified: boolean;
+      deletedAt: Date | null;
+    } | null;
+    brandProfile?: {
+      companyName: string | null;
+      isVerified: boolean;
+      deletedAt: Date | null;
+    } | null;
+    professionalProfile?: {
+      headline: string | null;
+      locationCity: string | null;
+      locationCountry: string | null;
+      deletedAt: Date | null;
+    } | null;
+    podcasterProfile?: { podcastName: string | null; deletedAt: Date | null } | null;
+    userRoles?: Array<{ role: { name: string } }>;
+  } | null;
+};
 
 export interface IMessagingRepository {
   createOrGetDirectConversation(
@@ -97,6 +182,42 @@ export interface IMessagingRepository {
   isBlocked(userA: string, userB: string): Promise<boolean>;
 
   createReport(reporterId: string, input: CreateReportInput): Promise<ReportResponse>;
+
+  createMessageRequest(params: {
+    senderId: string;
+    recipientId: string;
+    initialMessage: string;
+    expiresAt?: Date;
+  }): Promise<MessageRequest>;
+
+  getMessageRequestById(
+    id: string,
+    viewerUserId?: string,
+  ): Promise<(MessageRequest & { senderProfile?: ConversationParticipantProfile }) | null>;
+
+  listMessageRequests(params: {
+    userId: string;
+    direction?: 'incoming' | 'outgoing';
+    status?: MessageRequestStatus;
+    limit?: number;
+    cursor?: string;
+  }): Promise<{
+    items: Array<MessageRequest & { senderProfile?: ConversationParticipantProfile }>;
+    nextCursor: string | null;
+    hasMore: boolean;
+  }>;
+
+  acceptMessageRequest(
+    id: string,
+    recipientId: string,
+  ): Promise<{
+    request: MessageRequest;
+    conversation: DirectConversationResponse;
+  }>;
+
+  declineMessageRequest(id: string, recipientId: string, reason?: string): Promise<MessageRequest>;
+
+  cancelMessageRequest(id: string, senderId: string): Promise<MessageRequest>;
 }
 
 export class MessagingRepository implements IMessagingRepository {
@@ -134,17 +255,55 @@ export class MessagingRepository implements IMessagingRepository {
         ],
       },
       include: {
-        participants: true,
+        participants: {
+          include: {
+            user: {
+              select: PARTICIPANT_USER_SELECT,
+            },
+          },
+        },
       },
     });
 
     if (existing) {
-      return this.formatDirectConversation(existing);
+      return this.formatDirectConversation(existing as any);
     }
 
-    // Create conversation and participants in a transaction
-    const conversationId = generateUuidV7();
+    // Sort user IDs to form a deterministic lock key avoiding deadlocks
+    const lockKey = [initiatorUserId, recipientUserId].sort().join(':');
+
+    // Acquire transaction-level advisory lock and create conversation safely
     const created = await this.prisma.$transaction(async (tx) => {
+      // 1. Acquire advisory xact lock for this user pair
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'direct_conv:' + lockKey}))`;
+
+      // 2. Re-check for existing direct conversation inside the lock
+      const lockedExisting = await tx.conversation.findFirst({
+        where: {
+          type: 'DIRECT',
+          deletedAt: null,
+          AND: [
+            { participants: { some: { userId: initiatorUserId, leftAt: null } } },
+            { participants: { some: { userId: recipientUserId, leftAt: null } } },
+          ],
+        },
+        include: {
+          participants: {
+            include: {
+              user: {
+                select: PARTICIPANT_USER_SELECT,
+              },
+            },
+          },
+        },
+      });
+
+      if (lockedExisting) {
+        return lockedExisting;
+      }
+
+      // 3. Create conversation and participants atomically
+      const conversationId = generateUuidV7();
       return await tx.conversation.create({
         data: {
           id: conversationId,
@@ -171,12 +330,18 @@ export class MessagingRepository implements IMessagingRepository {
           },
         },
         include: {
-          participants: true,
+          participants: {
+            include: {
+              user: {
+                select: PARTICIPANT_USER_SELECT,
+              },
+            },
+          },
         },
       });
     });
 
-    return this.formatDirectConversation(created);
+    return this.formatDirectConversation(created as any);
   }
 
   /**
@@ -498,6 +663,15 @@ export class MessagingRepository implements IMessagingRepository {
           );
         }
 
+        if (!isAdmin) {
+          const EDIT_WINDOW_MS = 15 * 60 * 1000;
+          if (Date.now() - message.createdAt.getTime() > EDIT_WINDOW_MS) {
+            throw new MessageNotEditableError(
+              'Messages can only be deleted within 15 minutes of sending.',
+            );
+          }
+        }
+
         const deletedAt = new Date();
         await tx.message.update({
           where: { id: messageId },
@@ -617,7 +791,13 @@ export class MessagingRepository implements IMessagingRepository {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: {
-        participants: true,
+        participants: {
+          include: {
+            user: {
+              select: PARTICIPANT_USER_SELECT,
+            },
+          },
+        },
       },
     });
 
@@ -630,7 +810,7 @@ export class MessagingRepository implements IMessagingRepository {
       Number(conversation.currentSequence - participant.lastReadSequence),
     );
 
-    return this.formatDirectConversation(conversation, unreadCount);
+    return this.formatDirectConversation(conversation as any, unreadCount);
   }
 
   /**
@@ -653,7 +833,13 @@ export class MessagingRepository implements IMessagingRepository {
       include: {
         conversation: {
           include: {
-            participants: true,
+            participants: {
+              include: {
+                user: {
+                  select: PARTICIPANT_USER_SELECT,
+                },
+              },
+            },
           },
         },
       },
@@ -671,7 +857,7 @@ export class MessagingRepository implements IMessagingRepository {
     const items = records.map((record) => {
       const conv = record.conversation;
       const unreadCount = Math.max(0, Number(conv.currentSequence - record.lastReadSequence));
-      return this.formatDirectConversation(conv, unreadCount);
+      return this.formatDirectConversation(conv as any, unreadCount);
     });
 
     const lastRecord = records[records.length - 1];
@@ -934,19 +1120,44 @@ export class MessagingRepository implements IMessagingRepository {
       }
     }
 
-    // 3. Create Report in DB with status PENDING
-    const reportId = generateUuidV7();
-    const created = await this.prisma.report.create({
-      data: {
-        id: reportId,
-        reporterId,
-        targetType,
-        targetId,
-        category,
-        details,
-        status: 'PENDING',
+    // 3. Atomically check for duplicate pending report and create within transaction
+    const created = await this.prisma.$transaction(
+      async (tx) => {
+        // Concurrency-safe advisory transaction lock keyed on reporter + target
+        const lockKey = `report:${reporterId}:${targetType}:${targetId}`;
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+
+        const existingPending = await tx.report.findFirst({
+          where: {
+            reporterId,
+            targetType,
+            targetId,
+            status: 'PENDING',
+          },
+        });
+
+        if (existingPending) {
+          throw new DuplicateReportError();
+        }
+
+        const reportId = generateUuidV7();
+        return await tx.report.create({
+          data: {
+            id: reportId,
+            reporterId,
+            targetType,
+            targetId,
+            category,
+            details,
+            status: 'PENDING',
+          },
+        });
       },
-    });
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+        timeout: 5000,
+      },
+    );
 
     return {
       id: created.id,
@@ -982,8 +1193,62 @@ export class MessagingRepository implements IMessagingRepository {
     };
   }
 
+  private formatParticipantProfile(
+    user?: ParticipantWithUser['user'],
+  ): ConversationParticipantProfile | undefined {
+    if (!user) {
+      return undefined;
+    }
+
+    const brand = user.brandProfile && !user.brandProfile.deletedAt ? user.brandProfile : null;
+    const creator =
+      user.creatorProfile && !user.creatorProfile.deletedAt ? user.creatorProfile : null;
+    const professional =
+      user.professionalProfile && !user.professionalProfile.deletedAt
+        ? user.professionalProfile
+        : null;
+    const podcaster =
+      user.podcasterProfile && !user.podcasterProfile.deletedAt ? user.podcasterProfile : null;
+
+    let displayName = [user.firstName, user.lastName].filter(Boolean).join(' ');
+    if (!displayName && brand?.companyName) {
+      displayName = brand.companyName;
+    } else if (!displayName && podcaster?.podcastName) {
+      displayName = podcaster.podcastName;
+    } else if (!displayName) {
+      displayName = user.id ? `User ${user.id.slice(0, 8)}` : 'User';
+    }
+
+    let role: string | undefined;
+    if (user.userRoles && user.userRoles.length > 0 && user.userRoles[0]?.role?.name) {
+      role = user.userRoles[0].role.name;
+    } else if (brand) {
+      role = 'BRAND';
+    } else if (creator) {
+      role = 'CREATOR';
+    } else if (professional) {
+      role = 'PROFESSIONAL';
+    } else if (podcaster) {
+      role = 'PODCASTER';
+    }
+
+    const city = creator?.locationCity || professional?.locationCity;
+    const country = creator?.locationCountry || professional?.locationCountry;
+    const location = [city, country].filter(Boolean).join(', ') || null;
+
+    const isVerified = Boolean(creator?.isVerified || brand?.isVerified);
+
+    return {
+      displayName,
+      avatarUrl: user.avatarUrl ?? null,
+      ...(role ? { role } : {}),
+      ...(location ? { location } : {}),
+      ...(isVerified ? { isVerified } : {}),
+    };
+  }
+
   private formatDirectConversation(
-    c: Conversation & { participants: ConversationParticipant[] },
+    c: Conversation & { participants: ParticipantWithUser[] },
     unreadCount?: number,
   ): DirectConversationResponse {
     return {
@@ -993,21 +1258,699 @@ export class MessagingRepository implements IMessagingRepository {
       assignmentId: c.assignmentId,
       applicationId: c.applicationId,
       currentSequence: c.currentSequence.toString(),
-      participants: c.participants.map((p) => ({
-        id: p.id,
-        conversationId: p.conversationId,
-        userId: p.userId,
-        role: p.role,
-        lastReadSequence: p.lastReadSequence.toString(),
-        mutedUntil: p.mutedUntil ? p.mutedUntil.toISOString() : null,
-        leftAt: p.leftAt ? p.leftAt.toISOString() : null,
-        joinedAt: p.joinedAt.toISOString(),
-        updatedAt: p.updatedAt.toISOString(),
-      })),
+      participants: c.participants.map((p) => {
+        const profile = this.formatParticipantProfile(p.user);
+        return {
+          id: p.id,
+          conversationId: p.conversationId,
+          userId: p.userId,
+          role: p.role,
+          lastReadSequence: p.lastReadSequence.toString(),
+          mutedUntil: p.mutedUntil ? p.mutedUntil.toISOString() : null,
+          leftAt: p.leftAt ? p.leftAt.toISOString() : null,
+          joinedAt: p.joinedAt.toISOString(),
+          updatedAt: p.updatedAt.toISOString(),
+          ...(profile ? { profile } : {}),
+        };
+      }),
       ...(unreadCount !== undefined ? { unreadCount } : {}),
       createdAt: c.createdAt.toISOString(),
       updatedAt: c.updatedAt.toISOString(),
     };
+  }
+  /**
+   * Submits a new peer-to-peer message request.
+   * Enforces self-messaging guard, 500-char text limit, bidirectional block check,
+   * active recipient check, 30-day decline cooldown, 24-hour cancellation anti-churn cooldown,
+   * and partial unique pending check.
+   */
+  public async createMessageRequest(params: {
+    senderId: string;
+    recipientId: string;
+    initialMessage: string;
+    expiresAt?: Date;
+  }): Promise<MessageRequest> {
+    const { senderId, recipientId } = params;
+    const initialMessage = (params.initialMessage || '').trim();
+
+    if (senderId === recipientId) {
+      throw new SelfMessageRequestNotAllowedError();
+    }
+
+    if (!initialMessage || initialMessage.length > 500) {
+      throw new InvalidMessageRequestInputError(
+        'Initial message must be between 1 and 500 characters.',
+      );
+    }
+
+    if (/[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F]/.test(params.initialMessage || '')) {
+      throw new InvalidMessageRequestInputError(
+        'Initial message contains disallowed control characters.',
+      );
+    }
+
+    if (await this.isBlocked(senderId, recipientId)) {
+      throw new UserBlockedError();
+    }
+
+    const recipient = await this.prisma.user.findUnique({
+      where: { id: recipientId },
+      select: { id: true, status: true },
+    });
+
+    if (!recipient || recipient.status === 'DEACTIVATED') {
+      throw new UserNotFoundError('Recipient user not found or deactivated.');
+    }
+
+    // Rate limit: max 10 requests per hour per user
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const hourlyCount = await this.prisma.messageRequest.count({
+      where: {
+        senderId,
+        createdAt: { gte: oneHourAgo },
+      },
+    });
+    if (hourlyCount >= 10) {
+      throw new MessageRequestLimitExceededError(
+        'Hourly message request limit exceeded (max 10/hour).',
+      );
+    }
+
+    // Cooldown check: 30-day decline cooldown
+    const declineCooldownCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const recentDecline = await this.prisma.messageRequest.findFirst({
+      where: {
+        senderId,
+        recipientId,
+        status: 'DECLINED',
+        respondedAt: { gte: declineCooldownCutoff },
+      },
+    });
+    if (recentDecline) {
+      throw new MessageRequestCooldownActiveError(
+        'Recipient has declined a request within the last 30 days.',
+      );
+    }
+
+    // Anti-churn cooldown: 24-hour cancellation cooldown
+    const cancelCooldownCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentCancel = await this.prisma.messageRequest.findFirst({
+      where: {
+        senderId,
+        recipientId,
+        status: 'CANCELLED',
+        updatedAt: { gte: cancelCooldownCutoff },
+      },
+    });
+    if (recentCancel) {
+      throw new MessageRequestCooldownActiveError(
+        'Please wait 24 hours after cancelling before sending another request to this recipient.',
+      );
+    }
+
+    // Rolling 30-day cap: max 3 requests to same recipient in 30 days
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const recipientRequestCount = await this.prisma.messageRequest.count({
+      where: {
+        senderId,
+        recipientId,
+        createdAt: { gte: thirtyDaysAgo },
+      },
+    });
+    if (recipientRequestCount >= 3) {
+      throw new MessageRequestLimitExceededError(
+        'Recipient contact frequency limit reached (maximum 3 requests per 30 days).',
+      );
+    }
+
+    // Check existing PENDING request with lazy expiry
+    const existingPending = await this.prisma.messageRequest.findFirst({
+      where: {
+        senderId,
+        recipientId,
+        status: 'PENDING',
+      },
+    });
+
+    if (existingPending) {
+      if (existingPending.expiresAt < new Date()) {
+        await this.prisma.messageRequest.update({
+          where: { id: existingPending.id },
+          data: { status: 'EXPIRED' },
+        });
+      } else {
+        throw new DuplicateMessageRequestError();
+      }
+    }
+
+    const id = generateUuidV7();
+    const expiresAt = params.expiresAt || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const created = await tx.messageRequest.create({
+            data: {
+              id,
+              senderId,
+              recipientId,
+              initialMessage,
+              status: 'PENDING',
+              expiresAt,
+            },
+          });
+
+          // Insert outbox event for message_request.created.v1 in the SAME transaction
+          await tx.outboxEvent.create({
+            data: {
+              id: generateUuidV7(),
+              eventType: 'message_request.created.v1',
+              aggregateType: 'MessageRequest',
+              aggregateId: id,
+              payload: {
+                requestId: id,
+                senderId,
+                recipientId,
+                initialMessage,
+                expiresAt: expiresAt.toISOString(),
+                createdAt: created.createdAt.toISOString(),
+              },
+            },
+          });
+
+          return created;
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+          timeout: 5000,
+        },
+      );
+    } catch (err: any) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new DuplicateMessageRequestError();
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Retrieves a message request by ID, applying lazy expiry and anti-enumeration.
+   */
+  public async getMessageRequestById(
+    id: string,
+    viewerUserId?: string,
+  ): Promise<(MessageRequest & { senderProfile?: ConversationParticipantProfile }) | null> {
+    const request = await this.prisma.messageRequest.findUnique({
+      where: { id },
+      include: {
+        sender: {
+          select: PARTICIPANT_USER_SELECT,
+        },
+      },
+    });
+
+    if (!request) {
+      return null;
+    }
+
+    // Anti-enumeration: if viewer is supplied, must be sender or recipient
+    if (viewerUserId && request.senderId !== viewerUserId && request.recipientId !== viewerUserId) {
+      throw new MessageRequestNotFoundError();
+    }
+
+    // Lazy expiry check
+    if (request.status === 'PENDING' && request.expiresAt < new Date()) {
+      await this.prisma.messageRequest.update({
+        where: { id },
+        data: { status: 'EXPIRED' },
+      });
+      request.status = 'EXPIRED';
+    }
+
+    const { sender, ...rest } = request;
+    const senderProfile = this.formatParticipantProfile(sender as any);
+
+    return {
+      ...rest,
+      ...(senderProfile ? { senderProfile } : {}),
+    };
+  }
+
+  /**
+   * Lists message requests with keyset cursor pagination.
+   */
+  public async listMessageRequests(params: {
+    userId: string;
+    direction?: 'incoming' | 'outgoing';
+    status?: MessageRequestStatus;
+    limit?: number;
+    cursor?: string;
+  }): Promise<{
+    items: Array<MessageRequest & { senderProfile?: ConversationParticipantProfile }>;
+    nextCursor: string | null;
+    hasMore: boolean;
+  }> {
+    const { userId, direction = 'incoming', status = 'PENDING', limit = 20, cursor } = params;
+    const clampedLimit = Math.max(1, Math.min(limit, 50));
+
+    const where: Prisma.MessageRequestWhereInput = {
+      status,
+      ...(direction === 'incoming' ? { recipientId: userId } : { senderId: userId }),
+    };
+
+    if (cursor) {
+      try {
+        const raw = Buffer.from(cursor, 'base64url').toString('utf-8');
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.c === 'string' && typeof parsed.id === 'string') {
+          const d = new Date(parsed.c);
+          if (!isNaN(d.getTime())) {
+            where.OR = [{ createdAt: { lt: d } }, { createdAt: d, id: { lt: parsed.id } }];
+          } else {
+            throw new InvalidMessageCursorError(
+              'The message request pagination cursor timestamp is invalid.',
+            );
+          }
+        } else {
+          throw new InvalidMessageCursorError(
+            'The message request pagination cursor is invalid or malformed.',
+          );
+        }
+      } catch (err) {
+        if (err instanceof InvalidMessageCursorError) throw err;
+        throw new InvalidMessageCursorError(
+          'The message request pagination cursor is invalid or malformed.',
+        );
+      }
+    }
+
+    const rows = await this.prisma.messageRequest.findMany({
+      where,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: clampedLimit + 1,
+      include: {
+        sender: {
+          select: PARTICIPANT_USER_SELECT,
+        },
+      },
+    });
+
+    const hasMore = rows.length > clampedLimit;
+    const items = hasMore ? rows.slice(0, clampedLimit) : rows;
+
+    const formattedItems = items.map((r) => {
+      const { sender, ...rest } = r;
+      const senderProfile = this.formatParticipantProfile(sender as any);
+      return {
+        ...rest,
+        ...(senderProfile ? { senderProfile } : {}),
+      };
+    });
+
+    const nextCursor =
+      hasMore && items.length > 0
+        ? Buffer.from(
+            JSON.stringify({
+              c: items[items.length - 1]!.createdAt.toISOString(),
+              id: items[items.length - 1]!.id,
+            }),
+            'utf-8',
+          ).toString('base64url')
+        : null;
+
+    return {
+      items: formattedItems,
+      nextCursor,
+      hasMore,
+    };
+  }
+
+  /**
+   * Accepts a message request atomically.
+   * Acquires a PostgreSQL transaction advisory lock, verifies state,
+   * creates or retrieves direct conversation, creates sequence 1 message,
+   * updates request to ACCEPTED, and enqueues outbox events.
+   */
+  public async acceptMessageRequest(
+    id: string,
+    recipientId: string,
+  ): Promise<{
+    request: MessageRequest;
+    conversation: DirectConversationResponse;
+  }> {
+    let isExpired = false;
+
+    const result = await this.prisma.$transaction(
+      async (tx) => {
+        const lockKey = `msg_req:${id}`;
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+
+        const request = await tx.messageRequest.findUnique({
+          where: { id },
+        });
+
+        if (!request || request.recipientId !== recipientId) {
+          throw new MessageRequestNotFoundError();
+        }
+
+        // Idempotent resolution
+        if (request.status === 'ACCEPTED' && request.conversationId) {
+          const existingConv = await tx.conversation.findUnique({
+            where: { id: request.conversationId },
+            include: {
+              participants: {
+                include: {
+                  user: {
+                    select: PARTICIPANT_USER_SELECT,
+                  },
+                },
+              },
+            },
+          });
+          if (existingConv) {
+            return {
+              request,
+              conversation: this.formatDirectConversation(existingConv as any),
+            };
+          }
+        }
+
+        if (request.status !== 'PENDING') {
+          throw new MessageRequestInvalidStateError(
+            `Cannot accept message request in state '${request.status}'.`,
+          );
+        }
+
+        const now = new Date();
+        if (request.expiresAt <= now) {
+          const updateRes = await tx.messageRequest.updateMany({
+            where: {
+              id,
+              status: 'PENDING',
+              expiresAt: { lte: now },
+            },
+            data: {
+              status: 'EXPIRED',
+              respondedAt: now,
+            },
+          });
+
+          if (updateRes.count > 0) {
+            await tx.outboxEvent.create({
+              data: {
+                id: generateUuidV7(),
+                eventType: 'message_request.expired.v1',
+                aggregateType: 'MessageRequest',
+                aggregateId: id,
+                payload: {
+                  requestId: id,
+                  senderId: request.senderId,
+                  recipientId: request.recipientId,
+                  expiredAt: now.toISOString(),
+                },
+                status: 'PENDING',
+              },
+            });
+          }
+
+          isExpired = true;
+          return null as any;
+        }
+
+        const blocked = await this.isBlocked(request.senderId, recipientId);
+        if (blocked) {
+          await tx.messageRequest.update({
+            where: { id },
+            data: { status: 'CANCELLED' },
+          });
+          throw new UserBlockedError();
+        }
+
+        // Deterministic lock key for this user pair
+        const convLockKey = [request.senderId, recipientId].sort().join(':');
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'direct_conv:' + convLockKey}))`;
+
+        // Check if an existing direct conversation already exists between peers
+        let conversationId = request.conversationId;
+        let conversationRecord: any;
+
+        if (!conversationId) {
+          const existingDirect = await tx.conversation.findFirst({
+            where: {
+              type: 'DIRECT',
+              deletedAt: null,
+              AND: [
+                { participants: { some: { userId: request.senderId, leftAt: null } } },
+                { participants: { some: { userId: recipientId, leftAt: null } } },
+              ],
+            },
+            include: {
+              participants: {
+                include: {
+                  user: { select: PARTICIPANT_USER_SELECT },
+                },
+              },
+            },
+          });
+
+          if (existingDirect) {
+            conversationId = existingDirect.id;
+            conversationRecord = existingDirect;
+          }
+        }
+
+        if (!conversationId) {
+          conversationId = generateUuidV7();
+          conversationRecord = await tx.conversation.create({
+            data: {
+              id: conversationId,
+              type: 'DIRECT',
+              currentSequence: 1n,
+              participants: {
+                create: [
+                  {
+                    id: generateUuidV7(),
+                    userId: request.senderId,
+                    role: 'MEMBER',
+                    lastReadSequence: 0n,
+                  },
+                  {
+                    id: generateUuidV7(),
+                    userId: recipientId,
+                    role: 'MEMBER',
+                    lastReadSequence: 0n,
+                  },
+                ],
+              },
+            },
+            include: {
+              participants: {
+                include: {
+                  user: { select: PARTICIPANT_USER_SELECT },
+                },
+              },
+            },
+          });
+
+          // Create sequence 1 message with initialMessage
+          const messageId = generateUuidV7();
+          await tx.message.create({
+            data: {
+              id: messageId,
+              conversationId,
+              senderId: request.senderId,
+              sequence: 1n,
+              clientMessageId: `req-${request.id}`,
+              content: request.initialMessage,
+              status: 'SENT',
+            },
+          });
+
+          // Outbox event for sequence 1 message
+          await tx.outboxEvent.create({
+            data: {
+              id: generateUuidV7(),
+              eventType: 'message.created.v1',
+              aggregateType: 'Message',
+              aggregateId: messageId,
+              payload: {
+                messageId,
+                conversationId,
+                senderId: request.senderId,
+                sequence: '1',
+                clientMessageId: `req-${request.id}`,
+                content: request.initialMessage,
+                createdAt: new Date().toISOString(),
+              },
+            },
+          });
+        }
+
+        const updatedRequest = await tx.messageRequest.update({
+          where: { id },
+          data: {
+            status: 'ACCEPTED',
+            conversationId,
+            respondedAt: new Date(),
+          },
+        });
+
+        // Enqueue outbox event for request acceptance
+        await tx.outboxEvent.create({
+          data: {
+            id: generateUuidV7(),
+            eventType: 'message_request.accepted.v1',
+            aggregateType: 'MessageRequest',
+            aggregateId: id,
+            payload: {
+              requestId: id,
+              senderId: request.senderId,
+              recipientId,
+              conversationId,
+              acceptedAt: new Date().toISOString(),
+            },
+          },
+        });
+
+        return {
+          request: updatedRequest,
+          conversation: this.formatDirectConversation(conversationRecord),
+        };
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+        timeout: 10000,
+      },
+    );
+
+    if (isExpired || !result) {
+      throw new MessageRequestInvalidStateError('Message request has expired.');
+    }
+
+    return result;
+  }
+
+  /**
+   * Declines a message request atomically.
+   */
+  public async declineMessageRequest(
+    id: string,
+    recipientId: string,
+    reason?: string,
+  ): Promise<MessageRequest> {
+    return await this.prisma.$transaction(
+      async (tx) => {
+        const lockKey = `msg_req:${id}`;
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+
+        const request = await tx.messageRequest.findUnique({
+          where: { id },
+        });
+
+        if (!request || request.recipientId !== recipientId) {
+          throw new MessageRequestNotFoundError();
+        }
+
+        if (request.status === 'DECLINED') {
+          return request;
+        }
+
+        if (request.status !== 'PENDING') {
+          throw new MessageRequestInvalidStateError(
+            `Cannot decline message request in state '${request.status}'.`,
+          );
+        }
+
+        const updated = await tx.messageRequest.update({
+          where: { id },
+          data: {
+            status: 'DECLINED',
+            declinedReason: reason || null,
+            respondedAt: new Date(),
+          },
+        });
+
+        await tx.outboxEvent.create({
+          data: {
+            id: generateUuidV7(),
+            eventType: 'message_request.declined.v1',
+            aggregateType: 'MessageRequest',
+            aggregateId: id,
+            payload: {
+              requestId: id,
+              senderId: request.senderId,
+              recipientId,
+              declinedAt: new Date().toISOString(),
+              reason: reason || null,
+            },
+          },
+        });
+
+        return updated;
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+        timeout: 5000,
+      },
+    );
+  }
+
+  /**
+   * Cancels a pending message request by the sender.
+   */
+  public async cancelMessageRequest(id: string, senderId: string): Promise<MessageRequest> {
+    return await this.prisma.$transaction(
+      async (tx) => {
+        const lockKey = `msg_req:${id}`;
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+
+        const request = await tx.messageRequest.findUnique({
+          where: { id },
+        });
+
+        if (!request || request.senderId !== senderId) {
+          throw new MessageRequestNotFoundError();
+        }
+
+        if (request.status === 'CANCELLED') {
+          return request;
+        }
+
+        if (request.status !== 'PENDING') {
+          throw new MessageRequestInvalidStateError(
+            `Cannot cancel message request in state '${request.status}'.`,
+          );
+        }
+
+        const updated = await tx.messageRequest.update({
+          where: { id },
+          data: {
+            status: 'CANCELLED',
+          },
+        });
+
+        await tx.outboxEvent.create({
+          data: {
+            id: generateUuidV7(),
+            eventType: 'message_request.cancelled.v1',
+            aggregateType: 'MessageRequest',
+            aggregateId: id,
+            payload: {
+              requestId: id,
+              senderId,
+              recipientId: request.recipientId,
+              cancelledAt: new Date().toISOString(),
+            },
+          },
+        });
+
+        return updated;
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+        timeout: 5000,
+      },
+    );
   }
 }
 

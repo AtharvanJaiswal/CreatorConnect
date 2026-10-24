@@ -1,12 +1,21 @@
 import Link from 'next/link';
 import { ThemeToggle } from './theme-toggle';
 import { CcLogoSquare } from './ui/cc-brand';
-import { Compass, Video, Briefcase, Building2, ShieldCheck, User } from 'lucide-react';
+import {
+  Compass,
+  Video,
+  Briefcase,
+  Building2,
+  ShieldCheck,
+  User,
+  MessageSquare,
+} from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/onboarding', label: 'Onboarding' },
   { href: '/discovery', label: 'Discover', icon: Compass },
   { href: '/assignments', label: 'Assignments', icon: Briefcase },
+  { href: '/messages', label: 'Messages', icon: MessageSquare },
   { href: '/creator', label: 'Creator Hub', icon: Video },
   { href: '/professional', label: 'Production Talent', icon: Briefcase },
   { href: '/brand', label: 'Brand Campaigns', icon: Building2 },

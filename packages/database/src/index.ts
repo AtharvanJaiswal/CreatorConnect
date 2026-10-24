@@ -1,5 +1,5 @@
 export * from '@prisma/client';
-export { InvitationStatus } from '@prisma/client';
+export { InvitationStatus, MessageRequestStatus } from '@prisma/client';
 import { PrismaClient } from '@prisma/client';
 
 var globalPrisma: PrismaClient | undefined;

@@ -133,6 +133,15 @@ export const CreateDirectConversationInputSchema = Type.Object({
 });
 export type CreateDirectConversationInput = Static<typeof CreateDirectConversationInputSchema>;
 
+export const ConversationParticipantProfileSchema = Type.Object({
+  displayName: Type.String(),
+  avatarUrl: Type.Union([Type.String(), Type.Null()]),
+  role: Type.Optional(Type.String()),
+  location: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  isVerified: Type.Optional(Type.Boolean()),
+});
+export type ConversationParticipantProfile = Static<typeof ConversationParticipantProfileSchema>;
+
 export const ConversationParticipantResponseSchema = Type.Object({
   id: UuidSchema,
   conversationId: UuidSchema,
@@ -143,6 +152,7 @@ export const ConversationParticipantResponseSchema = Type.Object({
   leftAt: Type.Union([IsoDateTimeSchema, Type.Null()]),
   joinedAt: IsoDateTimeSchema,
   updatedAt: IsoDateTimeSchema,
+  profile: Type.Optional(ConversationParticipantProfileSchema),
 });
 export type ConversationParticipantResponse = Static<typeof ConversationParticipantResponseSchema>;
 
@@ -334,6 +344,25 @@ export const MessageCreatedV1PayloadSchema = Type.Object({
 });
 export type MessageCreatedV1Payload = Static<typeof MessageCreatedV1PayloadSchema>;
 
+export const MessageDeletedV1PayloadSchema = Type.Object({
+  messageId: UuidSchema,
+  conversationId: UuidSchema,
+  deletedBy: UuidSchema,
+  sequence: SequenceStringSchema,
+  deletedAt: IsoDateTimeSchema,
+});
+export type MessageDeletedV1Payload = Static<typeof MessageDeletedV1PayloadSchema>;
+
+export const MessageUpdatedV1PayloadSchema = Type.Object({
+  messageId: UuidSchema,
+  conversationId: UuidSchema,
+  senderId: UuidSchema,
+  sequence: SequenceStringSchema,
+  content: Type.String(),
+  updatedAt: IsoDateTimeSchema,
+});
+export type MessageUpdatedV1Payload = Static<typeof MessageUpdatedV1PayloadSchema>;
+
 export const UserBlockCreatedV1PayloadSchema = Type.Object({
   blockId: UuidSchema,
   blockerId: UuidSchema,
@@ -375,6 +404,117 @@ export const OutboxEventEnvelopeSchema = Type.Object({
 export type OutboxEventEnvelope = Static<typeof OutboxEventEnvelopeSchema>;
 
 // ==============================================================================
+// Phase 19F Message Requests
+// ==============================================================================
+
+export const MessageRequestStatusSchema = Type.Union([
+  Type.Literal('PENDING'),
+  Type.Literal('ACCEPTED'),
+  Type.Literal('DECLINED'),
+  Type.Literal('EXPIRED'),
+  Type.Literal('CANCELLED'),
+]);
+export type MessageRequestStatus = Static<typeof MessageRequestStatusSchema>;
+
+export const CreateMessageRequestInputSchema = Type.Object({
+  recipientId: UuidSchema,
+  initialMessage: Type.String({
+    minLength: 1,
+    maxLength: 500,
+    description: 'Initial plain-text introductory message (max 500 characters, no attachments)',
+  }),
+});
+export type CreateMessageRequestInput = Static<typeof CreateMessageRequestInputSchema>;
+
+export const DeclineMessageRequestInputSchema = Type.Object({
+  reason: Type.Optional(Type.String({ maxLength: 255 })),
+});
+export type DeclineMessageRequestInput = Static<typeof DeclineMessageRequestInputSchema>;
+
+export const MessageRequestResponseSchema = Type.Object({
+  id: UuidSchema,
+  senderId: UuidSchema,
+  recipientId: UuidSchema,
+  conversationId: Type.Union([UuidSchema, Type.Null()]),
+  initialMessage: Type.String(),
+  status: MessageRequestStatusSchema,
+  declinedReason: Type.Union([Type.String(), Type.Null()]),
+  expiresAt: IsoDateTimeSchema,
+  respondedAt: Type.Union([IsoDateTimeSchema, Type.Null()]),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+  senderProfile: Type.Optional(ConversationParticipantProfileSchema),
+});
+export type MessageRequestResponse = Static<typeof MessageRequestResponseSchema>;
+
+export const AcceptMessageRequestResponseSchema = Type.Object({
+  request: MessageRequestResponseSchema,
+  conversation: DirectConversationResponseSchema,
+});
+export type AcceptMessageRequestResponse = Static<typeof AcceptMessageRequestResponseSchema>;
+
+export const ListMessageRequestsQuerySchema = Type.Object({
+  direction: Type.Optional(Type.Union([Type.Literal('incoming'), Type.Literal('outgoing')])),
+  status: Type.Optional(MessageRequestStatusSchema),
+  limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })),
+  cursor: Type.Optional(Type.String({ minLength: 1, maxLength: 512 })),
+});
+export type ListMessageRequestsQuery = Static<typeof ListMessageRequestsQuerySchema>;
+
+export const ListMessageRequestsResponseSchema = Type.Object({
+  items: Type.Array(MessageRequestResponseSchema),
+  nextCursor: Type.Union([Type.String(), Type.Null()]),
+  hasMore: Type.Boolean(),
+});
+export type ListMessageRequestsResponse = Static<typeof ListMessageRequestsResponseSchema>;
+
+export const MessageRequestCreatedV1PayloadSchema = Type.Object({
+  requestId: UuidSchema,
+  senderId: UuidSchema,
+  recipientId: UuidSchema,
+  initialMessage: Type.String(),
+  expiresAt: IsoDateTimeSchema,
+  createdAt: IsoDateTimeSchema,
+});
+export type MessageRequestCreatedV1Payload = Static<typeof MessageRequestCreatedV1PayloadSchema>;
+
+export const MessageRequestAcceptedV1PayloadSchema = Type.Object({
+  requestId: UuidSchema,
+  senderId: UuidSchema,
+  recipientId: UuidSchema,
+  conversationId: UuidSchema,
+  acceptedAt: IsoDateTimeSchema,
+});
+export type MessageRequestAcceptedV1Payload = Static<typeof MessageRequestAcceptedV1PayloadSchema>;
+
+export const MessageRequestDeclinedV1PayloadSchema = Type.Object({
+  requestId: UuidSchema,
+  senderId: UuidSchema,
+  recipientId: UuidSchema,
+  declinedAt: IsoDateTimeSchema,
+  reason: Type.Union([Type.String(), Type.Null()]),
+});
+export type MessageRequestDeclinedV1Payload = Static<typeof MessageRequestDeclinedV1PayloadSchema>;
+
+export const MessageRequestCancelledV1PayloadSchema = Type.Object({
+  requestId: UuidSchema,
+  senderId: UuidSchema,
+  recipientId: UuidSchema,
+  cancelledAt: IsoDateTimeSchema,
+});
+export type MessageRequestCancelledV1Payload = Static<
+  typeof MessageRequestCancelledV1PayloadSchema
+>;
+
+export const MessageRequestExpiredV1PayloadSchema = Type.Object({
+  requestId: UuidSchema,
+  senderId: UuidSchema,
+  recipientId: UuidSchema,
+  expiredAt: IsoDateTimeSchema,
+});
+export type MessageRequestExpiredV1Payload = Static<typeof MessageRequestExpiredV1PayloadSchema>;
+
+// ==============================================================================
 // Messaging Error Codes & Constants
 // ==============================================================================
 
@@ -393,6 +533,14 @@ export const MessagingErrorCode = {
   ATTACHMENT_NOT_ACTIVE: 'ATTACHMENT_NOT_ACTIVE',
   ATTACHMENT_NOT_FOUND: 'ATTACHMENT_NOT_FOUND',
   MESSAGE_ATTACHMENT_LIMIT_EXCEEDED: 'MESSAGE_ATTACHMENT_LIMIT_EXCEEDED',
+  MESSAGE_REQUEST_NOT_FOUND: 'MESSAGE_REQUEST_NOT_FOUND',
+  DUPLICATE_MESSAGE_REQUEST: 'DUPLICATE_MESSAGE_REQUEST',
+  MESSAGE_REQUEST_COOLDOWN_ACTIVE: 'MESSAGE_REQUEST_COOLDOWN_ACTIVE',
+  MESSAGE_REQUEST_INVALID_STATE: 'MESSAGE_REQUEST_INVALID_STATE',
+  SELF_MESSAGE_REQUEST_NOT_ALLOWED: 'SELF_MESSAGE_REQUEST_NOT_ALLOWED',
+  MESSAGE_REQUEST_LIMIT_EXCEEDED: 'MESSAGE_REQUEST_LIMIT_EXCEEDED',
+  MESSAGE_REQUEST_REQUIRED: 'MESSAGE_REQUEST_REQUIRED',
+  INVALID_MESSAGE_REQUEST_INPUT: 'INVALID_MESSAGE_REQUEST_INPUT',
 } as const;
 
 export type MessagingErrorCode = (typeof MessagingErrorCode)[keyof typeof MessagingErrorCode];

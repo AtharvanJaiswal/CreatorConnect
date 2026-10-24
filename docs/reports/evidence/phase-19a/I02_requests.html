@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><title>CreatorConnect</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:ital,wght@0,400..800;1,400..800&amp;family=Newsreader:ital,opsz,wght@0,6..72,400..800;1,6..72,400..800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-primary-fixed": "#231b00", "outline-variant": "#d0c6ae", "inverse-surface": "#34302d", "on-error": "#ffffff", "surface-container-low": "#faf2ee", "tertiary-fixed-dim": "#fbb3c5", "surface-container-highest": "#e9e1dd", "on-secondary-fixed": "#210f47", "on-secondary-fixed-variant": "#4d3d75", "on-tertiary-container": "#874e5e", "tertiary-container": "#ffcdd8", "outline": "#7f7662", "inverse-on-surface": "#f7efeb", "inverse-primary": "#eac338", "on-primary": "#ffffff", "tertiary": "#864d5d", "on-primary-container": "#735c00", "error": "#ba1a1a", "surface-container-high": "#efe6e3", "on-surface-variant": "#4d4634", "surface-dim": "#e0d8d5", "primary-fixed-dim": "#eac338", "on-secondary": "#ffffff", "secondary-container": "#d0bcfe", "on-tertiary-fixed": "#360c1b", "secondary": "#65558f", "tertiary-fixed": "#ffd9e1", "error-container": "#ffdad6", "on-tertiary-fixed-variant": "#6b3646", "surface-container": "#f5ece8", "surface-bright": "#fff8f5", "on-surface": "#1e1b19", "on-background": "#1e1b19", "background": "#fff8f5", "on-tertiary": "#ffffff", "on-secondary-container": "#594982", "secondary-fixed": "#e9ddff", "surface-variant": "#e9e1dd", "primary-fixed": "#ffe083", "on-error-container": "#93000a", "primary-container": "#ffd64a", "surface": "#fff8f5", "surface-container-lowest": "#ffffff", "secondary-fixed-dim": "#d0bcfe", "primary": "#725c00", "on-primary-fixed-variant": "#564500", "surface-tint": "#725c00" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-2xl": "3rem", "space-lg": "1.5rem", "space-xl": "2rem", "margin-tablet": "2rem", "space-sm": "0.5rem", "space-xs": "0.25rem", "gutter": "1rem", "space-3xl": "4rem", "space-md": "1rem", "gutter-tablet": "1.5rem", "gutter-desktop": "1.5rem", "margin-desktop": "3rem", "margin": "1rem" }, "fontFamily": { "caption": [ "Archivo Narrow" ], "display-lg-mobile": [ "Archivo Narrow" ], "display-lg": [ "Archivo Narrow" ], "display-accent": [ "Newsreader" ], "headline-lg": [ "Archivo Narrow" ], "body-lg": [ "Archivo Narrow" ], "button-lg": [ "Archivo Narrow" ], "body-sm": [ "Archivo Narrow" ], "headline-md": [ "Archivo Narrow" ], "body-md": [ "Archivo Narrow" ], "label": [ "Archivo Narrow" ] }, "fontSize": { "caption": [ "11.5px", { "lineHeight": "16px", "fontWeight": "400" } ], "display-lg-mobile": [ "30px", { "lineHeight": "32px", "letterSpacing": "-0.03em", "fontWeight": "800" } ], "display-lg": [ "36px", { "lineHeight": "38px", "letterSpacing": "-0.03em", "fontWeight": "800" } ], "display-accent": [ "36px", { "lineHeight": "38px", "letterSpacing": "0em", "fontWeight": "400" } ], "headline-lg": [ "25px", { "lineHeight": "30px", "letterSpacing": "-0.025em", "fontWeight": "800" } ], "body-lg": [ "16px", { "lineHeight": "24px", "fontWeight": "500" } ], "button-lg": [ "15px", { "lineHeight": "20px", "letterSpacing": "-0.01em", "fontWeight": "700" } ], "body-sm": [ "13px", { "lineHeight": "18px", "fontWeight": "400" } ], "headline-md": [ "18px", { "lineHeight": "24px", "letterSpacing": "-0.015em", "fontWeight": "700" } ], "body-md": [ "14px", { "lineHeight": "21px", "fontWeight": "400" } ], "label": [ "10px", { "lineHeight": "12px", "letterSpacing": "0.09em", "fontWeight": "700" } ] } } } };</script></head><body class="bg-background font-body-md text-on-surface antialiased min-h-screen flex flex-col justify-between selection:bg-primary-container selection:text-on-primary-container"><header class="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-20 max-w-[1200px] mx-auto px-margin-desktop flex items-center justify-between gap-space-lg"><div class="flex items-center gap-space-xl"><a class="flex items-center gap-space-xs group" data-path="home" href="#"><span class="w-9 h-9 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-display-lg text-headline-md leading-none shadow-[2px_2px_0px_#1e1b19]">C*</span><span class="font-headline-md text-headline-md tracking-tight text-on-surface group-hover:text-primary transition-colors">Creator<span class="font-display-accent italic font-normal text-on-surface-variant">Connect</span></span></a><nav class="hidden lg:flex items-center gap-space-xs" data-active-classes="bg-primary-container text-on-primary-container font-button-lg shadow-[2px_2px_0px_#1e1b19]"><a class="px-space-md py-space-xs rounded-full font-button-lg text-button-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="home" href="#">Home</a><a class="px-space-md py-space-xs rounded-full font-button-lg text-button-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="discover" href="#">Discover</a><a class="px-space-md py-space-xs rounded-full font-button-lg text-button-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="portfolio" href="#">Portfolio</a><a class="px-space-md py-space-xs rounded-full font-button-lg text-button-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="assignments" href="#">Assignments</a><a class="px-space-md py-space-xs rounded-full font-button-lg text-button-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="inbox" href="#">Inbox<span class="w-2 h-2 rounded-full bg-error ring-2 ring-surface inline-block"></span></a></nav></div><div class="flex items-center gap-space-md"><div class="hidden md:flex items-center bg-surface-container-lowest rounded-full px-space-md py-space-xs shadow-[0px_1px_4px_rgba(20,17,15,0.06)]"><span class="material-symbols-outlined text-[18px] text-on-surface-variant mr-space-xs">search</span><span class="font-body-sm text-body-sm text-on-surface-variant pr-space-md">Search creators, briefs...</span><kbd class="font-caption text-caption bg-surface-container text-on-surface-variant px-space-xs py-0.5 rounded-full">⌘K</kbd></div><a aria-label="Notifications" class="relative w-10 h-10 rounded-full bg-surface-container-lowest hover:bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-all" data-path="notifications" href="#"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-tertiary"></span></a><a class="flex items-center gap-space-sm pl-space-xs pr-space-md py-space-xs rounded-full bg-surface-container-lowest hover:bg-surface-container transition-all group" data-path="profile" href="#"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="hidden xl:flex flex-col text-left leading-none"><span class="font-headline-md text-body-sm font-bold text-on-surface group-hover:text-primary transition-colors">Kavya Nair</span><span class="font-caption text-caption text-on-surface-variant">Studio Atelier</span></div></a></div></div></header><main class="w-full max-w-[1200px] mx-auto pt-20 px-margin-desktop flex-1"><div class="flex flex-col w-full">
+<!-- QA State Simulator Controller -->
+<aside aria-label="Interactive QA State Switcher" class="w-full bg-surface-container-high/60 backdrop-blur-md border-b border-surface-container-highest px-margin-desktop py-space-xs mb-space-lg rounded-xl flex flex-wrap items-center justify-between gap-space-sm text-caption">
+<div class="flex items-center gap-space-xs text-on-surface-variant font-label tracking-widest uppercase">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span>QA Simulation Engine (DLG-57 Spec Preview)</span>
+</div>
+<div class="flex items-center gap-1.5 flex-wrap" id="qa-switcher-controls">
+<button class="qa-state-btn px-space-sm py-0.5 rounded-full bg-on-surface text-surface font-caption tracking-tight hover:opacity-90 transition-all" data-view="default" type="button">Populated (2 Active, 1 Expired)</button>
+<button class="qa-state-btn px-space-sm py-0.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-caption hover:bg-surface-container transition-all" data-view="empty" type="button">Empty State</button>
+<button class="qa-state-btn px-space-sm py-0.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-caption hover:bg-surface-container transition-all" data-view="loading" type="button">Loading Skeletons</button>
+<button class="qa-state-btn px-space-sm py-0.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-caption hover:bg-surface-container transition-all" data-view="modal" type="button">Decline Sheet Open (DLG-57)</button>
+<button class="qa-state-btn px-space-sm py-0.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-caption hover:bg-surface-container transition-all" data-view="offline" type="button">Offline Mode</button>
+<button class="qa-state-btn px-space-sm py-0.5 rounded-full bg-surface-container-lowest text-on-surface-variant font-caption hover:bg-surface-container transition-all" data-view="error" type="button">Load Error / Retry</button>
+</div>
+</aside>
+<!-- Main View Area -->
+<div class="w-full max-w-[1200px] mx-auto flex flex-col gap-space-xl">
+<!-- Header & Navigation Hub -->
+<header class="flex flex-col gap-space-sm">
+<div class="flex items-center gap-space-xs text-caption font-label uppercase text-on-surface-variant tracking-wider">
+<span>Workspace</span>
+<span>•</span>
+<span>Communique</span>
+<span>•</span>
+<span class="text-primary font-bold">Encrypted Protocol v4</span>
+</div>
+<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md">
+<div>
+<h1 class="font-display-lg text-display-lg text-on-surface tracking-tight">
+            Messages &amp; <span class="font-display-accent text-display-accent italic text-primary">Conversations</span>
+</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">
+            Review new conversations before they move into your chats.
+          </p>
+</div>
+<!-- Inbound Protocol Pill Tab Switcher -->
+<nav aria-label="Conversation Sections" class="flex items-center gap-space-xs bg-surface-container-low p-1 rounded-full w-fit">
+<a class="px-space-md py-space-xs rounded-full font-button-lg text-button-lg text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-space-xs" data-path="messages-inbox" href="#">
+<span>Chats</span>
+<span class="text-caption font-label text-on-surface-variant/80 bg-surface-container-highest px-2 py-0.5 rounded-full">4 Active</span>
+</a>
+<a class="px-space-md py-space-xs rounded-full font-button-lg text-button-lg bg-primary-container text-on-primary-container shadow-[2px_2px_0px_#1e1b19] flex items-center gap-space-xs transition-transform hover:-translate-y-0.5" data-path="messages-requests" href="#">
+<span>Requests</span>
+<span class="text-caption font-label bg-on-surface text-surface px-2 py-0.5 rounded-full font-bold">2</span>
+</a>
+</nav>
+</div>
+</header>
+<!-- CONTENT LAYOUT: Dynamic Container governed by State Switcher -->
+<section class="relative w-full" id="state-container-wrapper">
+<!-- 1. POPULATED STATE (Default 60/40 Split Layout) -->
+<div class="qa-view-panel grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-start" id="view-default">
+<!-- LEFT COLUMN: Requests Queue (7 cols = ~60%) -->
+<div class="lg:col-span-7 flex flex-col gap-space-md">
+<div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-space-xs pb-space-xs border-b border-surface-container-highest">
+<h2 class="font-headline-md text-headline-md text-on-surface flex items-center gap-space-xs">
+<span>Pending Inbound Requests</span>
+<span class="text-caption font-label bg-secondary-fixed text-on-secondary-fixed px-2 py-0.5 rounded-full">2</span>
+</h2>
+<p class="font-caption text-caption text-on-surface-variant">
+              Sender is not notified when you view.
+            </p>
+</div>
+<!-- Requests Card Stack -->
+<div class="flex flex-col gap-space-md" id="requests-list-flow">
+<!-- REQUEST 1: Kabir Sen -->
+<article class="p-space-lg rounded-[28px] bg-surface-container-lowest border border-outline-variant/60 shadow-[0px_4px_16px_rgba(20,17,15,0.03)] hover:border-on-surface hover:-translate-y-0.5 transition-all flex flex-col gap-space-md group">
+<!-- Header info row -->
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-md">
+<div class="relative w-12 h-12 rounded-[20px] overflow-hidden bg-surface-container-high flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Portrait of Kabir Sen, an Indian documentary filmmaker in a warm outdoor setting in Kolkata with warm sunlight, looking confident in an olive canvas jacket" src="https://lh3.googleusercontent.com/aida-public/AB6AXuALGDvjXJBTwREfKFsVVdbFuf6MUF8zqSZ4S_owBw6ghjhbTfBfZphKwARi76OM2qdDfJq2DipJeeMkUdbhHZCNsz_A6Ec2KgwZT7hJCvSK8lS0WVMq0LdX5WW1lTl-7ucqZgZFn9YJ_3QyRDuMED7tduixYF47-2xxaImQO6J32__sDe6qGfeHA9Zx1ajRDfsGIEP6-Ckg14tIT4cdwbnAnz37smWz840fcCs5UOkj5sWZnSnSI8ol"/>
+</div>
+<div>
+<div class="flex items-center gap-space-xs">
+<h3 class="font-headline-md text-headline-md text-on-surface group-hover:text-primary transition-colors">Kabir Sen</h3>
+<span class="font-caption text-caption text-on-surface-variant font-medium">@kabir.doc</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant line-clamp-1">
+                      Documentary Cinematographer &amp; Drone Pilot · Kolkata
+                    </p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1 flex-shrink-0">
+<span class="font-caption text-caption bg-tertiary-container text-on-tertiary-container px-2.5 py-1 rounded-full font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">timer</span>
+                    Expires in 5 days (May 26)
+                  </span>
+<span class="font-label text-label uppercase tracking-widest text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">
+                    Source: Public Profile (E07)
+                  </span>
+</div>
+</div>
+<!-- Message Preview -->
+<div class="p-space-md rounded-2xl bg-surface-container-low/70 border border-surface-container text-on-surface font-body-md text-body-md leading-relaxed relative">
+<p class="line-clamp-3">
+                  "Hi Kavya, I came across your post-production work on the Monsoon Lookbook series. We're locking down a second unit documentary crew for an upcoming wildlife conservation docuseries in Assam starting July. Would love to explore your availability for color mastering."
+                </p>
+<div class="mt-space-xs flex items-center gap-space-xs text-caption text-on-surface-variant">
+<span class="material-symbols-outlined text-[15px] text-primary">verified_user</span>
+<span>Character gate: 248/300 chars · No external links or attachments</span>
+</div>
+</div>
+<!-- Action Bar -->
+<div class="flex items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="font-label text-label text-on-surface-variant uppercase tracking-wider">AI Match Confidence</span>
+<span class="font-caption text-caption font-bold bg-secondary-fixed text-on-secondary-fixed px-2 py-0.5 rounded-full">94%</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="px-space-md py-space-xs rounded-full font-button-lg text-button-lg text-on-surface-variant hover:text-error hover:bg-error-container/20 transition-all border border-outline-variant/60" onclick="openDeclineModal('Kabir Sen', '@kabir.doc')" type="button">
+                    Decline
+                  </button>
+<a class="px-space-lg py-space-xs rounded-full font-button-lg text-button-lg bg-primary-container text-on-primary-container hover:bg-primary-fixed shadow-[2px_2px_0px_#1e1b19] transition-all flex items-center gap-1.5" data-path="review-request-kabir" href="#">
+<span>Review Request (I03)</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</div>
+</div>
+</article>
+<!-- REQUEST 2: Priyamvada Joshi -->
+<article class="p-space-lg rounded-[28px] bg-surface-container-lowest border border-outline-variant/60 shadow-[0px_4px_16px_rgba(20,17,15,0.03)] hover:border-on-surface hover:-translate-y-0.5 transition-all flex flex-col gap-space-md group">
+<!-- Header info row -->
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-md">
+<div class="relative w-12 h-12 rounded-[20px] overflow-hidden bg-surface-container-high flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Portrait photo of Priyamvada Joshi, a South Asian sound designer wearing professional studio monitoring headphones in a Mumbai sound editing studio with warm amber mood lights" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXLmYcecP9i_M8bKZ4hiBfkudYmSWKHnceLQ_wtKmViqMJmTBrCJHs6IZNlPBw0SRXlcjPuoVUPs99_8_OU0sqX1aYAoDeWK5BKrr77rvajJVxiEf3BKpZnKn3k8p7OW0_YOjyUbjBjhqRPbPYMwZJBBrONhUIvfP0Tjj7m4nVi5v3683CMGyK62Hqy8XoZPD1ihlLl1V8Sq1g8J5QNIllJmIzcawg18VnI1cENo1qWvf40GFlFRbk"/>
+</div>
+<div>
+<div class="flex items-center gap-space-xs">
+<h3 class="font-headline-md text-headline-md text-on-surface group-hover:text-primary transition-colors">Priyamvada Joshi</h3>
+<span class="font-caption text-caption text-on-surface-variant font-medium">@priya.sound</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant line-clamp-1">
+                      Podcast Sound Designer &amp; Mastering Engineer · Mumbai
+                    </p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1 flex-shrink-0">
+<span class="font-caption text-caption bg-tertiary-container text-on-tertiary-container px-2.5 py-1 rounded-full font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">timer</span>
+                    Expires in 3 days (May 24)
+                  </span>
+<span class="font-label text-label uppercase tracking-widest text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">
+                    Source: Audio Engineering Community Feed
+                  </span>
+</div>
+</div>
+<!-- Message Preview -->
+<div class="p-space-md rounded-2xl bg-surface-container-low/70 border border-surface-container text-on-surface font-body-md text-body-md leading-relaxed relative">
+<p class="line-clamp-3">
+                  "Hello Kavya! Following up on the discussion at the Mumbai Creator Roundtable regarding Dolby Atmos spatial audio mixing for indie podcasts. Would you be open to collaborating on our upcoming pilot episode?"
+                </p>
+<div class="mt-space-xs flex items-center gap-space-xs text-caption text-on-surface-variant">
+<span class="material-symbols-outlined text-[15px] text-primary">verified_user</span>
+<span>Character gate: 198/300 chars · No external links or attachments</span>
+</div>
+</div>
+<!-- Action Bar -->
+<div class="flex items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="font-label text-label text-on-surface-variant uppercase tracking-wider">AI Match Confidence</span>
+<span class="font-caption text-caption font-bold bg-secondary-fixed text-on-secondary-fixed px-2 py-0.5 rounded-full">88%</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="px-space-md py-space-xs rounded-full font-button-lg text-button-lg text-on-surface-variant hover:text-error hover:bg-error-container/20 transition-all border border-outline-variant/60" onclick="openDeclineModal('Priyamvada Joshi', '@priya.sound')" type="button">
+                    Decline
+                  </button>
+<a class="px-space-lg py-space-xs rounded-full font-button-lg text-button-lg bg-primary-container text-on-primary-container hover:bg-primary-fixed shadow-[2px_2px_0px_#1e1b19] transition-all flex items-center gap-1.5" data-path="review-request-priya" href="#">
+<span>Review Request (I03)</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</div>
+</div>
+</article>
+<!-- REQUEST 3: Aarav Patel (Expired / Handled State) -->
+<article class="p-space-lg rounded-[28px] bg-surface-container-low/40 border border-dashed border-outline-variant/70 opacity-75 flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-center gap-space-md">
+<div class="w-10 h-10 rounded-[16px] bg-surface-container-highest flex items-center justify-center text-on-surface-variant flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">person_off</span>
+</div>
+<div>
+<div class="flex items-center gap-space-xs">
+<h3 class="font-headline-md text-body-lg text-on-surface line-through opacity-80">Aarav Patel</h3>
+<span class="font-caption text-caption text-on-surface-variant">@aarav_visuals</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant">Motion Graphics Designer · Bengaluru</p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<span class="font-caption text-caption bg-surface-container-highest text-on-surface-variant px-2.5 py-0.5 rounded-full font-medium">
+                    Request Expired
+                  </span>
+<span class="font-label text-label uppercase tracking-widest text-on-surface-variant">
+                    Source: Public Profile (E07)
+                  </span>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant italic px-space-xs">
+                "Hi team, reaching out to see if you need 3D motion assets for your client pitches..."
+              </p>
+<div class="flex items-center justify-between pt-space-xs border-t border-surface-container-highest">
+<span class="font-caption text-caption text-on-surface-variant">Auto-expired after 7 days without contact.</span>
+<span class="font-button-lg text-body-sm text-on-surface-variant/70 font-semibold cursor-not-allowed">
+                  Expired (Archived)
+                </span>
+</div>
+</article>
+</div>
+</div>
+<!-- RIGHT COLUMN: Protocol Dossier & Gate Policy (5 cols = ~40%) -->
+<div class="lg:col-span-5 flex flex-col gap-space-lg">
+<!-- Request Gate Policy Card -->
+<div class="p-space-xl rounded-[28px] bg-surface-container-lowest border border-outline-variant/60 shadow-[0px_4px_16px_rgba(20,17,15,0.03)] flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">security</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">How Requests Work</h3>
+</div>
+<span class="font-label text-label uppercase tracking-wider text-primary font-bold bg-primary/10 px-2.5 py-1 rounded-full">Strict Gate</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+              CreatorConnect enforces a non-intrusive communique layer to safeguard creators from unprompted spam, aggressive client cold outreach, and privacy leakage.
+            </p>
+<ul class="flex flex-col gap-space-md pt-space-xs">
+<li class="flex items-start gap-space-sm">
+<div class="w-7 h-7 rounded-full bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px]">lock</span>
+</div>
+<div>
+<h4 class="font-headline-md text-body-md font-bold text-on-surface">Zero Spam Guarantee</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+                    Senders can only send one initial message up to 300 characters without attachments until you accept.
+                  </p>
+</div>
+</li>
+<li class="flex items-start gap-space-sm">
+<div class="w-7 h-7 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px]">shield</span>
+</div>
+<div>
+<h4 class="font-headline-md text-body-md font-bold text-on-surface">Privacy Protected</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+                    Your contact details, email, and social handles remain masked until an assignment escrow is created.
+                  </p>
+</div>
+</li>
+<li class="flex items-start gap-space-sm">
+<div class="w-7 h-7 rounded-full bg-surface-container text-on-surface flex items-center justify-center flex-shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[16px]">hourglass_top</span>
+</div>
+<div>
+<h4 class="font-headline-md text-body-md font-bold text-on-surface">7-Day Auto-Expiry</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+                    Unanswered requests expire automatically after 7 days without alerting the sender.
+                  </p>
+</div>
+</li>
+</ul>
+<div class="pt-space-sm border-t border-surface-container flex flex-col gap-space-sm">
+<a class="font-button-lg text-body-sm text-primary hover:text-on-surface-variant flex items-center justify-between group transition-colors" href="#">
+<span>Learn more about Contact Safety Policy</span>
+<span class="material-symbols-outlined text-[16px] group-hover:translate-x-0.5 transition-transform">north_east</span>
+</a>
+<button class="w-full py-space-xs rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-button-lg text-body-sm transition-colors text-center" onclick="openDeclineModal('Kabir Sen', '@kabir.doc')" type="button">
+                Simulate Decline Sheet (DLG-57)
+              </button>
+</div>
+</div>
+<!-- Creator Availability Card (Subtle Inset) -->
+<div class="p-space-lg rounded-[24px] bg-surface-container-low border border-surface-container flex items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="w-3 h-3 rounded-full bg-primary-container border-2 border-on-surface animate-ping"></span>
+<div>
+<div class="font-headline-md text-body-sm font-bold text-on-surface">Direct Inquiry Status: Active</div>
+<div class="font-caption text-caption text-on-surface-variant">Accepting up to 5 verified inbound briefs/wk</div>
+</div>
+</div>
+<a class="px-space-md py-1 rounded-full bg-surface-container-lowest text-on-surface font-button-lg text-caption border border-outline-variant/60 hover:bg-surface-container transition-colors" data-path="profile-settings" href="#">
+              Adjust
+            </a>
+</div>
+</div>
+</div>
+<!-- 2. EMPTY STATE VIEW -->
+<div class="qa-view-panel hidden w-full py-space-3xl flex flex-col items-center justify-center text-center max-w-[620px] mx-auto bg-surface-container-lowest border border-outline-variant/60 rounded-[32px] p-space-2xl shadow-sm" id="view-empty">
+<div class="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center mb-space-md text-primary">
+<span class="material-symbols-outlined text-[36px]">inbox_customize</span>
+</div>
+<h3 class="font-display-lg text-headline-lg text-on-surface">No Pending Requests</h3>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-[420px] mt-space-xs mb-space-lg">
+          Your inbound communique pipeline is completely clear. When creators or verified studio scouts discover your public portfolio, their requests will appear here.
+        </p>
+<div class="flex items-center gap-space-sm">
+<a class="px-space-lg py-space-xs rounded-full font-button-lg text-button-lg bg-primary-container text-on-primary-container shadow-[2px_2px_0px_#1e1b19] hover:bg-primary-fixed transition-all" data-path="portfolio" href="#">
+            Share Portfolio Link
+          </a>
+<button class="px-space-md py-space-xs rounded-full font-button-lg text-button-lg border border-outline-variant/60 text-on-surface hover:bg-surface-container transition-all" onclick="setSimView('default')" type="button">
+            Return to Active View
+          </button>
+</div>
+</div>
+<!-- 3. LOADING SKELETONS VIEW -->
+<div class="qa-view-panel hidden grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-start" id="view-loading">
+<div class="lg:col-span-7 flex flex-col gap-space-md">
+<div class="h-6 w-48 bg-surface-container-high rounded animate-pulse mb-2"></div>
+<!-- Skeleton Card 1 -->
+<div class="p-space-lg rounded-[28px] bg-surface-container-lowest border border-outline-variant/40 flex flex-col gap-space-md animate-pulse">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-[20px] bg-surface-container-high"></div>
+<div class="flex flex-col gap-1.5">
+<div class="w-36 h-4 bg-surface-container-high rounded"></div>
+<div class="w-48 h-3 bg-surface-container-high rounded"></div>
+</div>
+</div>
+<div class="w-24 h-6 bg-surface-container-high rounded-full"></div>
+</div>
+<div class="h-20 bg-surface-container-low rounded-2xl"></div>
+<div class="flex justify-between items-center pt-2">
+<div class="w-28 h-4 bg-surface-container-high rounded"></div>
+<div class="w-44 h-9 bg-surface-container-high rounded-full"></div>
+</div>
+</div>
+<!-- Skeleton Card 2 -->
+<div class="p-space-lg rounded-[28px] bg-surface-container-lowest border border-outline-variant/40 flex flex-col gap-space-md animate-pulse">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-[20px] bg-surface-container-high"></div>
+<div class="flex flex-col gap-1.5">
+<div class="w-32 h-4 bg-surface-container-high rounded"></div>
+<div class="w-40 h-3 bg-surface-container-high rounded"></div>
+</div>
+</div>
+<div class="w-24 h-6 bg-surface-container-high rounded-full"></div>
+</div>
+<div class="h-20 bg-surface-container-low rounded-2xl"></div>
+</div>
+</div>
+<div class="lg:col-span-5">
+<div class="h-80 rounded-[28px] bg-surface-container-low animate-pulse"></div>
+</div>
+</div>
+<!-- 4. OFFLINE MODE VIEW -->
+<div class="qa-view-panel hidden w-full py-space-2xl bg-surface-container-low border border-surface-container-highest rounded-[28px] p-space-xl flex flex-col items-center justify-center text-center" id="view-offline">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center mb-space-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[28px]">cloud_off</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Offline Protocol Engaged</h3>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-[480px] mt-1 mb-space-md">
+          Cached 2 pending requests locally via IndexedDB. Decision actions (Accept/Decline) will synchronize with Delhi and Bengaluru edge relay nodes upon reconnection.
+        </p>
+<button class="px-space-lg py-space-xs rounded-full font-button-lg text-button-lg bg-on-surface text-surface hover:opacity-90 transition-all" onclick="setSimView('default')" type="button">
+          Retry Network Sync
+        </button>
+</div>
+<!-- 5. LOAD ERROR / RETRY VIEW -->
+<div class="qa-view-panel hidden w-full py-space-2xl bg-error-container/20 border border-error/20 rounded-[28px] p-space-xl flex flex-col items-center justify-center text-center" id="view-error">
+<div class="w-12 h-12 rounded-full bg-error text-on-error flex items-center justify-center mb-space-sm">
+<span class="material-symbols-outlined text-[28px]">sync_problem</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Decryption Stream Timed Out</h3>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-[420px] mt-1 mb-space-md">
+          Unable to verify E2E message payload integrity for incoming request streams. Error code: E_P2P_HANDSHAKE_408.
+        </p>
+<div class="flex items-center gap-space-sm">
+<button class="px-space-lg py-space-xs rounded-full font-button-lg text-button-lg bg-primary-container text-on-primary-container shadow-[2px_2px_0px_#1e1b19] hover:bg-primary-fixed transition-all" onclick="setSimView('default')" type="button">
+            Retry Connection
+          </button>
+<a class="font-button-lg text-body-sm text-on-surface-variant hover:text-on-surface transition-colors" href="#">
+            Contact Gateway Support
+          </a>
+</div>
+</div>
+</section>
+</div>
+<!-- INLINE DECLINE SHEET / MODAL (DLG-57 Spec Implementation) -->
+<div class="fixed inset-0 z-50 bg-inverse-surface/40 backdrop-blur-sm hidden items-center justify-center p-space-md transition-opacity" id="decline-dialog-scrim">
+<div aria-labelledby="dialog-title" aria-modal="true" class="w-full max-w-[480px] bg-surface-container-lowest border border-outline-variant/60 rounded-[28px] shadow-[0px_16px_36px_rgba(20,17,15,0.12)] p-space-xl flex flex-col gap-space-lg relative animate-in fade-in zoom-in-95" role="dialog">
+<!-- Header -->
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-error-container text-on-error-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[22px]">do_not_disturb_on</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface" id="dialog-title">Decline Message Request?</h2>
+<p class="font-caption text-caption text-on-surface-variant">Protocol Ref: DLG-57 Inbound Filter</p>
+</div>
+</div>
+<button class="w-8 h-8 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant" onclick="closeDeclineModal()" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Description Context -->
+<p class="font-body-md text-body-md text-on-surface leading-relaxed">
+        Choose what happens to this request from <strong class="font-bold" id="decline-target-name">Kabir Sen</strong> (<span class="text-on-surface-variant" id="decline-target-handle">@kabir.doc</span>):
+      </p>
+<!-- Options -->
+<div class="flex flex-col gap-space-sm">
+<button class="p-space-md rounded-2xl border border-outline-variant/60 hover:border-on-surface hover:bg-surface-container-low transition-all text-left flex items-start gap-space-sm group" onclick="confirmDecline('quiet')" type="button">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px] mt-0.5 group-hover:text-primary transition-colors">delete_sweep</span>
+<div>
+<div class="font-headline-md text-body-md font-bold text-on-surface">Decline Quietly</div>
+<div class="font-caption text-caption text-on-surface-variant">Quietly remove request without notifying the sender.</div>
+</div>
+</button>
+<button class="p-space-md rounded-2xl border border-outline-variant/60 hover:border-error hover:bg-error-container/10 transition-all text-left flex items-start gap-space-sm group" onclick="confirmDecline('block')" type="button">
+<span class="material-symbols-outlined text-error text-[20px] mt-0.5">block</span>
+<div>
+<div class="font-headline-md text-body-md font-bold text-error">Decline and Block</div>
+<div class="font-caption text-caption text-on-surface-variant">Remove request and prevent this creator from contacting you again.</div>
+</div>
+</button>
+</div>
+<!-- Modal Footer Action -->
+<div class="flex items-center justify-end gap-space-sm pt-space-xs border-t border-surface-container">
+<button class="px-space-lg py-space-xs rounded-full font-button-lg text-button-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" onclick="closeDeclineModal()" type="button">
+          Cancel (Keep Request)
+        </button>
+</div>
+</div>
+</div>
+<!-- Inline Simulation Behavior -->
+<script>
+    function setSimView(viewKey) {
+      const panels = document.querySelectorAll('.qa-view-panel');
+      panels.forEach(p => p.classList.add('hidden'));
+
+      const btns = document.querySelectorAll('.qa-state-btn');
+      btns.forEach(b => {
+        b.classList.remove('bg-on-surface', 'text-surface');
+        b.classList.add('bg-surface-container-lowest', 'text-on-surface-variant');
+      });
+
+      const activeBtn = document.querySelector(`.qa-state-btn[data-view="${viewKey}"]`);
+      if (activeBtn) {
+        activeBtn.classList.remove('bg-surface-container-lowest', 'text-on-surface-variant');
+        activeBtn.classList.add('bg-on-surface', 'text-surface');
+      }
+
+      const modalScrim = document.getElementById('decline-dialog-scrim');
+
+      if (viewKey === 'modal') {
+        const defaultPanel = document.getElementById('view-default');
+        if (defaultPanel) defaultPanel.classList.remove('hidden');
+        openDeclineModal('Kabir Sen', '@kabir.doc');
+      } else {
+        if (modalScrim) {
+          modalScrim.classList.remove('flex');
+          modalScrim.classList.add('hidden');
+        }
+        const targetPanel = document.getElementById(`view-${viewKey}`);
+        if (targetPanel) {
+          targetPanel.classList.remove('hidden');
+        }
+      }
+    }
+
+    function openDeclineModal(name, handle) {
+      const nameEl = document.getElementById('decline-target-name');
+      const handleEl = document.getElementById('decline-target-handle');
+      if (nameEl) nameEl.textContent = name;
+      if (handleEl) handleEl.textContent = handle;
+
+      const scrim = document.getElementById('decline-dialog-scrim');
+      if (scrim) {
+        scrim.classList.remove('hidden');
+        scrim.classList.add('flex');
+      }
+    }
+
+    function closeDeclineModal() {
+      const scrim = document.getElementById('decline-dialog-scrim');
+      if (scrim) {
+        scrim.classList.remove('flex');
+        scrim.classList.add('hidden');
+      }
+    }
+
+    function confirmDecline(mode) {
+      closeDeclineModal();
+      const notificationToast = document.createElement('div');
+      notificationToast.className = 'fixed bottom-8 right-8 z-50 bg-inverse-surface text-inverse-on-surface px-space-lg py-space-sm rounded-full font-button-lg text-body-sm shadow-xl flex items-center gap-space-xs transition-transform transform translate-y-0';
+      notificationToast.innerHTML = '<span class="material-symbols-outlined text-[18px] text-primary-container">check_circle</span> Request ' + (mode === 'block' ? 'declined and account blocked' : 'declined quietly');
+      document.body.appendChild(notificationToast);
+      setTimeout(() => {
+        notificationToast.remove();
+      }, 3000);
+    }
+
+    // Attach Switcher Event Handlers
+    document.addEventListener('DOMContentLoaded', () => {
+      const switcherControls = document.getElementById('qa-switcher-controls');
+      if (switcherControls) {
+        switcherControls.addEventListener('click', (e) => {
+          const btn = e.target.closest('.qa-state-btn');
+          if (btn && btn.dataset.view) {
+            setSimView(btn.dataset.view);
+          }
+        });
+      }
+    });
+  </script>
+</div></main><footer class="w-full bg-surface-container-low mt-space-3xl"><div class="max-w-[1200px] mx-auto px-margin-desktop py-space-xl flex flex-col md:flex-row items-center justify-between gap-space-md text-on-surface-variant"><div class="flex items-center gap-space-sm"><span class="font-headline-md text-body-lg font-bold text-on-surface">CreatorConnect</span><span class="font-caption text-caption uppercase tracking-wider bg-surface-container px-space-xs py-0.5 rounded-full text-on-surface-variant">v2.4.0 Engine</span></div><div class="font-caption text-caption text-on-surface-variant">© 2025 CreatorConnect Inc. Contemporary South Asian AI Discovery Network. All rights reserved.</div><div class="flex items-center gap-space-md font-button-lg text-body-sm"><a class="hover:text-on-surface transition-colors" data-path="privacy-terms" href="#">Privacy &amp; Terms</a><a class="hover:text-on-surface transition-colors" data-path="system-status" href="#">Status</a><a class="hover:text-on-surface transition-colors" data-path="support" href="#">Support</a></div></div></footer></body></html>

@@ -26,7 +26,17 @@ import type {
   ReportResponse,
   EditMessageInput,
   AttachmentDownloadResponse,
+  CreateMessageRequestInput,
+  DeclineMessageRequestInput,
+  MessageRequestResponse,
+  AcceptMessageRequestResponse,
+  ListMessageRequestsQuery,
+  ListMessageRequestsResponse,
 } from '@creatorconnect/contracts';
+import {
+  MessageRequestNotFoundError,
+  InvalidMessageRequestInputError,
+} from '@creatorconnect/database';
 import {
   S3StorageService,
   MockStorageService,
@@ -293,6 +303,140 @@ export class MessagingService {
       downloadUrl,
       expiresInSeconds,
     };
+  }
+
+  /**
+   * Formats a database MessageRequest into the shared MessageRequestResponse contract.
+   */
+  public formatMessageRequest(r: any): MessageRequestResponse {
+    return {
+      id: r.id,
+      senderId: r.senderId,
+      recipientId: r.recipientId,
+      conversationId: r.conversationId ?? null,
+      initialMessage: r.initialMessage,
+      status: r.status,
+      declinedReason: r.declinedReason ?? null,
+      expiresAt: r.expiresAt instanceof Date ? r.expiresAt.toISOString() : r.expiresAt,
+      respondedAt: r.respondedAt
+        ? r.respondedAt instanceof Date
+          ? r.respondedAt.toISOString()
+          : r.respondedAt
+        : null,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
+      updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : r.updatedAt,
+      ...(r.senderProfile ? { senderProfile: r.senderProfile } : {}),
+    };
+  }
+
+  /**
+   * Submits an introductory message request with a single text message (max 500 chars).
+   */
+  public async createMessageRequest(
+    senderId: string,
+    input: CreateMessageRequestInput,
+  ): Promise<MessageRequestResponse> {
+    const trimmed = (input.initialMessage || '').trim();
+    if (!trimmed || trimmed.length > 500) {
+      throw new InvalidMessageRequestInputError(
+        'Initial message must be between 1 and 500 characters.',
+      );
+    }
+    if (/[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F]/.test(input.initialMessage)) {
+      throw new InvalidMessageRequestInputError(
+        'Initial message contains disallowed control characters.',
+      );
+    }
+
+    const created = await this.repo.createMessageRequest({
+      senderId,
+      recipientId: input.recipientId,
+      initialMessage: trimmed,
+    });
+
+    return this.formatMessageRequest(created);
+  }
+
+  /**
+   * Retrieves a message request by ID, enforcing participant authorization and anti-enumeration.
+   */
+  public async getMessageRequestById(
+    id: string,
+    viewerUserId: string,
+  ): Promise<MessageRequestResponse> {
+    const request = await this.repo.getMessageRequestById(id, viewerUserId);
+    if (!request) {
+      throw new MessageRequestNotFoundError();
+    }
+    return this.formatMessageRequest(request);
+  }
+
+  /**
+   * Lists message requests with keyset cursor pagination.
+   */
+  public async listMessageRequests(
+    userId: string,
+    query?: ListMessageRequestsQuery,
+  ): Promise<ListMessageRequestsResponse> {
+    const params: {
+      userId: string;
+      direction?: 'incoming' | 'outgoing';
+      status?: any;
+      limit?: number;
+      cursor?: string;
+    } = { userId };
+    if (query?.direction !== undefined) params.direction = query.direction;
+    if (query?.status !== undefined) params.status = query.status;
+    if (query?.limit !== undefined) params.limit = query.limit;
+    if (query?.cursor !== undefined) params.cursor = query.cursor;
+
+    const result = await this.repo.listMessageRequests(params);
+
+    return {
+      items: result.items.map((item) => this.formatMessageRequest(item)),
+      nextCursor: result.nextCursor,
+      hasMore: result.hasMore,
+    };
+  }
+
+  /**
+   * Accepts an incoming message request atomically, creating a direct conversation and sequence 1 message.
+   */
+  public async acceptMessageRequest(
+    id: string,
+    recipientId: string,
+  ): Promise<AcceptMessageRequestResponse> {
+    const result = await this.repo.acceptMessageRequest(id, recipientId);
+    return {
+      request: this.formatMessageRequest(result.request),
+      conversation: result.conversation,
+    };
+  }
+
+  /**
+   * Declines an incoming message request, initiating a 30-day decline cooldown.
+   */
+  public async declineMessageRequest(
+    id: string,
+    recipientId: string,
+    input?: DeclineMessageRequestInput,
+  ): Promise<MessageRequestResponse> {
+    const reason = input?.reason?.trim();
+    if (reason && /[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F]/.test(reason)) {
+      throw new InvalidMessageRequestInputError(
+        'Decline reason contains disallowed control characters.',
+      );
+    }
+    const result = await this.repo.declineMessageRequest(id, recipientId, reason || undefined);
+    return this.formatMessageRequest(result);
+  }
+
+  /**
+   * Cancels a pending outgoing message request, initiating a 24-hour anti-churn cooldown.
+   */
+  public async cancelMessageRequest(id: string, senderId: string): Promise<MessageRequestResponse> {
+    const result = await this.repo.cancelMessageRequest(id, senderId);
+    return this.formatMessageRequest(result);
   }
 }
 

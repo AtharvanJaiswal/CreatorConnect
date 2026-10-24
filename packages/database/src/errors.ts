@@ -86,6 +86,12 @@ export class UserNotFoundError extends MessagingError {
   }
 }
 
+export class UserSuspendedError extends MessagingError {
+  constructor(detail = 'Account is suspended. Access denied.') {
+    super(403, 'USER_SUSPENDED', 'Account Suspended', detail);
+  }
+}
+
 export class MessageNotFoundError extends MessagingError {
   constructor(detail = 'The requested message was not found or access is denied.') {
     super(404, 'MESSAGE_NOT_FOUND', 'Message Not Found', detail);
@@ -113,6 +119,68 @@ export class SelfReportNotAllowedError extends MessagingError {
 export class ReportTargetNotFoundError extends MessagingError {
   constructor(detail = 'The specified report target entity was not found.') {
     super(404, 'REPORT_TARGET_NOT_FOUND', 'Report Target Not Found', detail);
+  }
+}
+
+export class DuplicateReportError extends MessagingError {
+  constructor(
+    detail = 'A pending report for this target has already been submitted and is under review.',
+  ) {
+    super(409, 'DUPLICATE_REPORT', 'Duplicate Report', detail);
+  }
+}
+
+export class MessageRequestNotFoundError extends MessagingError {
+  constructor(detail = 'The requested message request was not found or access is denied.') {
+    super(404, 'MESSAGE_REQUEST_NOT_FOUND', 'Message Request Not Found', detail);
+  }
+}
+
+export class DuplicateMessageRequestError extends MessagingError {
+  constructor(detail = 'A pending message request already exists between these users.') {
+    super(409, 'DUPLICATE_MESSAGE_REQUEST', 'Duplicate Message Request', detail);
+  }
+}
+
+export class MessageRequestCooldownActiveError extends MessagingError {
+  constructor(
+    detail = 'A cooldown period is active. You cannot send a message request to this user at this time.',
+  ) {
+    super(409, 'MESSAGE_REQUEST_COOLDOWN_ACTIVE', 'Message Request Cooldown Active', detail);
+  }
+}
+
+export class MessageRequestInvalidStateError extends MessagingError {
+  constructor(detail = 'The message request is not in a valid state for this action.') {
+    super(409, 'MESSAGE_REQUEST_INVALID_STATE', 'Invalid Message Request State', detail);
+  }
+}
+
+export class SelfMessageRequestNotAllowedError extends MessagingError {
+  constructor(detail = 'You cannot send a message request to yourself.') {
+    super(400, 'SELF_MESSAGE_REQUEST_NOT_ALLOWED', 'Self Message Request Not Allowed', detail);
+  }
+}
+
+export class MessageRequestLimitExceededError extends MessagingError {
+  constructor(
+    detail = 'You have exceeded the maximum allowed message requests for this time window.',
+  ) {
+    super(429, 'MESSAGE_REQUEST_LIMIT_EXCEEDED', 'Message Request Limit Exceeded', detail);
+  }
+}
+
+export class InvalidMessageRequestInputError extends MessagingError {
+  constructor(detail = 'The message request input is invalid or malformed.') {
+    super(400, 'INVALID_MESSAGE_REQUEST_INPUT', 'Invalid Message Request Input', detail);
+  }
+}
+
+export class MessageRequestRequiredError extends MessagingError {
+  constructor(
+    detail = 'Direct conversation requires an accepted message request or a qualifying commercial relationship.',
+  ) {
+    super(403, 'MESSAGE_REQUEST_REQUIRED', 'Message Request Required', detail);
   }
 }
 

@@ -21,6 +21,7 @@ import { assignmentsRoutes } from './modules/assignments/assignments.routes.js';
 import { applicationsRoutes } from './modules/applications/applications.routes.js';
 import { discoveryRoutes } from './modules/discovery/discovery.routes.js';
 import { messagingRoutes } from './modules/messaging/messaging.routes.js';
+import { messageRequestRoutes } from './modules/messaging/message-request.routes.js';
 import { notificationsRoutes } from './modules/notifications/notifications.routes.js';
 import { projectsRoutes } from './modules/projects/projects.routes.js';
 import { paymentsRoutes } from './modules/payments/payments.routes.js';
@@ -197,6 +198,7 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
   await app.register(applicationsRoutes);
   await app.register(discoveryRoutes);
   await app.register(messagingRoutes);
+  await app.register(messageRequestRoutes);
   await app.register(notificationsRoutes);
   await app.register(projectsRoutes);
   await app.register(paymentsRoutes);

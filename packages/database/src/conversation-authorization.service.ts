@@ -14,6 +14,8 @@ import {
   SelfMessagingNotAllowedError,
   SelfBlockNotAllowedError,
   UserNotFoundError,
+  UserSuspendedError,
+  MessageRequestRequiredError,
 } from './errors.js';
 
 export interface IConversationAuthorizationService {
@@ -121,19 +123,149 @@ export class ConversationAuthorizationService implements IConversationAuthorizat
       throw new SelfMessagingNotAllowedError();
     }
 
-    const recipient = await this.prisma.user.findUnique({
-      where: { id: recipientUserId },
-      select: { id: true, status: true },
-    });
+    const [initiator, recipient] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: initiatorUserId },
+        select: { id: true, status: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: recipientUserId },
+        select: { id: true, status: true },
+      }),
+    ]);
+
+    if (!initiator || initiator.status === 'DEACTIVATED') {
+      throw new UserNotFoundError('Initiator user not found or deactivated.');
+    }
+    if (initiator.status === 'SUSPENDED') {
+      throw new UserSuspendedError('Initiator account is suspended.');
+    }
 
     if (!recipient || recipient.status === 'DEACTIVATED') {
       throw new UserNotFoundError('Recipient user not found or deactivated.');
+    }
+    if (recipient.status === 'SUSPENDED') {
+      throw new UserSuspendedError('Recipient account is suspended.');
     }
 
     const blocked = await this.isBlocked(initiatorUserId, recipientUserId);
     if (blocked) {
       throw new UserBlockedError();
     }
+
+    // 1. Established Conversation (Grandfathering):
+    // Active direct conversations and their histories remain accessible without requiring a MessageRequest.
+    const existingConversation = await this.prisma.conversation.findFirst({
+      where: {
+        type: 'DIRECT',
+        deletedAt: null,
+        AND: [
+          { participants: { some: { userId: initiatorUserId, leftAt: null } } },
+          { participants: { some: { userId: recipientUserId, leftAt: null } } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (existingConversation) {
+      return;
+    }
+
+    // 2. Accepted MessageRequest (Explicit consent):
+    // Only an accepted request between these exact participants establishes consent.
+    const acceptedRequest = await this.prisma.messageRequest.findFirst({
+      where: {
+        status: 'ACCEPTED',
+        OR: [
+          { senderId: initiatorUserId, recipientId: recipientUserId },
+          { senderId: recipientUserId, recipientId: initiatorUserId },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (acceptedRequest) {
+      return;
+    }
+
+    // 3. Commercial Exception A: Active / Non-cancelled Project
+    // Permitted project states: IN_PROGRESS, SUBMITTED, REVISION_REQUESTED, APPROVED, COMPLETED, DISPUTED
+    // Excludes: CANCELLED
+    const qualifyingProject = await this.prisma.project.findFirst({
+      where: {
+        status: {
+          in: [
+            'IN_PROGRESS',
+            'SUBMITTED',
+            'REVISION_REQUESTED',
+            'APPROVED',
+            'COMPLETED',
+            'DISPUTED',
+          ],
+        },
+        OR: [
+          { clientId: initiatorUserId, talentId: recipientUserId },
+          { clientId: recipientUserId, talentId: initiatorUserId },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (qualifyingProject) {
+      return;
+    }
+
+    // 4. Commercial Exception B: Active Application
+    // Permitted application states: SHORTLISTED, ACCEPTED
+    // Excludes: SUBMITTED, UNDER_REVIEW, REJECTED, WITHDRAWN
+    // Verifies applicant and brand owner against PostgreSQL authoritative records.
+    const qualifyingApplication = await this.prisma.application.findFirst({
+      where: {
+        status: { in: ['SHORTLISTED', 'ACCEPTED'] },
+        OR: [
+          {
+            applicantId: initiatorUserId,
+            assignment: { brand: { userId: recipientUserId } },
+          },
+          {
+            applicantId: recipientUserId,
+            assignment: { brand: { userId: initiatorUserId } },
+          },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (qualifyingApplication) {
+      return;
+    }
+
+    // 5. Commercial Exception C: Active Project Invitation
+    // Permitted invitation states: PENDING, ACCEPTED (and not expired)
+    // Excludes: DECLINED, WITHDRAWN, EXPIRED
+    const now = new Date();
+    const qualifyingInvitation = await this.prisma.projectInvitation.findFirst({
+      where: {
+        status: { in: ['PENDING', 'ACCEPTED'] },
+        OR: [
+          { inviterId: initiatorUserId, inviteeId: recipientUserId },
+          { inviterId: recipientUserId, inviteeId: initiatorUserId },
+        ],
+        AND: [
+          {
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (qualifyingInvitation) {
+      return;
+    }
+
+    // Cold outreach without accepted request or qualifying commercial relationship is rejected
+    throw new MessageRequestRequiredError();
   }
 
   public async assertCanAccessConversation(

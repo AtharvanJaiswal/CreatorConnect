@@ -1,4 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { getPrismaClient } from '@creatorconnect/database';
+import { redisCache } from '../services/redis-cache.js';
 
 export const healthRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(
@@ -52,12 +54,32 @@ export const healthRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async () => {
+      let dbStatus = 'ok';
+      let redisStatus = 'ok';
+
+      try {
+        const prisma = getPrismaClient();
+        await prisma.$queryRawUnsafe('SELECT 1');
+      } catch {
+        dbStatus = 'degraded';
+      }
+
+      try {
+        if (!redisCache.isRedisConnected()) {
+          redisStatus = 'degraded';
+        }
+      } catch {
+        redisStatus = 'degraded';
+      }
+
+      const isReady = dbStatus === 'ok' && redisStatus === 'ok';
+
       return {
-        status: 'ready' as const,
+        status: isReady ? ('ready' as const) : ('degraded' as const),
         timestamp: new Date().toISOString(),
         services: {
-          database: 'not_configured_phase_1',
-          redis: 'not_configured_phase_1',
+          database: dbStatus,
+          redis: redisStatus,
         },
       };
     },
