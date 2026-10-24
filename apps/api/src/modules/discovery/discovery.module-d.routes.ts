@@ -258,34 +258,4 @@ export const discoveryModuleDRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.status(200).send(result);
     },
   );
-
-  // 8. POST /api/v1/reports
-  fastify.post<{ Body: CreateReportInput }>(
-    '/api/v1/reports',
-    {
-      preHandler: [fastify.authenticate],
-      schema: {
-        description:
-          'Dispatches content or profile moderation report directly to the Admin moderation queue',
-        tags: ['Safety'],
-        security: [{ bearerAuth: [] }],
-        body: CreateReportInputSchema,
-        response: {
-          200: Type.Object({ success: Type.Boolean(), reportId: Type.String() }),
-          400: ProblemDetailsSchema,
-        },
-      },
-    },
-    async (request, reply) => {
-      const callerId = request.user.id;
-      const result = await discoveryModuleDService.createReport(
-        callerId,
-        request.body.targetId,
-        request.body.targetType,
-        request.body.category,
-        request.body.details,
-      );
-      return reply.status(200).send(result);
-    },
-  );
 };
