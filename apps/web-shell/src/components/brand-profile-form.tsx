@@ -104,6 +104,7 @@ export function BrandProfileForm({ onSaved }: BrandProfileFormProps) {
 
     // Reset when switching authenticated accounts to prevent stale session bleed
     if (user?.id && user.id !== lastSavedUserId) {
+      setLastSavedUserId(user.id);
       setInitialValues(DEFAULT_BRAND_FORM_DATA);
       setCurrentValues(DEFAULT_BRAND_FORM_DATA);
       loadProfile();

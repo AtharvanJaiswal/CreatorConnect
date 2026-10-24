@@ -810,5 +810,218 @@ describe('Phase 6 Increment 4: Reviews, Reputation Scoring & Platform Governance
       expect(Array.isArray(body)).toBe(true);
       expect(body.length).toBe(2); // Client review + Talent reciprocal review
     });
+
+    it('retrieves current user eligible completed projects awaiting review (GET /api/v1/reviews/pending)', async () => {
+      // Create a fresh completed project where neither user has reviewed yet
+      const pendingProj = await createIndependentProject({
+        clientId: clientUserId,
+        talentId: talentUserId,
+        amount: 35000,
+        title: 'Project Awaiting Verified Review',
+        status: 'COMPLETED',
+      });
+
+      // Client queries pending reviews
+      const clientPendingRes = await app.inject({
+        method: 'GET',
+        url: '/api/v1/reviews/pending',
+        headers: { authorization: `Bearer ${clientToken}` },
+      });
+      expect(clientPendingRes.statusCode).toBe(200);
+      const clientPending = clientPendingRes.json();
+      expect(Array.isArray(clientPending)).toBe(true);
+      const foundClient = clientPending.find((p: any) => p.projectId === pendingProj.id);
+      expect(foundClient).toBeDefined();
+      expect(foundClient.projectTitle).toBe('Project Awaiting Verified Review');
+      expect(foundClient.counterparty.id).toBe(talentUserId);
+      expect(foundClient.counterparty.role).toBe('CREATOR');
+
+      // Talent queries pending reviews
+      const talentPendingRes = await app.inject({
+        method: 'GET',
+        url: '/api/v1/reviews/pending',
+        headers: { authorization: `Bearer ${talentToken}` },
+      });
+      expect(talentPendingRes.statusCode).toBe(200);
+      const talentPending = talentPendingRes.json();
+      const foundTalent = talentPending.find((p: any) => p.projectId === pendingProj.id);
+      expect(foundTalent).toBeDefined();
+      expect(foundTalent.counterparty.id).toBe(clientUserId);
+      expect(foundTalent.counterparty.role).toBe('CLIENT');
+
+      // Submit review as client
+      const reviewRes = await app.inject({
+        method: 'POST',
+        url: `/api/v1/projects/${pendingProj.id}/reviews`,
+        headers: { authorization: `Bearer ${clientToken}` },
+        payload: {
+          rating: 5,
+          feedback: 'Excellent collaboration on this milestone project!',
+        },
+      });
+      expect(reviewRes.statusCode).toBe(201);
+
+      // Client should no longer have this project in pending reviews
+      const updatedClientPending = await app.inject({
+        method: 'GET',
+        url: '/api/v1/reviews/pending',
+        headers: { authorization: `Bearer ${clientToken}` },
+      });
+      expect(updatedClientPending.json().some((p: any) => p.projectId === pendingProj.id)).toBe(
+        false,
+      );
+
+      // Talent should still have it until talent reviews
+      const updatedTalentPending = await app.inject({
+        method: 'GET',
+        url: '/api/v1/reviews/pending',
+        headers: { authorization: `Bearer ${talentToken}` },
+      });
+      expect(updatedTalentPending.json().some((p: any) => p.projectId === pendingProj.id)).toBe(
+        true,
+      );
+    });
+
+    it('enforces database uniqueness during concurrent review submissions', async () => {
+      // Create a new completed project
+      const raceProj = await createIndependentProject({
+        clientId: clientUserId,
+        talentId: talentUserId,
+        amount: 40000,
+        title: 'Concurrency Review Test Project',
+        status: 'COMPLETED',
+      });
+
+      // Concurrently submit two reviews for the same project from the same client
+      const [res1, res2] = await Promise.all([
+        app.inject({
+          method: 'POST',
+          url: `/api/v1/projects/${raceProj.id}/reviews`,
+          headers: { authorization: `Bearer ${clientToken}` },
+          payload: {
+            rating: 5,
+            feedback: 'Concurrent submission attempt alpha feedback.',
+          },
+        }),
+        app.inject({
+          method: 'POST',
+          url: `/api/v1/projects/${raceProj.id}/reviews`,
+          headers: { authorization: `Bearer ${clientToken}` },
+          payload: {
+            rating: 4,
+            feedback: 'Concurrent submission attempt beta feedback.',
+          },
+        }),
+      ]);
+
+      const statuses = [res1.statusCode, res2.statusCode].sort();
+      expect(statuses).toEqual([201, 409]); // Exactly one 201 created, one 409 conflict
+    });
+
+    it('correctly updates aggregates after review moderation removal and reinstatement', async () => {
+      const targetUserId = generateUuidV7();
+      await prisma.user.create({
+        data: {
+          id: targetUserId,
+          supabaseAuthId: `reconcile-${targetUserId}`,
+          email: `reconcile-${targetUserId}@example.com`,
+          firstName: 'Aggregate',
+          lastName: 'Reconcile',
+          status: 'ACTIVE',
+        },
+      });
+
+      // Create two projects and two 5-star reviews
+      const projA = await createIndependentProject({
+        clientId: clientUserId,
+        talentId: targetUserId,
+        amount: 25000,
+        title: 'Project A',
+        status: 'COMPLETED',
+      });
+
+      const projB = await createIndependentProject({
+        clientId: clientUserId,
+        talentId: targetUserId,
+        amount: 25000,
+        title: 'Project B',
+        status: 'COMPLETED',
+      });
+
+      const revA = await prisma.review.create({
+        data: {
+          id: generateUuidV7(),
+          projectId: projA.id,
+          reviewerId: clientUserId,
+          revieweeId: targetUserId,
+          rating: 5,
+          feedback: 'Five star work on project A',
+          status: 'PUBLISHED',
+        },
+      });
+
+      const revB = await prisma.review.create({
+        data: {
+          id: generateUuidV7(),
+          projectId: projB.id,
+          reviewerId: clientUserId,
+          revieweeId: targetUserId,
+          rating: 3,
+          feedback: 'Three star work on project B',
+          status: 'PUBLISHED',
+        },
+      });
+
+      // Initial state: 2 reviews, average = (5+3)/2 = 4.0
+      let repRes = await app.inject({
+        method: 'GET',
+        url: `/api/v1/users/${targetUserId}/reputation`,
+      });
+      expect(repRes.statusCode).toBe(200);
+      expect(repRes.json().totalReviews).toBe(2);
+      expect(repRes.json().averageRating).toBe(4);
+
+      // Moderate revB to REMOVED
+      const modRes = await app.inject({
+        method: 'POST',
+        url: `/api/v1/reviews/${revB.id}/moderate`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          action: 'REMOVE',
+          reason: 'Removed for policy violation test.',
+        },
+      });
+      expect(modRes.statusCode).toBe(200);
+
+      // Now only revA is eligible: 1 review, average = 5.0
+      repRes = await app.inject({
+        method: 'GET',
+        url: `/api/v1/users/${targetUserId}/reputation`,
+      });
+      expect(repRes.statusCode).toBe(200);
+      expect(repRes.json().totalReviews).toBe(1);
+      expect(repRes.json().averageRating).toBe(5);
+
+      // Reinstate revB via RESTORE
+      const restoreRes = await app.inject({
+        method: 'POST',
+        url: `/api/v1/reviews/${revB.id}/moderate`,
+        headers: { authorization: `Bearer ${adminToken}` },
+        payload: {
+          action: 'RESTORE',
+          reason: 'Restored after appeal audit.',
+        },
+      });
+      expect(restoreRes.statusCode).toBe(200);
+
+      // Reinstated: exactly 2 reviews, average = (5+3)/2 = 4.0
+      repRes = await app.inject({
+        method: 'GET',
+        url: `/api/v1/users/${targetUserId}/reputation`,
+      });
+      expect(repRes.statusCode).toBe(200);
+      expect(repRes.json().totalReviews).toBe(2);
+      expect(repRes.json().averageRating).toBe(4);
+    });
   });
 });

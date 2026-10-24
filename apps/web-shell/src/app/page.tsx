@@ -73,30 +73,54 @@ export default function HomePage() {
       <section className="border-y border-[#EAE3D5] bg-[#F7F2E9] py-6 px-4 sm:px-8">
         <div className="container max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <CapsuleBadge variant="amber">APPROVED UI/UX SPECIFICATION</CapsuleBadge>
-            <span className="text-xs text-[#5C564E] font-medium hidden sm:inline">
-              Screen Catalogue Phase 1 & 2 Reconstructed
+            <CapsuleBadge variant="amber">GOOGLE STITCH UI/UX SPECIFICATION</CapsuleBadge>
+            <span className="text-xs text-[#6F675E] font-medium hidden sm:inline">
+              Warm Editorial Neo-Pop Reconstructed
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
             <Link
               href="/onboarding"
-              className="bg-white hover:bg-[#F2ECE3] text-[#121212] px-3.5 py-1.5 rounded-full border border-[#EDE7DE] transition-colors"
+              className="bg-white hover:bg-[#F2ECE1] text-[#14110F] px-3.5 py-1.5 rounded-full border border-[#E7E0D5] transition-colors"
             >
-              SCR-ONB-01 (Onboarding)
+              A02 Onboarding (3 Slides)
             </Link>
             <Link
               href="/register"
-              className="bg-[#FFCE38] hover:bg-[#F5C32C] text-[#121212] px-3.5 py-1.5 rounded-full transition-colors"
+              className="bg-[#FFD64A] hover:bg-[#F5CB35] text-[#14110F] px-3.5 py-1.5 rounded-full transition-colors"
             >
-              SCR-AUTH-01/02/03 (3-Step Registration)
+              A03 / B01 / B02 (Registration & OTP)
+            </Link>
+            <Link
+              href="/consent"
+              className="bg-white hover:bg-[#F2ECE1] text-[#14110F] px-3.5 py-1.5 rounded-full border border-[#E7E0D5] transition-colors"
+            >
+              B09 Age & Consent
+            </Link>
+            <Link
+              href="/account-blocked"
+              className="bg-white hover:bg-[#F2ECE1] text-[#14110F] px-3.5 py-1.5 rounded-full border border-[#E7E0D5] transition-colors"
+            >
+              B10 Account Blocked
+            </Link>
+            <Link
+              href="/reactivate"
+              className="bg-white hover:bg-[#F2ECE1] text-[#14110F] px-3.5 py-1.5 rounded-full border border-[#E7E0D5] transition-colors"
+            >
+              B11 Reactivate
+            </Link>
+            <Link
+              href="/auth-dialogs"
+              className="bg-[#C9B6F7] hover:bg-[#BBA4F5] text-[#14110F] px-3.5 py-1.5 rounded-full transition-colors"
+            >
+              Module B Dialogs (DLG 01-10)
             </Link>
             <Link
               href="/discovery"
-              className="bg-white hover:bg-[#F2ECE3] text-[#121212] px-3.5 py-1.5 rounded-full border border-[#EDE7DE] transition-colors"
+              className="bg-white hover:bg-[#F2ECE1] text-[#14110F] px-3.5 py-1.5 rounded-full border border-[#E7E0D5] transition-colors"
             >
-              SCR-DISCOVERY-01 (Marketplace)
+              Marketplace
             </Link>
           </div>
         </div>

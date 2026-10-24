@@ -1,4 +1,5 @@
 import { getPrismaClient, type Category, type Skill, type Prisma } from '@creatorconnect/database';
+import { generateUuidV7 } from '@creatorconnect/utils';
 
 export class ProfilesRepository {
   constructor(private prisma = getPrismaClient()) {}
@@ -123,12 +124,105 @@ export class ProfilesRepository {
     data: Prisma.BrandProfileUpdateInput,
     createData: Prisma.BrandProfileUncheckedCreateInput,
   ) {
-    return this.prisma.brandProfile.upsert({
-      where: { userId },
-      update: data,
-      create: createData,
+    return this.prisma.$transaction(async (tx) => {
+      const profile = await tx.brandProfile.upsert({
+        where: { userId },
+        update: data,
+        create: createData,
+        include: { user: true },
+      });
+
+      const auditId = generateUuidV7();
+      await tx.auditLog.create({
+        data: {
+          id: auditId,
+          userId,
+          action: 'BRAND_PROFILE_UPDATED',
+          entity: 'BrandProfile',
+          entityId: profile.id,
+          metadata: {
+            companyName: profile.companyName,
+            industry: profile.industry,
+            websiteUrl: profile.websiteUrl,
+            visibility: profile.visibility,
+          },
+        },
+      });
+
+      return profile;
+    });
+  }
+
+  async findBrandAuditLogs(userId: string) {
+    return this.prisma.auditLog.findMany({
+      where: { userId, entity: 'BrandProfile' },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+  }
+
+  async findCreatorProfileWithFullDetails(identifier: string) {
+    let profile = await this.prisma.creatorProfile.findUnique({
+      where: { id: identifier },
+      include: {
+        categories: { include: { category: true } },
+        user: {
+          include: {
+            userSkills: { include: { skill: true } },
+            portfolioItems: {
+              where: { deletedAt: null, visibility: 'PUBLIC' },
+              include: {
+                media: {
+                  include: { mediaAsset: true },
+                  orderBy: { displayOrder: 'asc' },
+                },
+              },
+              orderBy: { displayOrder: 'asc' },
+            },
+          },
+        },
+      },
+    });
+
+    if (!profile) {
+      profile = await this.prisma.creatorProfile.findUnique({
+        where: { userId: identifier },
+        include: {
+          categories: { include: { category: true } },
+          user: {
+            include: {
+              userSkills: { include: { skill: true } },
+              portfolioItems: {
+                where: { deletedAt: null, visibility: 'PUBLIC' },
+                include: {
+                  media: {
+                    include: { mediaAsset: true },
+                    orderBy: { displayOrder: 'asc' },
+                  },
+                },
+                orderBy: { displayOrder: 'asc' },
+              },
+            },
+          },
+        },
+      });
+    }
+
+    return profile;
+  }
+
+  async findBrandProfileWithDetails(identifier: string) {
+    let profile = await this.prisma.brandProfile.findUnique({
+      where: { id: identifier },
       include: { user: true },
     });
+    if (!profile) {
+      profile = await this.prisma.brandProfile.findUnique({
+        where: { userId: identifier },
+        include: { user: true },
+      });
+    }
+    return profile;
   }
 
   // ==============================================================================

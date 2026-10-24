@@ -195,4 +195,228 @@ describe('NotificationEventHandler Unit Tests', () => {
     expect(result.success).toBe(true);
     expect(fakeRepo.notifications).toHaveLength(0);
   });
+
+  it('creates in-app notification when dispute is opened', async () => {
+    const clientId = generateUuidV7();
+    const talentId = generateUuidV7();
+    const projectId = generateUuidV7();
+    const disputeId = generateUuidV7();
+
+    fakePrisma.project = {
+      findUnique: async () => ({ clientId, talentId }),
+    };
+
+    const event: ClaimedOutboxEvent = {
+      id: generateUuidV7(),
+      eventType: 'dispute.opened.v1',
+      aggregateType: 'Dispute',
+      aggregateId: disputeId,
+      payload: {
+        disputeId,
+        projectId,
+        openedById: clientId,
+        reason: 'Work not delivered according to specifications',
+        openedAt: new Date().toISOString(),
+      },
+      attempts: 1,
+      createdAt: new Date(),
+      claimToken: { eventId: generateUuidV7(), attempt: 1 },
+    };
+
+    const result = await handler.dispatch(event);
+
+    expect(result.success).toBe(true);
+    expect(fakeRepo.notifications).toHaveLength(1);
+    const notification = fakeRepo.notifications[0];
+    expect(notification.userId).toBe(talentId); // Recipient is the counterparty
+    expect(notification.type).toBe('DISPUTE_OPENED');
+    expect(notification.title).toBe('Dispute Raised');
+  });
+
+  it('creates notifications for both parties when dispute is resolved', async () => {
+    const clientId = generateUuidV7();
+    const talentId = generateUuidV7();
+    const projectId = generateUuidV7();
+    const disputeId = generateUuidV7();
+    const adminId = generateUuidV7();
+
+    fakePrisma.project = {
+      findUnique: async () => ({ clientId, talentId }),
+    };
+
+    const event: ClaimedOutboxEvent = {
+      id: generateUuidV7(),
+      eventType: 'dispute.resolved.v1',
+      aggregateType: 'Dispute',
+      aggregateId: disputeId,
+      payload: {
+        disputeId,
+        projectId,
+        resolution: 'RESOLVED_FOR_CLIENT',
+        resolvedById: adminId,
+        resolutionReason: 'Milestone criteria were not met.',
+        refundAmount: 5000,
+        resolvedAt: new Date().toISOString(),
+      },
+      attempts: 1,
+      createdAt: new Date(),
+      claimToken: { eventId: generateUuidV7(), attempt: 1 },
+    };
+
+    const result = await handler.dispatch(event);
+
+    expect(result.success).toBe(true);
+    expect(fakeRepo.notifications).toHaveLength(2);
+    expect(fakeRepo.notifications.map((n) => n.userId)).toContain(clientId);
+    expect(fakeRepo.notifications.map((n) => n.userId)).toContain(talentId);
+    expect(fakeRepo.notifications[0].type).toBe('DISPUTE_RESOLVED');
+  });
+
+  it('creates in-app notification when cancellation is requested', async () => {
+    const clientId = generateUuidV7();
+    const talentId = generateUuidV7();
+    const projectId = generateUuidV7();
+    const cancellationId = generateUuidV7();
+
+    fakePrisma.project = {
+      findUnique: async () => ({ clientId, talentId }),
+    };
+
+    const event: ClaimedOutboxEvent = {
+      id: generateUuidV7(),
+      eventType: 'cancellation.requested.v1',
+      aggregateType: 'ProjectCancellation',
+      aggregateId: cancellationId,
+      payload: {
+        cancellationId,
+        projectId,
+        requestedById: talentId,
+        reason: 'Unable to continue due to scope mismatch.',
+        requestedAt: new Date().toISOString(),
+      },
+      attempts: 1,
+      createdAt: new Date(),
+      claimToken: { eventId: generateUuidV7(), attempt: 1 },
+    };
+
+    const result = await handler.dispatch(event);
+
+    expect(result.success).toBe(true);
+    expect(fakeRepo.notifications).toHaveLength(1);
+    const notification = fakeRepo.notifications[0];
+    expect(notification.userId).toBe(clientId); // Recipient is client
+    expect(notification.type).toBe('CANCELLATION_REQUESTED');
+  });
+
+  it('creates in-app notification when review is created', async () => {
+    const reviewerId = generateUuidV7();
+    const revieweeId = generateUuidV7();
+    const projectId = generateUuidV7();
+    const reviewId = generateUuidV7();
+
+    const event: ClaimedOutboxEvent = {
+      id: generateUuidV7(),
+      eventType: 'review.created.v1',
+      aggregateType: 'Review',
+      aggregateId: reviewId,
+      payload: {
+        reviewId,
+        projectId,
+        reviewerId,
+        revieweeId,
+        rating: 5,
+      },
+      attempts: 1,
+      createdAt: new Date(),
+      claimToken: { eventId: generateUuidV7(), attempt: 1 },
+    };
+
+    const result = await handler.dispatch(event);
+
+    expect(result.success).toBe(true);
+    expect(fakeRepo.notifications).toHaveLength(1);
+    const notification = fakeRepo.notifications[0];
+    expect(notification.userId).toBe(revieweeId);
+    expect(notification.type).toBe('REVIEW_RECEIVED');
+    expect(notification.title).toBe('New Review Received');
+    expect(notification.body).toContain('5-star');
+
+    // Duplicate delivery of the exact same event
+    const retryResult = await handler.dispatch(event);
+    expect(retryResult.success).toBe(true);
+    // Verified: No duplicate notification inserted
+    expect(fakeRepo.notifications).toHaveLength(1);
+  });
+
+  it('notifies admins when a review is reported', async () => {
+    const reporterId = generateUuidV7();
+    const adminId1 = generateUuidV7();
+    const adminId2 = generateUuidV7();
+    const reviewId = generateUuidV7();
+    const reportId = generateUuidV7();
+
+    fakePrisma.user.findMany = async () => [{ id: adminId1 }, { id: adminId2 }];
+
+    const event: ClaimedOutboxEvent = {
+      id: generateUuidV7(),
+      eventType: 'review.reported.v1',
+      aggregateType: 'ReviewReport',
+      aggregateId: reportId,
+      payload: {
+        reportId,
+        reviewId,
+        reporterId,
+        reason: 'SPAM',
+      },
+      attempts: 1,
+      createdAt: new Date(),
+      claimToken: { eventId: generateUuidV7(), attempt: 1 },
+    };
+
+    const result = await handler.dispatch(event);
+
+    expect(result.success).toBe(true);
+    expect(fakeRepo.notifications).toHaveLength(2);
+    expect(fakeRepo.notifications.map((n) => n.userId)).toContain(adminId1);
+    expect(fakeRepo.notifications.map((n) => n.userId)).toContain(adminId2);
+    expect(fakeRepo.notifications[0].type).toBe('REVIEW_REPORTED');
+  });
+
+  it('notifies review author when moderation decision is recorded', async () => {
+    const authorId = generateUuidV7();
+    const revieweeId = generateUuidV7();
+    const moderatorId = generateUuidV7();
+    const reviewId = generateUuidV7();
+
+    fakePrisma.review = {
+      findUnique: async () => ({ reviewerId: authorId, revieweeId }),
+    };
+
+    const event: ClaimedOutboxEvent = {
+      id: generateUuidV7(),
+      eventType: 'review.moderated.v1',
+      aggregateType: 'Review',
+      aggregateId: reviewId,
+      payload: {
+        reviewId,
+        moderatorId,
+        actionType: 'HIDE',
+        fromStatus: 'PUBLISHED',
+        toStatus: 'HIDDEN',
+        reason: 'Violated platform policy.',
+      },
+      attempts: 1,
+      createdAt: new Date(),
+      claimToken: { eventId: generateUuidV7(), attempt: 1 },
+    };
+
+    const result = await handler.dispatch(event);
+
+    expect(result.success).toBe(true);
+    expect(fakeRepo.notifications).toHaveLength(1);
+    const notification = fakeRepo.notifications[0];
+    expect(notification.userId).toBe(authorId);
+    expect(notification.type).toBe('REVIEW_MODERATED');
+    expect(notification.body).toContain('temporarily hidden');
+  });
 });

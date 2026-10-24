@@ -3,10 +3,16 @@ import {
   ProjectResponseSchema,
   ProjectDeliverableResponseSchema,
   CreateProjectInputSchema,
+  CreateProjectDeliverableInputSchema,
+  UpdateProjectDeliverableInputSchema,
   SubmitDeliverableInputSchema,
   ReviewDeliverableInputSchema,
+  DeliverableSubmissionResponseSchema,
+  DeliverableAttachmentResponseSchema,
   ProjectStatusSchema,
   type CreateProjectInput,
+  type CreateProjectDeliverableInput,
+  type UpdateProjectDeliverableInput,
   type SubmitDeliverableInput,
   type ReviewDeliverableInput,
 } from '@creatorconnect/contracts';
@@ -28,6 +34,13 @@ const ProjectDeliverableParamsSchema = Type.Object({
   deliverableId: UuidSchema,
 });
 type ProjectDeliverableParams = Static<typeof ProjectDeliverableParamsSchema>;
+
+const ProjectDeliverableAttachmentParamsSchema = Type.Object({
+  id: UuidSchema,
+  deliverableId: UuidSchema,
+  assetId: UuidSchema,
+});
+type ProjectDeliverableAttachmentParams = Static<typeof ProjectDeliverableAttachmentParamsSchema>;
 
 const ListProjectsQuerySchema = Type.Object({
   role: Type.Optional(Type.Union([Type.Literal('client'), Type.Literal('talent')])),
@@ -122,6 +135,143 @@ export const projectsRoutes: FastifyPluginAsync<ProjectsRoutesOptions> = async (
     },
   );
 
+  // GET /api/v1/projects/:id/milestones
+  fastify.get<{ Params: IdParam }>(
+    '/api/v1/projects/:id/milestones',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Lists all milestones and deliverables for a project',
+        tags: ['Projects'],
+        security: [{ bearerAuth: [] }],
+        params: IdParamSchema,
+        response: {
+          200: Type.Array(ProjectDeliverableResponseSchema),
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const isAdmin = (request.user.roles || []).includes('ADMIN');
+      const result = await service.listMilestones(request.user.id, request.params.id, isAdmin);
+      return reply.send(result);
+    },
+  );
+
+  // POST /api/v1/projects/:id/milestones
+  fastify.post<{ Params: IdParam; Body: CreateProjectDeliverableInput }>(
+    '/api/v1/projects/:id/milestones',
+    {
+      preHandler: [
+        fastify.authenticate,
+        fastify.rateLimit({
+          endpoint: 'milestone-create',
+          max: 30,
+          windowSeconds: 60,
+          onRedisFailure: 'fail-closed',
+        }),
+      ],
+      schema: {
+        description: 'Creates a new milestone deliverable on an active project (client only)',
+        tags: ['Projects'],
+        security: [{ bearerAuth: [] }],
+        params: IdParamSchema,
+        body: CreateProjectDeliverableInputSchema,
+        response: {
+          201: ProjectDeliverableResponseSchema,
+          400: ProblemDetailsSchema,
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const isAdmin = (request.user.roles || []).includes('ADMIN');
+      const result = await service.createMilestone(
+        request.user.id,
+        request.params.id,
+        request.body,
+        isAdmin,
+      );
+      return reply.status(201).send(result);
+    },
+  );
+
+  // GET /api/v1/projects/:id/milestones/:deliverableId
+  fastify.get<{ Params: ProjectDeliverableParams }>(
+    '/api/v1/projects/:id/milestones/:deliverableId',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Retrieves single milestone details',
+        tags: ['Projects'],
+        security: [{ bearerAuth: [] }],
+        params: ProjectDeliverableParamsSchema,
+        response: {
+          200: ProjectDeliverableResponseSchema,
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const isAdmin = (request.user.roles || []).includes('ADMIN');
+      const result = await service.getMilestone(
+        request.user.id,
+        request.params.id,
+        request.params.deliverableId,
+        isAdmin,
+      );
+      return reply.send(result);
+    },
+  );
+
+  // PATCH /api/v1/projects/:id/milestones/:deliverableId
+  fastify.patch<{ Params: ProjectDeliverableParams; Body: UpdateProjectDeliverableInput }>(
+    '/api/v1/projects/:id/milestones/:deliverableId',
+    {
+      preHandler: [
+        fastify.authenticate,
+        fastify.rateLimit({
+          endpoint: 'milestone-update',
+          max: 30,
+          windowSeconds: 60,
+          onRedisFailure: 'fail-closed',
+        }),
+      ],
+      schema: {
+        description:
+          'Updates a pending milestone deliverable before submission begins (client only)',
+        tags: ['Projects'],
+        security: [{ bearerAuth: [] }],
+        params: ProjectDeliverableParamsSchema,
+        body: UpdateProjectDeliverableInputSchema,
+        response: {
+          200: ProjectDeliverableResponseSchema,
+          400: ProblemDetailsSchema,
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const isAdmin = (request.user.roles || []).includes('ADMIN');
+      const result = await service.updateMilestone(
+        request.user.id,
+        request.params.id,
+        request.params.deliverableId,
+        request.body,
+        isAdmin,
+      );
+      return reply.send(result);
+    },
+  );
+
   // POST /api/v1/projects/:id/deliverables/:deliverableId/submit
   fastify.post<{ Params: ProjectDeliverableParams; Body: SubmitDeliverableInput }>(
     '/api/v1/projects/:id/deliverables/:deliverableId/submit',
@@ -196,6 +346,69 @@ export const projectsRoutes: FastifyPluginAsync<ProjectsRoutesOptions> = async (
         request.params.id,
         request.params.deliverableId,
         request.body,
+      );
+      return reply.send(result);
+    },
+  );
+
+  // GET /api/v1/projects/:id/deliverables/:deliverableId/submissions
+  fastify.get<{ Params: ProjectDeliverableParams }>(
+    '/api/v1/projects/:id/deliverables/:deliverableId/submissions',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description:
+          'Retrieves chronological submission history and review notes for a deliverable',
+        tags: ['Projects'],
+        security: [{ bearerAuth: [] }],
+        params: ProjectDeliverableParamsSchema,
+        response: {
+          200: Type.Array(DeliverableSubmissionResponseSchema),
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const isAdmin = (request.user.roles || []).includes('ADMIN');
+      const result = await service.getSubmissionHistory(
+        request.user.id,
+        request.params.id,
+        request.params.deliverableId,
+        isAdmin,
+      );
+      return reply.send(result);
+    },
+  );
+
+  // GET /api/v1/projects/:id/deliverables/:deliverableId/attachments/:assetId
+  fastify.get<{ Params: ProjectDeliverableAttachmentParams }>(
+    '/api/v1/projects/:id/deliverables/:deliverableId/attachments/:assetId',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description:
+          'Retrieves authorized attachment metadata and pre-signed download URL for project participants',
+        tags: ['Projects'],
+        security: [{ bearerAuth: [] }],
+        params: ProjectDeliverableAttachmentParamsSchema,
+        response: {
+          200: DeliverableAttachmentResponseSchema,
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const isAdmin = (request.user.roles || []).includes('ADMIN');
+      const result = await service.getDeliverableAttachment(
+        request.user.id,
+        request.params.id,
+        request.params.deliverableId,
+        request.params.assetId,
+        isAdmin,
       );
       return reply.send(result);
     },

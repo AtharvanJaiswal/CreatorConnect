@@ -117,6 +117,45 @@ export class PortfolioRepository {
       }
     });
   }
+
+  async reorderItems(userId: string, items: Array<{ id: string; displayOrder: number }>) {
+    return this.prisma.$transaction(async (tx) => {
+      if (items.length === 0) return;
+
+      const itemIds = items.map((i) => i.id);
+      const ownedItems = await tx.portfolioItem.findMany({
+        where: {
+          id: { in: itemIds },
+          userId,
+          deletedAt: null,
+        },
+        select: { id: true },
+      });
+
+      if (ownedItems.length !== items.length) {
+        throw new ForbiddenError(
+          'One or more portfolio items do not belong to the authorized user or do not exist.',
+        );
+      }
+
+      for (const item of items) {
+        const updateRes = await tx.portfolioItem.updateMany({
+          where: {
+            id: item.id,
+            userId,
+            deletedAt: null,
+          },
+          data: { displayOrder: item.displayOrder },
+        });
+
+        if (updateRes.count !== 1) {
+          throw new ForbiddenError(
+            'Failed to update portfolio item order: item not found or does not belong to this user.',
+          );
+        }
+      }
+    });
+  }
 }
 
 export const portfolioRepository = new PortfolioRepository();

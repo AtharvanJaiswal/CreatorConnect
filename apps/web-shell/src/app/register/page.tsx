@@ -9,6 +9,11 @@ import {
   CapsuleBadge,
   VerifiedIdentityBadge,
 } from '../../components/ui/cc-brand';
+import {
+  AccountExistsDialog,
+  OtpLimitReachedDialog,
+  OfflineBanner,
+} from '../../components/ui/auth-dialogs';
 import { useAuth } from '../../providers/auth-provider';
 import {
   ArrowLeft,
@@ -103,6 +108,9 @@ export default function RegisterPage() {
   const [timerSeconds, setTimerSeconds] = useState(300); // 5 minutes
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showExistsModal, setShowExistsModal] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [showOfflineBanner, setShowOfflineBanner] = useState(false);
   const [previewState, setPreviewState] = useState<
     'Default' | 'Empty' | 'Invalid' | 'DLG-01' | 'DLG-10'
   >('Default');
@@ -113,16 +121,24 @@ export default function RegisterPage() {
     if (state === 'Default') {
       setPhoneNumber('9876543210');
       setError(null);
+      setShowExistsModal(false);
+      setShowOfflineBanner(false);
     } else if (state === 'Empty') {
       setPhoneNumber('');
       setError(null);
+      setShowExistsModal(false);
+      setShowOfflineBanner(false);
     } else if (state === 'Invalid') {
       setPhoneNumber('12345');
       setError('Please enter a valid 10-digit Indian mobile number');
+      setShowExistsModal(false);
+      setShowOfflineBanner(false);
     } else if (state === 'DLG-01') {
-      setError('Telecom carrier gateway latency detected. Please retry in 30 seconds.');
+      setShowExistsModal(true);
+      setError(null);
     } else if (state === 'DLG-10') {
-      setError('Rate limit reached: Maximum 3 OTP requests allowed per hour for this device.');
+      setShowOfflineBanner(true);
+      setError(null);
     }
   };
 
@@ -686,6 +702,23 @@ export default function RegisterPage() {
             </div>
           </div>
         </main>
+
+        <AccountExistsDialog
+          isOpen={showExistsModal}
+          onClose={() => setShowExistsModal(false)}
+          phoneNumber={`+91 ${phoneNumber}`}
+          onSignInPassword={() => router.push('/login')}
+          onSignInOtp={() => {
+            setShowExistsModal(false);
+            setStep(3);
+          }}
+        />
+
+        <OfflineBanner
+          isVisible={showOfflineBanner}
+          onRetry={() => setShowOfflineBanner(false)}
+          onDismiss={() => setShowOfflineBanner(false)}
+        />
       </div>
     );
   }
@@ -917,6 +950,18 @@ export default function RegisterPage() {
           </div>
         </div>
       </main>
+
+      <OtpLimitReachedDialog
+        isOpen={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+        waitMinutes={15}
+      />
+
+      <OfflineBanner
+        isVisible={showOfflineBanner}
+        onRetry={() => setShowOfflineBanner(false)}
+        onDismiss={() => setShowOfflineBanner(false)}
+      />
     </div>
   );
 }

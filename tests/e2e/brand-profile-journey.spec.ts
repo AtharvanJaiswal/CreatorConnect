@@ -85,7 +85,7 @@ test.describe('Brand/Customer Profile User Journey End-to-End', () => {
     });
 
     // 1. Navigate to /profiles/me
-    await page.goto('/profiles/me', { waitUntil: 'networkidle' });
+    await page.goto('/profiles/me', { waitUntil: 'domcontentloaded' });
 
     // 2. Verify Brand tab is visible for authorized Brand user
     const brandTab = page.locator('[data-testid="tab-brand"]');
@@ -144,7 +144,7 @@ test.describe('Brand/Customer Profile User Journey End-to-End', () => {
     expect(persisted!.visibility).toBe('PUBLIC');
 
     // 7. Reload page -> verify persisted values remain populated in the UI
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.locator('[data-testid="tab-brand"]')).toBeVisible();
     await page.click('[data-testid="tab-brand"]');
 
@@ -177,7 +177,7 @@ test.describe('Brand/Customer Profile User Journey End-to-End', () => {
     }, brandUser.token);
 
     // 1. Visit /brand dashboard
-    await page.goto('/brand', { waitUntil: 'networkidle' });
+    await page.goto('/brand', { waitUntil: 'domcontentloaded' });
 
     // 2. Click "Edit Brand Profile" action button
     const editProfileLink = page.locator('[data-testid="edit-brand-profile-link"]').first();
@@ -205,14 +205,14 @@ test.describe('Brand/Customer Profile User Journey End-to-End', () => {
     }, creatorUser.token);
 
     // 1. Open /profiles/me
-    await page.goto('/profiles/me', { waitUntil: 'networkidle' });
+    await page.goto('/profiles/me', { waitUntil: 'domcontentloaded' });
 
     // Brand tab should NOT be rendered in TabsList for Creator user
     const brandTab = page.locator('[data-testid="tab-brand"]');
     await expect(brandTab).toHaveCount(0);
 
     // 2. Attempt direct deep-link to ?tab=brand
-    await page.goto('/profiles/me?tab=brand', { waitUntil: 'networkidle' });
+    await page.goto('/profiles/me?tab=brand', { waitUntil: 'domcontentloaded' });
 
     // Role-gated explanatory state appears, no form inputs visible
     await expect(page.locator('[data-testid="brand-profile-role-gate"]')).toBeVisible();
@@ -231,7 +231,7 @@ test.describe('Brand/Customer Profile User Journey End-to-End', () => {
       (window as any).__TEST_ACCESS_TOKEN__ = token;
     }, brandUser.token);
 
-    await page.goto('/profiles/me?tab=brand', { waitUntil: 'networkidle' });
+    await page.goto('/profiles/me?tab=brand', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('[data-testid="brand-company-name-input"]')).toBeVisible();
 
     // Fill valid company name but invalid insecure HTTP website URL
@@ -265,7 +265,7 @@ test.describe('Brand/Customer Profile User Journey End-to-End', () => {
     const customerB = await provisionUser('BRAND');
 
     // Setup Customer A profile via API
-    await request.put('http://localhost:3000/api/v1/profiles/brand', {
+    await request.put('/api/v1/profiles/brand', {
       headers: {
         Authorization: `Bearer ${customerA.token}`,
         'Content-Type': 'application/json',
@@ -283,7 +283,7 @@ test.describe('Brand/Customer Profile User Journey End-to-End', () => {
       (window as any).__TEST_ACCESS_TOKEN__ = token;
     }, customerB.token);
 
-    await page.goto('/profiles/me?tab=brand', { waitUntil: 'networkidle' });
+    await page.goto('/profiles/me?tab=brand', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('[data-testid="brand-company-name-input"]')).toBeVisible();
 
     // Customer B form must NOT show Customer A data

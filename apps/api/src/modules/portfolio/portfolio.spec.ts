@@ -287,4 +287,120 @@ describe('Portfolio Domain Integration Tests', () => {
     expect(linkAInDb).not.toBeNull();
     expect(linkAInDb!.displayOrder).toBe(0);
   });
+
+  it('reorders portfolio items atomically for the authenticated creator', async () => {
+    // Create two items
+    const item1Res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/portfolio/items',
+      headers: { authorization: `Bearer ${creatorToken}` },
+      payload: { title: 'Order Item 1', displayOrder: 0 },
+    });
+    const item1Id = item1Res.json().id;
+
+    const item2Res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/portfolio/items',
+      headers: { authorization: `Bearer ${creatorToken}` },
+      payload: { title: 'Order Item 2', displayOrder: 1 },
+    });
+    const item2Id = item2Res.json().id;
+
+    // Reorder them
+    const reorderRes = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/portfolio/items/reorder',
+      headers: { authorization: `Bearer ${creatorToken}` },
+      payload: {
+        items: [
+          { id: item1Id, displayOrder: 10 },
+          { id: item2Id, displayOrder: 20 },
+        ],
+      },
+    });
+    expect(reorderRes.statusCode).toBe(204);
+
+    // Verify in DB
+    const item1 = await prisma.portfolioItem.findUnique({ where: { id: item1Id } });
+    const item2 = await prisma.portfolioItem.findUnique({ where: { id: item2Id } });
+    expect(item1?.displayOrder).toBe(10);
+    expect(item2?.displayOrder).toBe(20);
+  });
+
+  it('prevents IDOR: rejects portfolio items reorder containing items of another user', async () => {
+    const creatorItemRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/portfolio/items',
+      headers: { authorization: `Bearer ${creatorToken}` },
+      payload: { title: 'Creator Reorder Item' },
+    });
+    const creatorItemId = creatorItemRes.json().id;
+
+    const otherItemRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/portfolio/items',
+      headers: { authorization: `Bearer ${otherToken}` },
+      payload: { title: 'Other Reorder Item' },
+    });
+    const otherItemId = otherItemRes.json().id;
+
+    // Creator attempts to reorder while including other user's item
+    const attackRes = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/portfolio/items/reorder',
+      headers: { authorization: `Bearer ${creatorToken}` },
+      payload: {
+        items: [
+          { id: creatorItemId, displayOrder: 1 },
+          { id: otherItemId, displayOrder: 2 },
+        ],
+      },
+    });
+    expect(attackRes.statusCode).toBe(403);
+  });
+
+  it('detaches media asset from owned portfolio item and rejects unauthorized detachment', async () => {
+    const itemRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/portfolio/items',
+      headers: { authorization: `Bearer ${creatorToken}` },
+      payload: { title: 'Item for Detach Test' },
+    });
+    const itemId = itemRes.json().id;
+
+    // Attach active asset
+    await app.inject({
+      method: 'POST',
+      url: `/api/v1/portfolio/items/${itemId}/media`,
+      headers: { authorization: `Bearer ${creatorToken}` },
+      payload: { mediaAssetId: activeAssetId },
+    });
+
+    // Other user attempts to detach -> 403 Forbidden
+    const unauthRes = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/portfolio/items/${itemId}/media/${activeAssetId}`,
+      headers: { authorization: `Bearer ${otherToken}` },
+    });
+    expect(unauthRes.statusCode).toBe(403);
+
+    // Owner detaches -> 204 No Content
+    const detachRes = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/portfolio/items/${itemId}/media/${activeAssetId}`,
+      headers: { authorization: `Bearer ${creatorToken}` },
+    });
+    expect(detachRes.statusCode).toBe(204);
+
+    // Verify link removed in DB
+    const link = await prisma.portfolioMedia.findUnique({
+      where: {
+        portfolioItemId_mediaAssetId: {
+          portfolioItemId: itemId,
+          mediaAssetId: activeAssetId,
+        },
+      },
+    });
+    expect(link).toBeNull();
+  });
 });

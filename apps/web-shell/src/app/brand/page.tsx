@@ -13,6 +13,7 @@ import {
   TabsContent,
 } from '@creatorconnect/ui';
 import { Building2, Plus, DollarSign, Target, ShieldCheck, ArrowUpRight } from 'lucide-react';
+import { BrandCollaborationPanel } from '../../components/collaboration/brand-collaboration-panel';
 
 export default function BrandPage() {
   return (
@@ -110,18 +111,18 @@ export default function BrandPage() {
               <span className="text-xs text-muted-foreground">
                 3 deliverables awaiting brand sign-off before escrow release
               </span>
-              <Button size="sm" variant="outline" className="gap-1">
-                <span>Manage Campaign</span>
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </Button>
+              <Link href="/projects/01a14580-c7e4-7c14-b64a-aa16beca7990">
+                <Button size="sm" variant="outline" className="gap-1">
+                  <span>Manage Campaign</span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </Button>
+              </Link>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="shortlist">
-          <Card className="p-8 text-center text-muted-foreground text-sm">
-            AI-assisted creator matching shortlist and audience engagement analytics.
-          </Card>
+        <TabsContent value="shortlist" className="space-y-4">
+          <BrandCollaborationPanel />
         </TabsContent>
 
         <TabsContent value="escrow">

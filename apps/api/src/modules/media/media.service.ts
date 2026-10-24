@@ -6,7 +6,12 @@ import type {
   ConfirmUploadInput,
   MediaAssetResponse,
 } from '@creatorconnect/contracts';
-import { mediaRepository, MediaRepository } from './media.repository.js';
+import type { MediaAsset } from '@creatorconnect/database';
+import {
+  mediaRepository,
+  MediaRepository,
+  type MediaAssetWithParents,
+} from './media.repository.js';
 import { S3StorageService, MockStorageService, type IStorageService } from './storage.service.js';
 import {
   BadRequestError,
@@ -170,7 +175,7 @@ export class MediaService {
     assetId: string,
     isAdmin = false,
   ): Promise<MediaAssetResponse> {
-    const asset = await this.repo.findByIdWithParents(assetId);
+    const asset: MediaAssetWithParents | null = await this.repo.findByIdWithParents(assetId);
     if (!asset) {
       throw new NotFoundError('Media asset not found.');
     }
@@ -200,6 +205,22 @@ export class MediaService {
     }
 
     // 3. Parent visibility inheritance & Unattached asset policy:
+    // Check if attached to a project deliverable or submission
+    const isDeliverableParticipant =
+      asset.deliverables.some(
+        (d) => d.project.clientId === callerUserId || d.project.talentId === callerUserId,
+      ) ||
+      asset.deliverableSubmissions.some(
+        (s) =>
+          s.deliverable.project.clientId === callerUserId ||
+          s.deliverable.project.talentId === callerUserId,
+      );
+
+    if (isDeliverableParticipant) {
+      // Authorized project participant (client or talent): issued private short-lived pre-signed URL
+      return this.mapToResponse(asset, true, true);
+    }
+
     // Unattached active media:
     if (!asset.portfolioMedia || asset.portfolioMedia.length === 0) {
       if (!isOwnerOrAdmin) {
@@ -213,8 +234,8 @@ export class MediaService {
 
     // Attached to one or more PortfolioItems:
     const activeParents = asset.portfolioMedia
-      .map((pm: any) => pm.portfolioItem)
-      .filter((pi: any) => !pi.deletedAt);
+      .map((pm) => pm.portfolioItem)
+      .filter((pi) => !pi.deletedAt);
 
     if (activeParents.length === 0) {
       // All parent items are soft-deleted
@@ -226,15 +247,15 @@ export class MediaService {
 
     if (isOwnerOrAdmin) {
       const hasPublicParent = activeParents.some(
-        (pi: any) => pi.visibility === 'PUBLIC' || pi.visibility === 'UNLISTED',
+        (pi) => pi.visibility === 'PUBLIC' || pi.visibility === 'UNLISTED',
       );
       return this.mapToResponse(asset, true, !hasPublicParent);
     }
 
     // Unrelated caller:
-    const hasPublicParent = activeParents.some((pi: any) => pi.visibility === 'PUBLIC');
-    const hasUnlistedParent = activeParents.some((pi: any) => pi.visibility === 'UNLISTED');
-    const allPrivate = activeParents.every((pi: any) => pi.visibility === 'PRIVATE');
+    const hasPublicParent = activeParents.some((pi) => pi.visibility === 'PUBLIC');
+    const hasUnlistedParent = activeParents.some((pi) => pi.visibility === 'UNLISTED');
+    const allPrivate = activeParents.every((pi) => pi.visibility === 'PRIVATE');
 
     if (allPrivate) {
       throw new ForbiddenError(
@@ -251,7 +272,7 @@ export class MediaService {
   }
 
   async mapToResponse(
-    asset: any,
+    asset: MediaAsset,
     generateUrls = true,
     isPrivate = false,
   ): Promise<MediaAssetResponse> {

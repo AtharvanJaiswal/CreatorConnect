@@ -3,6 +3,7 @@ import type {
   RatingDistribution,
   CategoryAverages,
 } from '@creatorconnect/contracts';
+import { roundRatingForDisplay } from '@creatorconnect/utils';
 import { ReviewsRepository } from './reviews.repository.js';
 
 export class ReputationService {
@@ -24,11 +25,6 @@ export class ReputationService {
    */
   private static readonly PRIOR_MEAN = 4.0;
   private static readonly PRIOR_WEIGHT = 5.0;
-
-  private static roundToTwoDecimals(val: number | null): number | null {
-    if (val === null || val === undefined || isNaN(val)) return null;
-    return Math.round(val * 100) / 100;
-  }
 
   async getReputationSummary(userId: string): Promise<ReputationSummaryResponse> {
     const raw = await this.repo.aggregateReputation(userId);
@@ -53,17 +49,16 @@ export class ReputationService {
           quality: null,
           adherence: null,
         },
+        completedProjectCount: raw.completedProjectCount ?? 0,
       };
     }
 
-    const averageRating = ReputationService.roundToTwoDecimals(raw.averageRating);
+    const averageRating = roundRatingForDisplay(raw.averageRating, 2);
     const sumRatings = (raw.averageRating ?? 0) * totalReviews;
     const bayesianNumerator =
       ReputationService.PRIOR_WEIGHT * ReputationService.PRIOR_MEAN + sumRatings;
     const bayesianDenominator = ReputationService.PRIOR_WEIGHT + totalReviews;
-    const bayesianScore = ReputationService.roundToTwoDecimals(
-      bayesianNumerator / bayesianDenominator,
-    );
+    const bayesianScore = roundRatingForDisplay(bayesianNumerator / bayesianDenominator, 2);
 
     const ratingDistribution: RatingDistribution = {
       1: raw.distribution[1] ?? 0,
@@ -74,9 +69,9 @@ export class ReputationService {
     };
 
     const categoryAverages: CategoryAverages = {
-      communication: ReputationService.roundToTwoDecimals(raw.communicationAverage),
-      quality: ReputationService.roundToTwoDecimals(raw.qualityAverage),
-      adherence: ReputationService.roundToTwoDecimals(raw.adherenceAverage),
+      communication: roundRatingForDisplay(raw.communicationAverage, 2),
+      quality: roundRatingForDisplay(raw.qualityAverage, 2),
+      adherence: roundRatingForDisplay(raw.adherenceAverage, 2),
     };
 
     return {
@@ -86,6 +81,7 @@ export class ReputationService {
       bayesianScore,
       ratingDistribution,
       categoryAverages,
+      completedProjectCount: raw.completedProjectCount ?? 0,
     };
   }
 }

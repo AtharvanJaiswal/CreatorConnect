@@ -85,8 +85,18 @@ export const discoveryRoutes: FastifyPluginAsync<DiscoveryRoutesOptions> = async
       },
     },
     async (request, reply) => {
+      let requestingUserId: string | undefined = undefined;
+      if (request.headers.authorization) {
+        try {
+          await fastify.authenticate(request, reply);
+          requestingUserId = request.user?.id;
+        } catch {
+          // If optional authentication fails, proceed as unauthenticated public searcher
+        }
+      }
+
       const start = Date.now();
-      const result = await service.searchCreators(request.query);
+      const result = await service.searchCreators(request.query, requestingUserId);
       const durationMs = Date.now() - start;
       request.log.info(
         { durationMs, query: request.query.q, count: result.items.length },

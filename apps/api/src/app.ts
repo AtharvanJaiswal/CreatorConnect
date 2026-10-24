@@ -25,8 +25,8 @@ import { notificationsRoutes } from './modules/notifications/notifications.route
 import { projectsRoutes } from './modules/projects/projects.routes.js';
 import { paymentsRoutes } from './modules/payments/payments.routes.js';
 import { disputesRoutes, cancellationsRoutes } from './modules/disputes/index.js';
-import { reviewsRoutes } from './modules/reviews/index.js';
 import { discoveryModuleDRoutes } from './modules/discovery/discovery.module-d.routes.js';
+import { collaborationRoutes } from './modules/collaboration/index.js';
 
 export async function buildApp(opts: FastifyServerOptions = {}): Promise<FastifyInstance> {
   const defaultTrustProxy = process.env.TRUST_PROXY
@@ -223,6 +223,7 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
   await app.register(cancellationsRoutes);
   await app.register(reviewsRoutes);
   await app.register(discoveryModuleDRoutes);
+  await app.register(collaborationRoutes);
 
   return app;
 }

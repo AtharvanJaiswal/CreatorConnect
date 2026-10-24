@@ -206,3 +206,123 @@ export const SkillResponseSchema = Type.Object({
   createdAt: IsoDateTimeSchema,
 });
 export type SkillResponse = Static<typeof SkillResponseSchema>;
+
+// ==============================================================================
+// Public Profiles (Strict Allowlist — zero leakage of private/auth data)
+// ==============================================================================
+
+export const PublicPortfolioItemSchema = Type.Object({
+  id: UuidSchema,
+  title: Type.String(),
+  description: Type.Union([Type.String(), Type.Null()]),
+  externalUrl: Type.Union([Type.String(), Type.Null()]),
+  displayOrder: Type.Integer(),
+  tags: Type.Array(Type.String()),
+  media: Type.Array(
+    Type.Object({
+      id: UuidSchema,
+      mediaAssetId: UuidSchema,
+      displayOrder: Type.Integer(),
+      caption: Type.Union([Type.String(), Type.Null()]),
+      mediaAsset: Type.Object({
+        id: UuidSchema,
+        storageKey: Type.String(),
+        originalName: Type.String(),
+        mimeType: Type.String(),
+        byteSize: Type.Integer(),
+        mediaType: Type.String(),
+        status: Type.String(),
+        thumbnailKey: Type.Union([Type.String(), Type.Null()]),
+        previewKey: Type.Union([Type.String(), Type.Null()]),
+        url: Type.String(),
+        thumbnailUrl: Type.Union([Type.String(), Type.Null()]),
+        previewUrl: Type.Union([Type.String(), Type.Null()]),
+        width: Type.Union([Type.Integer(), Type.Null()]),
+        height: Type.Union([Type.Integer(), Type.Null()]),
+        durationSec: Type.Union([Type.Integer(), Type.Null()]),
+        createdAt: IsoDateTimeSchema,
+      }),
+      createdAt: IsoDateTimeSchema,
+    }),
+  ),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+});
+export type PublicPortfolioItem = Static<typeof PublicPortfolioItemSchema>;
+
+export const PublicCreatorProfileResponseSchema = Type.Object({
+  id: UuidSchema,
+  displayName: Type.String(),
+  avatarUrl: Type.Union([Type.String(), Type.Null()]),
+  tagline: Type.Union([Type.String(), Type.Null()]),
+  bio: Type.Union([Type.String(), Type.Null()]),
+  locationCountry: Type.Union([Type.String(), Type.Null()]),
+  locationCity: Type.Union([Type.String(), Type.Null()]),
+  isRemote: Type.Boolean(),
+  startingRate: Type.Union([MinorUnitsSchema, Type.Null()]),
+  currency: CurrencyCodeSchema,
+  isVerified: Type.Boolean(),
+  socialLinks: Type.Union([Type.Array(SocialLinkItemSchema), Type.Null()]),
+  categories: Type.Array(
+    Type.Object({
+      id: UuidSchema,
+      slug: Type.String(),
+      name: Type.String(),
+    }),
+  ),
+  skills: Type.Array(UserSkillResponseSchema),
+  portfolio: Type.Array(PublicPortfolioItemSchema),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+});
+export type PublicCreatorProfileResponse = Static<typeof PublicCreatorProfileResponseSchema>;
+
+export const PublicBrandProfileResponseSchema = Type.Object({
+  id: UuidSchema,
+  companyName: Type.String(),
+  avatarUrl: Type.Union([Type.String(), Type.Null()]),
+  industry: Type.Union([Type.String(), Type.Null()]),
+  websiteUrl: Type.Union([Type.String(), Type.Null()]),
+  companySize: Type.Union([Type.String(), Type.Null()]),
+  bio: Type.Union([Type.String(), Type.Null()]),
+  isVerified: Type.Boolean(),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+});
+export type PublicBrandProfileResponse = Static<typeof PublicBrandProfileResponseSchema>;
+
+// ==============================================================================
+// Profile Completion & Validation Diagnostics
+// ==============================================================================
+
+export const ProfileSectionStatusSchema = Type.Object({
+  section: Type.String(),
+  weight: Type.Integer(),
+  isComplete: Type.Boolean(),
+  description: Type.String(),
+});
+export type ProfileSectionStatus = Static<typeof ProfileSectionStatusSchema>;
+
+export const ProfileCompletionBreakdownSchema = Type.Object({
+  completionScore: Type.Integer({ minimum: 0, maximum: 100 }),
+  isComplete: Type.Boolean(),
+  completedSections: Type.Array(Type.String()),
+  missingSections: Type.Array(Type.String()),
+  sectionBreakdown: Type.Array(ProfileSectionStatusSchema),
+  validationTips: Type.Array(Type.String()),
+});
+export type ProfileCompletionBreakdown = Static<typeof ProfileCompletionBreakdownSchema>;
+
+// ==============================================================================
+// Brand Profile Audit History
+// ==============================================================================
+
+export const BrandAuditLogResponseSchema = Type.Object({
+  id: UuidSchema,
+  action: Type.String(),
+  entity: Type.String(),
+  entityId: Type.Union([Type.String(), Type.Null()]),
+  metadata: Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()]),
+  createdAt: IsoDateTimeSchema,
+});
+export type BrandAuditLogResponse = Static<typeof BrandAuditLogResponseSchema>;

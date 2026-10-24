@@ -12,8 +12,13 @@ import type {
   UserSkillResponse,
   CategoryResponse,
   SkillResponse,
+  PublicCreatorProfileResponse,
+  PublicBrandProfileResponse,
+  ProfileCompletionBreakdown,
+  BrandAuditLogResponse,
 } from '@creatorconnect/contracts';
 import { profilesRepository, ProfilesRepository } from './profiles.repository.js';
+import { mediaService, MediaService } from '../media/media.service.js';
 import {
   NotFoundError,
   ForbiddenError,
@@ -22,7 +27,10 @@ import {
 } from '../../errors/app-error.js';
 
 export class ProfilesService {
-  constructor(private repo: ProfilesRepository = profilesRepository) {}
+  constructor(
+    private repo: ProfilesRepository = profilesRepository,
+    private mediaSvc: MediaService = mediaService,
+  ) {}
 
   // ==============================================================================
   // Creator Profile
@@ -47,6 +55,207 @@ export class ProfilesService {
     }
 
     return this.mapCreatorProfile(profile);
+  }
+
+  async getMyCreatorProfile(userId: string): Promise<CreatorProfileResponse> {
+    const profile = await this.repo.findCreatorProfileByUserId(userId);
+    if (!profile || profile.deletedAt || profile.user.status !== 'ACTIVE') {
+      throw new NotFoundError('Creator profile not found.');
+    }
+    return this.mapCreatorProfile(profile);
+  }
+
+  async getCreatorProfileCompletion(userId: string): Promise<ProfileCompletionBreakdown> {
+    const profile = await this.repo.findCreatorProfileByUserId(userId);
+    const userSkills = await this.repo.findUserSkills(userId);
+
+    const hasTagline = Boolean(profile?.tagline?.trim());
+    const hasBio = Boolean(profile?.bio && profile.bio.trim().length >= 20);
+    const hasLocation = Boolean(profile?.locationCountry && profile?.locationCity);
+    const hasRate =
+      profile?.startingRate !== null &&
+      profile?.startingRate !== undefined &&
+      profile.startingRate > 0;
+    const hasCategories = Boolean(profile?.categories && profile.categories.length > 0);
+    const hasSkills = userSkills.length > 0;
+    const hasSocialLinks = Boolean(
+      profile?.socialLinks && Array.isArray(profile.socialLinks) && profile.socialLinks.length > 0,
+    );
+
+    const sections = [
+      {
+        section: 'tagline',
+        weight: 15,
+        isComplete: hasTagline,
+        description: 'Concise professional headline summarizing your creator niche.',
+      },
+      {
+        section: 'bio',
+        weight: 20,
+        isComplete: hasBio,
+        description:
+          'Comprehensive biography detailing your content focus and creative philosophy.',
+      },
+      {
+        section: 'location',
+        weight: 15,
+        isComplete: hasLocation,
+        description: 'Country and city to qualify for localized brand campaigns.',
+      },
+      {
+        section: 'rates',
+        weight: 15,
+        isComplete: hasRate,
+        description: 'Base starting rate and currency for transparent deal scoping.',
+      },
+      {
+        section: 'categories',
+        weight: 15,
+        isComplete: hasCategories,
+        description: 'Taxonomy categories to surface your profile in relevant discovery queries.',
+      },
+      {
+        section: 'skills',
+        weight: 10,
+        isComplete: hasSkills,
+        description: 'Verified skills and proficiencies attached to your talent profile.',
+      },
+      {
+        section: 'socialLinks',
+        weight: 10,
+        isComplete: hasSocialLinks,
+        description: 'External public channels and social proof links.',
+      },
+    ];
+
+    const completedSections: string[] = [];
+    const missingSections: string[] = [];
+    let completionScore = 0;
+
+    for (const sec of sections) {
+      if (sec.isComplete) {
+        completedSections.push(sec.section);
+        completionScore += sec.weight;
+      } else {
+        missingSections.push(sec.section);
+      }
+    }
+
+    const validationTips: string[] = [];
+    if (!hasTagline)
+      validationTips.push('Add a compelling tagline to grab attention in creator search results.');
+    if (!hasBio)
+      validationTips.push(
+        'Write a detailed biography of at least 20 characters describing your audience and style.',
+      );
+    if (!hasLocation)
+      validationTips.push(
+        'Specify your city and country so brands can discover you for local shoots.',
+      );
+    if (!hasRate)
+      validationTips.push(
+        'Set a starting rate in INR to attract serious brand sponsors and fast-track hiring.',
+      );
+    if (!hasCategories)
+      validationTips.push('Select at least one taxonomy category to appear in discovery filters.');
+    if (!hasSkills)
+      validationTips.push(
+        'Add skills with your proficiency level to qualify for specialized production gigs.',
+      );
+    if (!hasSocialLinks)
+      validationTips.push(
+        'Connect your public social links to demonstrate your reach and track record.',
+      );
+
+    return {
+      completionScore,
+      isComplete: completionScore === 100,
+      completedSections,
+      missingSections,
+      sectionBreakdown: sections,
+      validationTips,
+    };
+  }
+
+  async getPublicCreatorProfile(
+    identifier: string,
+    callerId?: string,
+    isAdmin = false,
+  ): Promise<PublicCreatorProfileResponse> {
+    const profile = await this.repo.findCreatorProfileWithFullDetails(identifier);
+
+    if (!profile || profile.deletedAt || profile.user.status !== 'ACTIVE') {
+      throw new NotFoundError('Creator profile not found.');
+    }
+
+    if (profile.visibility === 'PRIVATE' && profile.userId !== callerId && !isAdmin) {
+      throw new NotFoundError('Creator profile not found.');
+    }
+
+    const displayName =
+      [profile.user.firstName, profile.user.lastName].filter(Boolean).join(' ').trim() || 'Creator';
+
+    const portfolioItems = await Promise.all(
+      (profile.user.portfolioItems || []).map(async (item: any) => {
+        const media = await Promise.all(
+          (item.media || []).map(async (pm: any) => ({
+            id: pm.id,
+            mediaAssetId: pm.mediaAssetId,
+            displayOrder: pm.displayOrder,
+            caption: pm.caption,
+            mediaAsset: await this.mediaSvc.mapToResponse(pm.mediaAsset),
+            createdAt: pm.createdAt.toISOString(),
+          })),
+        );
+
+        return {
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          externalUrl: item.externalUrl,
+          displayOrder: item.displayOrder,
+          tags: item.tags || [],
+          media,
+          createdAt: item.createdAt.toISOString(),
+          updatedAt: item.updatedAt.toISOString(),
+        };
+      }),
+    );
+
+    const skills = (profile.user.userSkills || []).map((us: any) => ({
+      id: us.id,
+      skillId: us.skillId,
+      name: us.skill.name,
+      slug: us.skill.slug,
+      proficiency: us.proficiency as any,
+      createdAt: us.createdAt.toISOString(),
+    }));
+
+    const categories = (profile.categories || []).map((c: any) => ({
+      id: c.category?.id || c.categoryId,
+      slug: c.category?.slug || '',
+      name: c.category?.name || '',
+    }));
+
+    return {
+      id: profile.id,
+      displayName,
+      avatarUrl: profile.user.avatarUrl,
+      tagline: profile.tagline,
+      bio: profile.bio,
+      locationCountry: profile.locationCountry,
+      locationCity: profile.locationCity,
+      isRemote: profile.isRemote,
+      startingRate: profile.startingRate,
+      currency: profile.currency,
+      isVerified: profile.isVerified,
+      socialLinks: profile.socialLinks as any,
+      categories,
+      skills,
+      portfolio: portfolioItems,
+      createdAt: profile.createdAt.toISOString(),
+      updatedAt: profile.updatedAt.toISOString(),
+    };
   }
 
   async updateCreatorProfile(
@@ -221,6 +430,55 @@ export class ProfilesService {
     }
 
     return this.mapBrandProfile(profile);
+  }
+
+  async getMyBrandProfile(userId: string): Promise<BrandProfileResponse> {
+    const profile = await this.repo.findBrandProfileByUserId(userId);
+    if (!profile || profile.deletedAt || profile.user.status !== 'ACTIVE') {
+      throw new NotFoundError('Brand profile not found.');
+    }
+    return this.mapBrandProfile(profile);
+  }
+
+  async getPublicBrandProfile(
+    identifier: string,
+    callerId?: string,
+    isAdmin = false,
+  ): Promise<PublicBrandProfileResponse> {
+    const profile = await this.repo.findBrandProfileWithDetails(identifier);
+
+    if (!profile || profile.deletedAt || profile.user.status !== 'ACTIVE') {
+      throw new NotFoundError('Brand profile not found.');
+    }
+
+    if (profile.visibility === 'PRIVATE' && profile.userId !== callerId && !isAdmin) {
+      throw new NotFoundError('Brand profile not found.');
+    }
+
+    return {
+      id: profile.id,
+      companyName: profile.companyName,
+      avatarUrl: profile.user.avatarUrl,
+      industry: profile.industry,
+      websiteUrl: profile.websiteUrl,
+      companySize: profile.companySize,
+      bio: profile.bio,
+      isVerified: profile.isVerified,
+      createdAt: profile.createdAt.toISOString(),
+      updatedAt: profile.updatedAt.toISOString(),
+    };
+  }
+
+  async getBrandAuditLogs(userId: string): Promise<BrandAuditLogResponse[]> {
+    const logs = await this.repo.findBrandAuditLogs(userId);
+    return logs.map((l) => ({
+      id: l.id,
+      action: l.action,
+      entity: l.entity,
+      entityId: l.entityId,
+      metadata: l.metadata as any,
+      createdAt: l.createdAt.toISOString(),
+    }));
   }
 
   async updateBrandProfile(

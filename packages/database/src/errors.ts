@@ -86,6 +86,36 @@ export class UserNotFoundError extends MessagingError {
   }
 }
 
+export class MessageNotFoundError extends MessagingError {
+  constructor(detail = 'The requested message was not found or access is denied.') {
+    super(404, 'MESSAGE_NOT_FOUND', 'Message Not Found', detail);
+  }
+}
+
+export class MessageNotEditableError extends MessagingError {
+  constructor(detail = 'Message cannot be edited after the 15-minute edit window or if deleted.') {
+    super(400, 'MESSAGE_NOT_EDITABLE', 'Message Not Editable', detail);
+  }
+}
+
+export class MessageDeletedError extends MessagingError {
+  constructor(detail = 'The requested message has already been deleted.') {
+    super(400, 'MESSAGE_DELETED', 'Message Deleted', detail);
+  }
+}
+
+export class SelfReportNotAllowedError extends MessagingError {
+  constructor(detail = 'You cannot report your own account or your own content.') {
+    super(400, 'SELF_REPORT_NOT_ALLOWED', 'Self Report Not Allowed', detail);
+  }
+}
+
+export class ReportTargetNotFoundError extends MessagingError {
+  constructor(detail = 'The specified report target entity was not found.') {
+    super(404, 'REPORT_TARGET_NOT_FOUND', 'Report Target Not Found', detail);
+  }
+}
+
 /**
  * Base Notification Database Error adhering to RFC 7807 problem details fields.
  */

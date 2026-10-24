@@ -69,12 +69,14 @@ export type ProjectResponse = Static<typeof ProjectResponseSchema>;
 export const SubmitDeliverableInputSchema = Type.Object({
   submittedAssetId: Type.Optional(UuidSchema),
   submissionNotes: Type.Optional(Type.String({ maxLength: 5000 })),
+  idempotencyKey: Type.Optional(Type.String({ maxLength: 128 })),
 });
 export type SubmitDeliverableInput = Static<typeof SubmitDeliverableInputSchema>;
 
 export const ReviewDeliverableInputSchema = Type.Object({
   action: Type.Union([Type.Literal('APPROVE'), Type.Literal('REQUEST_REVISION')]),
   notes: Type.Optional(Type.String({ maxLength: 5000 })),
+  idempotencyKey: Type.Optional(Type.String({ maxLength: 128 })),
 });
 export type ReviewDeliverableInput = Static<typeof ReviewDeliverableInputSchema>;
 
@@ -85,6 +87,43 @@ export const CreateProjectDeliverableInputSchema = Type.Object({
   dueDate: Type.Optional(IsoDateTimeSchema),
 });
 export type CreateProjectDeliverableInput = Static<typeof CreateProjectDeliverableInputSchema>;
+
+export const UpdateProjectDeliverableInputSchema = Type.Object({
+  title: Type.Optional(Type.String({ minLength: 1, maxLength: 150 })),
+  description: Type.Optional(Type.String({ maxLength: 5000 })),
+  amount: Type.Optional(Type.Integer({ minimum: 1 })),
+  dueDate: Type.Optional(IsoDateTimeSchema),
+});
+export type UpdateProjectDeliverableInput = Static<typeof UpdateProjectDeliverableInputSchema>;
+
+export const DeliverableSubmissionResponseSchema = Type.Object({
+  id: UuidSchema,
+  deliverableId: UuidSchema,
+  version: Type.Integer(),
+  submittedById: UuidSchema,
+  submittedAssetId: Type.Union([UuidSchema, Type.Null()]),
+  submissionNotes: Type.Union([Type.String(), Type.Null()]),
+  reviewStatus: DeliverableStatusSchema,
+  reviewedById: Type.Union([UuidSchema, Type.Null()]),
+  reviewNotes: Type.Union([Type.String(), Type.Null()]),
+  submittedAt: IsoDateTimeSchema,
+  reviewedAt: Type.Union([IsoDateTimeSchema, Type.Null()]),
+  createdAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+});
+export type DeliverableSubmissionResponse = Static<typeof DeliverableSubmissionResponseSchema>;
+
+export const DeliverableAttachmentResponseSchema = Type.Object({
+  id: UuidSchema,
+  originalName: Type.String(),
+  mimeType: Type.String(),
+  byteSize: Type.Integer(),
+  mediaType: Type.String(),
+  status: Type.String(),
+  downloadUrl: Type.Union([Type.String(), Type.Null()]),
+  expiresAt: Type.Union([IsoDateTimeSchema, Type.Null()]),
+});
+export type DeliverableAttachmentResponse = Static<typeof DeliverableAttachmentResponseSchema>;
 
 export const CreateProjectInputSchema = Type.Object({
   assignmentId: UuidSchema,
