@@ -62,6 +62,46 @@ export const applicationsRoutes: FastifyPluginAsync<ApplicationsRoutesOptions> =
     },
   );
 
+  // POST /api/v1/assignments/:id/applications (Alias to apply)
+  fastify.post<{ Params: IdParam; Body: CreateApplicationInput }>(
+    '/api/v1/assignments/:id/applications',
+    {
+      preHandler: [
+        fastify.authenticate,
+        fastify.rateLimit({
+          endpoint: 'application-create',
+          max: 15,
+          windowSeconds: 60,
+          onRedisFailure: 'fail-closed',
+        }),
+      ],
+      schema: {
+        description: 'Submits a proposal for an active assignment (alias)',
+        tags: ['Applications'],
+        security: [{ bearerAuth: [] }],
+        params: IdParamSchema,
+        body: CreateApplicationInputSchema,
+        response: {
+          201: ApplicationResponseSchema,
+          400: ProblemDetailsSchema,
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+          409: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = await service.apply(
+        request.user.id,
+        request.user.roles,
+        request.params.id,
+        request.body,
+      );
+      return reply.status(201).send(result);
+    },
+  );
+
   // GET /api/v1/assignments/:id/applications
   fastify.get<{ Params: IdParam }>(
     '/api/v1/assignments/:id/applications',
@@ -112,6 +152,27 @@ export const applicationsRoutes: FastifyPluginAsync<ApplicationsRoutesOptions> =
     },
   );
 
+  // GET /api/v1/applications/me (Alias to /mine)
+  fastify.get(
+    '/api/v1/applications/me',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Retrieves all proposals submitted by the authenticated applicant (alias)',
+        tags: ['Applications'],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: Type.Array(ApplicationResponseSchema),
+          401: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = await service.getMyApplications(request.user.id);
+      return reply.status(200).send(result);
+    },
+  );
+
   // GET /api/v1/applications/:id
   fastify.get<{ Params: IdParam }>(
     '/api/v1/applications/:id',
@@ -144,6 +205,38 @@ export const applicationsRoutes: FastifyPluginAsync<ApplicationsRoutesOptions> =
       preHandler: [fastify.authenticate],
       schema: {
         description: 'Explicitly transitions proposal status (UNDER_REVIEW, SHORTLISTED, REJECTED)',
+        tags: ['Applications'],
+        security: [{ bearerAuth: [] }],
+        params: IdParamSchema,
+        body: UpdateApplicationStatusInputSchema,
+        response: {
+          200: ApplicationResponseSchema,
+          400: ProblemDetailsSchema,
+          401: ProblemDetailsSchema,
+          403: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const isAdmin = request.user.roles.includes('ADMIN');
+      const result = await service.updateStatus(
+        request.user.id,
+        isAdmin,
+        request.params.id,
+        request.body,
+      );
+      return reply.status(200).send(result);
+    },
+  );
+
+  // PATCH /api/v1/applications/:id/status (Alias to POST)
+  fastify.patch<{ Params: IdParam; Body: UpdateApplicationStatusInput }>(
+    '/api/v1/applications/:id/status',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description: 'Explicitly transitions proposal status (alias)',
         tags: ['Applications'],
         security: [{ bearerAuth: [] }],
         params: IdParamSchema,

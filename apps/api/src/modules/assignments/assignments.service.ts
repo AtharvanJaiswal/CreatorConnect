@@ -103,6 +103,20 @@ export class AssignmentsService {
     return assignments.map((a) => this.mapAssignment(a));
   }
 
+  async listAssignments(params?: {
+    status?: string;
+    category?: string;
+    brandId?: string;
+  }): Promise<AssignmentResponse[]> {
+    const filters: { status?: any; categoryId?: string; brandId?: string } = {
+      status: (params?.status?.toUpperCase() as any) || 'PUBLISHED',
+    };
+    if (params?.category) filters.categoryId = params.category;
+    if (params?.brandId) filters.brandId = params.brandId;
+    const assignments = await this.repo.findAll(filters);
+    return assignments.map((a) => this.mapAssignment(a));
+  }
+
   async updateAssignment(
     userId: string,
     id: string,

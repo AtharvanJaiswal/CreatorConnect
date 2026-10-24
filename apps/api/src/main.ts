@@ -1,4 +1,11 @@
 import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'node:path';
+
+dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
 import { buildApp } from './app.js';
 
 async function start() {
