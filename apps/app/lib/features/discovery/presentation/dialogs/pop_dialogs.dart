@@ -878,7 +878,7 @@ class PopDialogs {
                                 setState(() => isSubmitting = true);
                                 try {
                                   await onConfirm(reason, detailsController.text.trim(), hasAttachedScreenshot);
-                                  Navigator.pop(ctx, true);
+                                  if (ctx.mounted) Navigator.pop(ctx, true);
                                 } catch (_) {
                                   setState(() => isSubmitting = false);
                                 }

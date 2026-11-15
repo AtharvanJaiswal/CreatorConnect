@@ -117,6 +117,8 @@ class ProfileCardModel {
     this.portfolioThumbnails = const [],
   });
 
+  String get matchReason => matchReasons.isNotEmpty ? matchReasons.first.label : '';
+
   factory ProfileCardModel.fromJson(Map<String, dynamic> json) {
     List<MatchReason> parsedReasons = [];
     if (json['matchReasons'] is List) {

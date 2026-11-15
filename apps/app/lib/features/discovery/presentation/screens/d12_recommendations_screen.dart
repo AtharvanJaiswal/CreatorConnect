@@ -107,7 +107,8 @@ class D12RecommendationsScreen extends ConsumerWidget {
                 return RefreshIndicator(
                   color: AppColors.primary,
                   onRefresh: () async {
-                    ref.refresh(recommendationsProvider);
+                    ref.invalidate(recommendationsProvider);
+                    await ref.read(recommendationsProvider.future);
                   },
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -161,7 +162,9 @@ class D12RecommendationsScreen extends ConsumerWidget {
                                   Text(
                                     profile.matchReasons.isNotEmpty
                                         ? '95% Match · ${profile.matchReasons.first.label}'
-                                        : '92% Match · Niche & City Alignment',
+                                        : (profile.matchReason.isNotEmpty
+                                            ? '95% Match · ${profile.matchReason}'
+                                            : '92% Match · Niche & City Alignment'),
                                     style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.success),
                                   ),
                                 ],
