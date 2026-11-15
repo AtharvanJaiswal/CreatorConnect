@@ -209,7 +209,7 @@ class _D06SearchResultsScreenState extends ConsumerState<D06SearchResultsScreen>
                           final suggestion = autocompleteList[idx];
                           return ListTile(
                             leading: Text(suggestion.icon ?? '🔍', style: const TextStyle(fontSize: 16)),
-                            title: Text(suggestion.text, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                            title: _buildHighlightedText(suggestion.text, _searchController.text.trim()),
                             trailing: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
@@ -301,7 +301,36 @@ class _D06SearchResultsScreenState extends ConsumerState<D06SearchResultsScreen>
     );
   }
 
+  Widget _buildHighlightedText(String text, String query) {
+    if (query.isEmpty) {
+      return Text(text, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13));
+    }
+    final lowerText = text.toLowerCase();
+    final lowerQuery = query.toLowerCase();
+    final matchIndex = lowerText.indexOf(lowerQuery);
+
+    if (matchIndex < 0) {
+      return Text(text, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13));
+    }
+
+    final before = text.substring(0, matchIndex);
+    final match = text.substring(matchIndex, matchIndex + query.length);
+    final after = text.substring(matchIndex + query.length);
+
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+        children: [
+          TextSpan(text: before, style: const TextStyle(fontWeight: FontWeight.w500)),
+          TextSpan(text: match, style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1B66C9))),
+          TextSpan(text: after, style: const TextStyle(fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildEmptyResultsState() {
+    final currentQ = _searchController.text.trim();
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -312,11 +341,38 @@ class _D06SearchResultsScreenState extends ConsumerState<D06SearchResultsScreen>
             const SizedBox(height: 16),
             Text('No matching creators found', style: AppTypography.headingLarge().copyWith(fontSize: 18)),
             const SizedBox(height: 8),
-            const Text(
-              'Try adjusting your price range, widening your search city, or removing niche filters.',
+            Text(
+              currentQ.isNotEmpty
+                  ? 'No results for "$currentQ". Try broader terms, reset city, or browse categories.'
+                  : 'Try adjusting your price range, widening your search city, or removing niche filters.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
+            if (currentQ.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: () {
+                  _searchController.text = 'Fashion Mumbai';
+                  ref.read(discoveryFeedProvider.notifier).searchWithDebounce('Fashion Mumbai');
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF9E6),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFFFE486)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.lightbulb_outline_rounded, size: 14, color: Color(0xFFC98A16)),
+                      SizedBox(width: 6),
+                      Text('Did you mean: Fashion Mumbai?', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFFC98A16))),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {

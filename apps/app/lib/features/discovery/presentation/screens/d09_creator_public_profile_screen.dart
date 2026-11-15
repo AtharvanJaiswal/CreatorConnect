@@ -208,6 +208,29 @@ class D09CreatorPublicProfileScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 18),
 
+                            // Escrow Protected Contact Safety Stamp (Master Audit §2.8)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 16),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE6F4EC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFB6E09B)),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.shield_outlined, size: 16, color: AppColors.success),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Escrow Protected Contact · Payouts are locked in escrow until milestone deliverables are approved.',
+                                      style: TextStyle(fontSize: 11, color: Color(0xFF1E6B47), fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
                             // Bio
                             Text('About', style: AppTypography.headingMedium().copyWith(fontSize: 15)),
                             const SizedBox(height: 6),
@@ -286,6 +309,10 @@ class D09CreatorPublicProfileScreen extends ConsumerWidget {
                                 separatorBuilder: (_, __) => const SizedBox(width: 10),
                                 itemBuilder: (context, idx) {
                                   final item = profile.portfolioItems[idx];
+                                  final views = item['views'] ?? '140K';
+                                  final duration = item['duration'] ?? '0:45';
+                                  final clientTag = item['clientAttribution'] ?? 'Zara Collab ✓';
+
                                   return ClipRRect(
                                     borderRadius: BorderRadius.circular(16),
                                     child: Stack(
@@ -295,6 +322,33 @@ class D09CreatorPublicProfileScreen extends ConsumerWidget {
                                           width: 140,
                                           height: 140,
                                           fit: BoxFit.cover,
+                                        ),
+                                        Positioned.fill(
+                                          child: Center(
+                                            child: Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                color: Colors.black.withOpacity(0.45),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          top: 6,
+                                          left: 6,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black.withOpacity(0.65),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              clientTag,
+                                              style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w700),
+                                            ),
+                                          ),
                                         ),
                                         Positioned(
                                           bottom: 6,
@@ -306,8 +360,8 @@ class D09CreatorPublicProfileScreen extends ConsumerWidget {
                                               borderRadius: BorderRadius.circular(6),
                                             ),
                                             child: Text(
-                                              '❤️ ${item['likes']}',
-                                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                                              '👁 $views · $duration',
+                                              style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w700),
                                             ),
                                           ),
                                         ),

@@ -114,6 +114,47 @@ class D03EmptyHomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
+
+              // 4-Step Gamified Onboarding Checklist (Master Audit §2.3)
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppColors.border, width: 1.5),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Onboarding Checklist',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE6F4EC),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: const Text(
+                            'Step 2 of 4',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.success),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _checklistItem(title: 'Basic bio & location', isCompleted: true, points: 'Done'),
+                    _checklistItem(title: 'Connect verified social handles', isCompleted: false, points: '+25%'),
+                    _checklistItem(title: 'Upload 1st portfolio sample', isCompleted: false, points: '+25%'),
+                    _checklistItem(title: 'Set rates & commercial card', isCompleted: false, points: '+10%'),
+                  ],
+                ),
+              ),
               const SizedBox(height: 20),
 
               if (selectedCategories.isNotEmpty) ...[
@@ -210,6 +251,55 @@ class D03EmptyHomeScreen extends StatelessWidget {
               minimumSize: const Size(0, 36),
             ),
             child: Text(buttonText, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _checklistItem({
+    required String title,
+    required bool isCompleted,
+    required String points,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              color: isCompleted ? AppColors.success : Colors.transparent,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isCompleted ? AppColors.success : AppColors.border,
+                width: 1.5,
+              ),
+            ),
+            child: isCompleted
+                ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+                : null,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isCompleted ? FontWeight.w600 : FontWeight.w500,
+                color: isCompleted ? AppColors.textPrimary : AppColors.textSecondary,
+                decoration: isCompleted ? TextDecoration.lineThrough : null,
+              ),
+            ),
+          ),
+          Text(
+            points,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: isCompleted ? AppColors.success : const Color(0xFFC98A16),
+            ),
           ),
         ],
       ),

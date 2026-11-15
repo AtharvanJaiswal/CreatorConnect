@@ -226,7 +226,7 @@ class ChatMessage {
               ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
               : DateTime.now()),
       status: MessageStatus.values.firstWhere(
-        (e) => e.name.toLowerCase() == (json['status'] as String? ?? '').toLowerCase(),
+        (e) => e.name.toLowerCase() == (json['status'] as String? ?? json['deliveryStatus'] as String? ?? '').toLowerCase(),
         orElse: () => MessageStatus.delivered,
       ),
       attachment: json['attachment'] != null

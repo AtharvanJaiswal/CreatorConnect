@@ -411,6 +411,51 @@ class _D07FilterBottomSheetState extends ConsumerState<D07FilterBottomSheet> {
             );
           }).toList(),
         ),
+        const SizedBox(height: 20),
+
+        // Turnaround Time Filter (Master Audit §2.7)
+        const Text('Delivery Turnaround Time', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: ['Any', 'Under 24h', '2–3 days', '1 week'].map((time) {
+            final isSelected = time == 'Any';
+            return ChoiceChip(
+              label: Text(time),
+              selected: isSelected,
+              onSelected: (_) {},
+              selectedColor: AppColors.primary,
+              backgroundColor: AppColors.surface,
+              labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(999),
+                side: BorderSide(color: isSelected ? AppColors.textPrimary : AppColors.border),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 20),
+
+        // Equipment & Camera Gear Filter (Master Audit §2.7)
+        const Text('Camera Gear & Software', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: ['Sony FX3 / A7S3', 'DaVinci Resolve', 'Aputure Lighting', 'DJI Drone Operator', 'RED / Cinema'].map((gear) {
+            return FilterChip(
+              label: Text(gear),
+              selected: false,
+              onSelected: (_) {},
+              backgroundColor: AppColors.surface,
+              labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(999),
+                side: const BorderSide(color: AppColors.border),
+              ),
+            );
+          }).toList(),
+        ),
       ],
     );
   }

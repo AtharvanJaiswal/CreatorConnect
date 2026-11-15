@@ -235,9 +235,33 @@ class D10BrandPublicProfileScreen extends ConsumerWidget {
                                 ],
                               ),
                               const SizedBox(height: 8),
-                              Text(
-                                brief.deliverableType,
-                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                              Row(
+                                children: [
+                                  Text(
+                                    brief.deliverableType,
+                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                                  ),
+                                  const Spacer(),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF3E8FF),
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(color: const Color(0xFFD8B4FE), width: 1),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.people_alt_rounded, size: 10, color: Color(0xFF6B21A8)),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          '12 Applied · Verified Only',
+                                          style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: Color(0xFF6B21A8)),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 12),
                               Row(

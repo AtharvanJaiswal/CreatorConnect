@@ -104,25 +104,87 @@ class D12RecommendationsScreen extends ConsumerWidget {
                   );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  itemCount: profiles.length,
-                  itemBuilder: (context, idx) {
-                    final profile = profiles[idx];
-                    return ProfileDiscoveryCard(
-                      profile: profile,
-                      onTap: () => onOpenProfile(profile.id),
-                      onLongPress: () {
-                        D15ProfileQuickViewSheet.show(
-                          context,
-                          profile: profile,
-                          onViewFullProfile: () => onOpenProfile(profile.id),
-                          onConnect: () => _handleConnect(context, ref, profile, remainingQuota),
-                        );
-                      },
-                      onConnect: () => _handleConnect(context, ref, profile, remainingQuota),
-                    );
+                return RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: () async {
+                    ref.refresh(recommendationsProvider);
                   },
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    itemCount: profiles.length,
+                    itemBuilder: (context, idx) {
+                      final profile = profiles[idx];
+                      return Dismissible(
+                        key: ValueKey('rec-${profile.id}'),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFBE9E7),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text('Not Interested', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w700, fontSize: 12)),
+                              SizedBox(width: 8),
+                              Icon(Icons.close_rounded, color: AppColors.error),
+                            ],
+                          ),
+                        ),
+                        onDismissed: (_) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Removed ${profile.name} from recommendations'),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE6F4EC),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFB6E09B)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.auto_awesome_rounded, size: 12, color: AppColors.success),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    profile.matchReasons.isNotEmpty
+                                        ? '95% Match · ${profile.matchReasons.first.label}'
+                                        : '92% Match · Niche & City Alignment',
+                                    style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.success),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            ProfileDiscoveryCard(
+                              profile: profile,
+                              onTap: () => onOpenProfile(profile.id),
+                              onLongPress: () {
+                                D15ProfileQuickViewSheet.show(
+                                  context,
+                                  profile: profile,
+                                  onViewFullProfile: () => onOpenProfile(profile.id),
+                                  onConnect: () => _handleConnect(context, ref, profile, remainingQuota),
+                                );
+                              },
+                              onConnect: () => _handleConnect(context, ref, profile, remainingQuota),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator(color: AppColors.textPrimary)),

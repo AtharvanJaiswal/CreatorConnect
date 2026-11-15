@@ -104,6 +104,23 @@ class D02BrandHomeScreen extends ConsumerWidget {
                                   size: 14,
                                   color: Color(0xFF2E7CF6),
                                 ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEBF3FE),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: const Color(0xFFA6CCF7), width: 1),
+                                  ),
+                                  child: const Text(
+                                    'Brand Scale',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF1B66C9),
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                             Text(
@@ -244,6 +261,33 @@ class D02BrandHomeScreen extends ConsumerWidget {
                               style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.account_balance_wallet_outlined, size: 16, color: AppColors.primary),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Budget: ₹${state.stats['allocatedBudget'] ?? '45,000'} (₹${state.stats['escrowLockup'] ?? '15,000'} in escrow)',
+                                        style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ),
+                                  InkWell(
+                                    onTap: () => onManageApplicants('active-brief-1'),
+                                    child: const Text('Review →', style: TextStyle(color: AppColors.primary, fontSize: 11.5, fontWeight: FontWeight.w800)),
+                                  ),
+                                ],
                               ),
                             ),
                           ],

@@ -572,5 +572,138 @@ void main() {
       expect(viewFullTapped, isTrue);
       expect(connectTapped, isFalse);
     });
+
+    testWidgets('POP-D09 First Connection Note Dialog renders input and 140-char counter', (tester) async {
+      String? submittedNote;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () async {
+                  submittedNote = await PopDialogs.showFirstConnectionNoteDialog(
+                    context,
+                    recipientName: 'Priya Sharma',
+                  );
+                },
+                child: const Text('Open Note Dialog'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Note Dialog'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Connect with Priya Sharma'), findsOneWidget);
+      expect(find.text('Add an optional project note'), findsOneWidget);
+      expect(find.text('Skip & Send'), findsOneWidget);
+      expect(find.text('Send Note'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), 'Loved your reels!');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Send Note'));
+      await tester.pumpAndSettle();
+
+      expect(submittedNote, equals('Loved your reels!'));
+    });
+
+    testWidgets('POP-D10 Unverified Social Warning Sheet renders Code-in-Bio guidance', (tester) async {
+      bool verifyTapped = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => PopDialogs.showUnverifiedSocialWarningSheet(
+                  context,
+                  platform: 'Instagram',
+                  onVerifyNow: () => verifyTapped = true,
+                ),
+                child: const Text('Open Warning Sheet'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Warning Sheet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Unverified Instagram Profile'), findsOneWidget);
+      expect(find.text('Verify Now'), findsOneWidget);
+      expect(find.text('Dismiss'), findsOneWidget);
+
+      await tester.tap(find.text('Verify Now'));
+      await tester.pumpAndSettle();
+
+      expect(verifyTapped, isTrue);
+    });
+
+    testWidgets('POP-D11 Daily Search Rate Limit Notice renders anti-scraping alert', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => PopDialogs.showDailySearchRateLimitNotice(context),
+                child: const Text('Open Rate Limit'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Rate Limit'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Search Rate Limit Reached'), findsOneWidget);
+      expect(find.text('Understood'), findsOneWidget);
+
+      await tester.tap(find.text('Understood'));
+      await tester.pumpAndSettle();
+      expect(find.text('Search Rate Limit Reached'), findsNothing);
+    });
+
+    testWidgets('POP-D12 Report Profile Multi-Step Confirmation renders evidence toggle and submit', (tester) async {
+      bool reportSubmitted = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => PopDialogs.showMultiStepReportConfirmation(
+                  context,
+                  targetName: 'Fake User',
+                  reason: 'SPAM',
+                  onConfirm: (r, d, e) async {
+                    reportSubmitted = true;
+                  },
+                ),
+                child: const Text('Open Multi-Step Report'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Multi-Step Report'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Report Fake User'), findsOneWidget);
+      expect(find.text('Category: SPAM'), findsOneWidget);
+      expect(find.text('Attach screenshot evidence'), findsOneWidget);
+      expect(find.text('Submit Report'), findsOneWidget);
+
+      await tester.tap(find.text('Attach screenshot evidence'));
+      await tester.pumpAndSettle();
+      expect(find.text('Screenshot evidence attached (chat_snapshot.png)'), findsOneWidget);
+
+      await tester.tap(find.text('Submit Report'));
+      await tester.pumpAndSettle();
+      expect(reportSubmitted, isTrue);
+    });
   });
 }

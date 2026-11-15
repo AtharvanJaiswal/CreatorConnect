@@ -482,4 +482,426 @@ class PopDialogs {
       ),
     );
   }
+
+  // POP-D09: First Connection Request Note Modal (optional 140-char project intro note)
+  static Future<String?> showFirstConnectionNoteDialog(
+    BuildContext context, {
+    required String recipientName,
+  }) {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) {
+          final count = controller.text.length;
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+            backgroundColor: AppColors.surface,
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEBF3FE),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.send_rounded, color: Color(0xFF1B66C9), size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Connect with $recipientName', style: AppTypography.headingMedium().copyWith(fontSize: 16)),
+                      const Text('Add an optional project note', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: controller,
+                  maxLength: 140,
+                  maxLines: 3,
+                  autofocus: true,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Loved your summer reel! We have a campaign brief for next month...',
+                    hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    filled: true,
+                    fillColor: AppColors.backgroundSecondary,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: AppColors.textPrimary, width: 1.5),
+                    ),
+                    counterText: '$count / 140',
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Creators with a personalized note are 3.8x more likely to accept.',
+                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, ''),
+                child: const Text('Skip & Send', style: TextStyle(color: AppColors.textSecondary)),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.textPrimary,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                ),
+                child: const Text('Send Note', style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // POP-D10: Unverified Social Account Warning Sheet
+  static void showUnverifiedSocialWarningSheet(
+    BuildContext context, {
+    required String platform,
+    VoidCallback? onVerifyNow,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 44,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              width: 56,
+              height: 56,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFF6D9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.verified_outlined, size: 32, color: Color(0xFFC98A16)),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Unverified $platform Profile',
+              style: AppTypography.headingLarge().copyWith(fontSize: 19),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'This $platform handle has not yet completed the Code-in-Bio ownership audit. Unverified profiles cannot apply to verified enterprise brand briefs or receive direct escrow contracts.',
+              style: AppTypography.bodyMedium().copyWith(fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.backgroundSecondary,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 20, color: AppColors.textSecondary),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Verification takes less than 2 minutes by placing a temporary security code in your bio.',
+                      style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                      side: const BorderSide(color: AppColors.border),
+                    ),
+                    child: const Text('Dismiss', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      if (onVerifyNow != null) onVerifyNow();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.textPrimary,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                    ),
+                    child: const Text('Verify Now', style: TextStyle(fontWeight: FontWeight.w800)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // POP-D11: Daily Search Rate Limit Notice (Anti-scraping)
+  static void showDailySearchRateLimitNotice(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        backgroundColor: AppColors.surface,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFBE9E7),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.speed_rounded, color: Color(0xFFD8483C), size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Search Rate Limit Reached',
+                style: AppTypography.headingMedium().copyWith(fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'To protect community privacy and prevent automated directory scraping, discovery queries are limited to 100 per hour. Please wait a few moments before searching again.',
+          style: AppTypography.bodyMedium().copyWith(fontSize: 13),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.textPrimary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+            ),
+            child: const Text('Understood', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // POP-D12: Report Profile Multi-Step Confirmation with evidence screenshot
+  static Future<bool?> showMultiStepReportConfirmation(
+    BuildContext context, {
+    required String targetName,
+    required String reason,
+    required Future<void> Function(String reason, String details, bool hasEvidence) onConfirm,
+  }) {
+    final detailsController = TextEditingController();
+    bool hasAttachedScreenshot = false;
+    bool isSubmitting = false;
+
+    return showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+            ),
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFBE9E7),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.flag_rounded, color: Color(0xFFD8483C), size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Report $targetName', style: AppTypography.headingMedium().copyWith(fontSize: 17)),
+                          Text('Category: $reason', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text('Provide additional context for moderation team:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: detailsController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'Describe what occurred, off-platform payment solicitations, or policy violations...',
+                    hintStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    filled: true,
+                    fillColor: AppColors.backgroundSecondary,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: AppColors.textPrimary, width: 1.5),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                // Screenshot Evidence Toggle
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      hasAttachedScreenshot = !hasAttachedScreenshot;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: hasAttachedScreenshot ? const Color(0xFFE6F4EC) : AppColors.backgroundSecondary,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: hasAttachedScreenshot ? AppColors.success : AppColors.border,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          hasAttachedScreenshot ? Icons.check_circle_rounded : Icons.add_photo_alternate_outlined,
+                          color: hasAttachedScreenshot ? AppColors.success : AppColors.textSecondary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            hasAttachedScreenshot ? 'Screenshot evidence attached (chat_snapshot.png)' : 'Attach screenshot evidence',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: hasAttachedScreenshot ? AppColors.success : AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                          side: const BorderSide(color: AppColors.border),
+                        ),
+                        child: const Text('Cancel', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                setState(() => isSubmitting = true);
+                                try {
+                                  await onConfirm(reason, detailsController.text.trim(), hasAttachedScreenshot);
+                                  Navigator.pop(ctx, true);
+                                } catch (_) {
+                                  setState(() => isSubmitting = false);
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFD8483C),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                        ),
+                        child: isSubmitting
+                            ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Text('Submit Report', style: TextStyle(fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

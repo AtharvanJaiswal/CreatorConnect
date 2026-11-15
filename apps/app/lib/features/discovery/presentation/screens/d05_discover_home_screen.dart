@@ -199,6 +199,58 @@ class D05DiscoverHomeScreen extends ConsumerWidget {
                 ),
               ),
 
+              // Trending Niche Subcategories (Master Audit §2.3)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 10, bottom: 2),
+                  child: SizedBox(
+                    height: 32,
+                    child: ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        'Streetwear',
+                        'Luxury & Couture',
+                        'Sustainable',
+                        'Plus Size',
+                        'Gen-Z Aesthetic',
+                        'Sneakers & Kicks',
+                      ].map((subniche) {
+                        final isSelected = filterState.categories.contains(subniche);
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: InkWell(
+                            onTap: () {
+                              ref.read(filterStateProvider.notifier).toggleCategory(subniche);
+                            },
+                            borderRadius: BorderRadius.circular(999),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: isSelected ? AppColors.textPrimary : AppColors.surface,
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: isSelected ? AppColors.textPrimary : AppColors.border,
+                                  width: 1.1,
+                                ),
+                              ),
+                              child: Text(
+                                '#$subniche',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isSelected ? Colors.white : AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ),
+
               // 2×2 Pastel Category Cards with Icons
               SliverToBoxAdapter(
                 child: Padding(

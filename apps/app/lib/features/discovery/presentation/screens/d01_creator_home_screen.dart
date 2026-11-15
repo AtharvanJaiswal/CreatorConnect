@@ -97,9 +97,7 @@ class D01CreatorHomeScreen extends ConsumerWidget {
                       DashboardRoleBadge(
                         persona: persona,
                         specialty: state.roleSpecialty,
-                        onTap: onQuickAction != null
-                            ? () => onQuickAction!('role_details')
-                            : null,
+                        onTap: () => _showRoleSwitcher(context, ref),
                       ),
                       const SizedBox(height: 10),
                       Text(
@@ -116,6 +114,58 @@ class D01CreatorHomeScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
+
+                      // Profile Ongoing Optimization Nudge (Master Audit §2.1)
+                      if (persona.roleKey == 'CREATOR' && state.completionPercentage >= 100) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3E8FF),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: const Color(0xFFD8B4FE), width: 1.2),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF6B21A8),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.rocket_launch_rounded, size: 14, color: Colors.white),
+                              ),
+                              const SizedBox(width: 10),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Boost discovery by 2.4x',
+                                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Color(0xFF6B21A8)),
+                                    ),
+                                    Text(
+                                      'Add latest portfolio video or rate card',
+                                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () => onOpenProfile('self'),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  minimumSize: const Size(0, 28),
+                                  backgroundColor: const Color(0xFF6B21A8),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                                ),
+                                child: const Text('Optimize →', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
 
                       // Role & Category-Personalized Alert Card
                       Container(
@@ -240,14 +290,20 @@ class D01CreatorHomeScreen extends ConsumerWidget {
                       ),
                       const SizedBox(width: 8),
                       _buildStatCard(
-                        value: (state.stats['collabCalls'] ??
-                                state.stats['collabRequests'] ??
-                                state.stats['openBriefs'] ??
-                                state.stats['openBriefsCount'] ??
-                                visibleOpps.length)
-                            .toString(),
-                        label: 'COLLAB CALLS',
-                        subtext: persona.stat3FallbackSub,
+                        value: state.stats['escrowAmount'] != null
+                            ? '₹${state.stats['escrowAmount']}'
+                            : (state.stats['collabCalls'] ??
+                                    state.stats['collabRequests'] ??
+                                    state.stats['openBriefs'] ??
+                                    state.stats['openBriefsCount'] ??
+                                    visibleOpps.length)
+                                .toString(),
+                        label: state.stats['escrowAmount'] != null
+                            ? 'IN ESCROW'
+                            : 'COLLAB CALLS',
+                        subtext: state.stats['escrowAmount'] != null
+                            ? '2 active collabs'
+                            : persona.stat3FallbackSub,
                         subtextColor: const Color(0xFFC98A16),
                       ),
                     ],
@@ -733,6 +789,80 @@ class D01CreatorHomeScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showRoleSwitcher(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text('Switch Active Role', style: AppTypography.headingLarge().copyWith(fontSize: 18)),
+            const SizedBox(height: 4),
+            const Text(
+              'Switch your dashboard persona and collaboration mode',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 18),
+            _roleOption(context, ref, 'CREATOR', 'Fashion Creator', Icons.person_pin_rounded, const Color(0xFFFFD64A)),
+            _roleOption(context, ref, 'PRODUCTION_PRO', 'Production Professional', Icons.videocam_rounded, const Color(0xFFB6E09B)),
+            _roleOption(context, ref, 'PODCASTER', 'Podcaster / Host', Icons.mic_rounded, const Color(0xFFC9B6F7)),
+            _roleOption(context, ref, 'BRAND', 'Brand / Client Hub', Icons.business_rounded, const Color(0xFFA6CCF7)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _roleOption(
+    BuildContext context,
+    WidgetRef ref,
+    String roleKey,
+    String label,
+    IconData icon,
+    Color color,
+  ) {
+    final currentRole = ref.watch(homeDashboardProvider).role;
+    final isSelected = currentRole.toUpperCase() == roleKey.toUpperCase();
+
+    return ListTile(
+      onTap: () {
+        Navigator.pop(context);
+        ref.read(homeDashboardProvider.notifier).loadDashboard(roleKey);
+      },
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.2),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: AppColors.textPrimary, size: 20),
+      ),
+      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+      trailing: isSelected
+          ? const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20)
+          : null,
     );
   }
 }

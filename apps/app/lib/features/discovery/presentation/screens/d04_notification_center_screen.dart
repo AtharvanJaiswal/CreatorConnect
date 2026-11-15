@@ -129,75 +129,142 @@ class D04NotificationCenterScreen extends ConsumerWidget {
   }
 
   Widget _buildNotificationItem(BuildContext context, WidgetRef ref, NotificationItemModel item) {
-    return InkWell(
-      onTap: () {
-        ref.read(notificationCenterProvider.notifier).markSingleAsRead(item.id);
-        if (item.actionUrl != null && item.actionUrl!.isNotEmpty) {
-          final url = item.actionUrl!;
-          if (url.startsWith('/requests/') || url.startsWith('/invitations/')) {
-            final id = url.split('/').last;
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => RequestDetailsScreen(requestId: id),
-              ),
-            );
-          } else if (url.startsWith('/profile/')) {
-            final id = url.split('/').last;
-            Navigator.pushNamed(context, '/profile/detail', arguments: id);
-          } else if (url == '/conversations') {
-            Navigator.pushNamed(context, '/conversations');
-          }
-        }
-      },
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        padding: const EdgeInsets.all(14),
+    return Dismissible(
+      key: ValueKey(item.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: item.isUnread ? const Color(0xFFFFFDF5) : AppColors.surface,
+          color: const Color(0xFFFBE9E7),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: item.isUnread ? AppColors.primary : AppColors.border,
-            width: item.isUnread ? 1.8 : 1.2,
-          ),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildTypeIcon(item.type),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          item.title,
-                          style: TextStyle(
-                            fontWeight: item.isUnread ? FontWeight.w900 : FontWeight.w700,
-                            fontSize: 13.5,
+        child: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+      ),
+      onDismissed: (_) {
+        ref.read(notificationCenterProvider.notifier).markSingleAsRead(item.id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Notification dismissed'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      },
+      child: InkWell(
+        onTap: () {
+          ref.read(notificationCenterProvider.notifier).markSingleAsRead(item.id);
+          if (item.actionUrl != null && item.actionUrl!.isNotEmpty) {
+            final url = item.actionUrl!;
+            if (url.startsWith('/requests/') || url.startsWith('/invitations/')) {
+              final id = url.split('/').last;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RequestDetailsScreen(requestId: id),
+                ),
+              );
+            } else if (url.startsWith('/profile/')) {
+              final id = url.split('/').last;
+              Navigator.pushNamed(context, '/profile/detail', arguments: id);
+            } else if (url == '/conversations') {
+              Navigator.pushNamed(context, '/conversations');
+            }
+          }
+        },
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: item.isUnread ? const Color(0xFFFFFDF5) : AppColors.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: item.isUnread ? AppColors.primary : AppColors.border,
+              width: item.isUnread ? 1.8 : 1.2,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTypeIcon(item.type),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            item.title,
+                            style: TextStyle(
+                              fontWeight: item.isUnread ? FontWeight.w900 : FontWeight.w700,
+                              fontSize: 13.5,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      Text(
-                        item.timeAgo,
-                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        Text(
+                          item.timeAgo,
+                          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.body,
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+                    ),
+                    if (item.actionUrl != null && item.actionUrl!.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: () {
+                              ref.read(notificationCenterProvider.notifier).markSingleAsRead(item.id);
+                              final url = item.actionUrl!;
+                              if (url.startsWith('/requests/') || url.startsWith('/invitations/')) {
+                                final id = url.split('/').last;
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => RequestDetailsScreen(requestId: id),
+                                  ),
+                                );
+                              } else {
+                                Navigator.pushNamed(context, '/conversations');
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.textPrimary,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              minimumSize: const Size(0, 28),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                            ),
+                            child: const Text('View Brief', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800)),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton(
+                            onPressed: () => Navigator.pushNamed(context, '/conversations'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.textPrimary,
+                              minimumSize: const Size(0, 28),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              side: const BorderSide(color: AppColors.border),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                            ),
+                            child: const Text('Open Chat', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700)),
+                          ),
+                        ],
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.body,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
