@@ -99,29 +99,49 @@ class _C06PodcastDetailsScreenState extends State<C06PodcastDetailsScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
-    final links = <String>[];
-    if (_spotifyUrlCtrl.text.trim().isNotEmpty) links.add(_spotifyUrlCtrl.text.trim());
-    if (_appleUrlCtrl.text.trim().isNotEmpty) links.add(_appleUrlCtrl.text.trim());
+    try {
+      final links = <String>[];
+      final spotify = _spotifyUrlCtrl.text.trim();
+      final apple = _appleUrlCtrl.text.trim();
+      if (spotify.isNotEmpty) {
+        links.add(spotify.startsWith('http') ? spotify : 'https://$spotify');
+      }
+      if (apple.isNotEmpty) {
+        links.add(apple.startsWith('http') ? apple : 'https://$apple');
+      }
 
-    final data = PodcastDetailsData(
-      showName: _showNameCtrl.text.trim(),
-      category: _category,
-      description: _descCtrl.text.trim(),
-      platformLinks: links,
-      frequency: _frequency,
-    );
-
-    await _repo.updatePodcastDetails(data);
-
-    if (mounted) {
-      setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Podcast show details saved!'),
-          backgroundColor: Color(0xFF2E7D32),
-        ),
+      final data = PodcastDetailsData(
+        showName: _showNameCtrl.text.trim(),
+        category: _category,
+        description: _descCtrl.text.trim(),
+        platformLinks: links,
+        frequency: _frequency,
       );
-      Navigator.pop(context, true);
+
+      await _repo.updatePodcastDetails(data);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Podcast show details saved!'),
+            backgroundColor: Color(0xFF2E7D32),
+          ),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not save podcast details: $e'),
+            backgroundColor: const Color(0xFFD32F2F),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -211,7 +231,7 @@ class _C06PodcastDetailsScreenState extends State<C06PodcastDetailsScreen> {
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
-                            value: _category.isNotEmpty ? _category : null,
+                            value: _podcastCategories.contains(_category) ? _category : null,
                             hint: const Text('Select show category', style: TextStyle(color: AppColors.textTertiary)),
                             isExpanded: true,
                             items: _podcastCategories
@@ -254,7 +274,16 @@ class _C06PodcastDetailsScreenState extends State<C06PodcastDetailsScreen> {
                         onChanged: (_) => setState(() => _isDirty = true),
                         style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
                         decoration: _inputDecoration('https://open.spotify.com/show/...'),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter at least one platform link' : null,
+                        validator: (v) {
+                          final trimmed = v?.trim() ?? '';
+                          if (trimmed.isEmpty) return 'Enter at least one platform link';
+                          final normalized = trimmed.startsWith('http') ? trimmed : 'https://$trimmed';
+                          final uri = Uri.tryParse(normalized);
+                          if (uri == null || uri.host.isEmpty || !uri.host.contains('.')) {
+                            return 'Enter a valid platform URL';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 12),
                       TextFormField(

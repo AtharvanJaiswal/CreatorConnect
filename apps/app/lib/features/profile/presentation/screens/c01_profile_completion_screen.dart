@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../../core/animations/app_animations.dart';
+import '../../../../core/config/feature_flags.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/domain/entities/user_role.dart';
 import '../../domain/entities/profile_entities.dart';
@@ -26,24 +28,127 @@ class _C01ProfileCompletionScreenState extends State<C01ProfileCompletionScreen>
   late UserRole _currentRole;
   ProfileOverviewData? _overview;
   bool _isLoading = true;
+  bool _hasInitialized = false;
 
   @override
   void initState() {
     super.initState();
     _repo = widget.repository ?? ProfileRepositoryImpl();
     _currentRole = widget.initialRole;
-    _loadOverview();
   }
 
-  Future<void> _loadOverview() async {
-    setState(() => _isLoading = true);
-    final data = await _repo.getProfileOverview(role: _currentRole);
-    if (mounted) {
-      setState(() {
-        _overview = data;
-        _isLoading = false;
-      });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_hasInitialized) {
+      _hasInitialized = true;
+      _loadOverview(routeRole: _extractRouteRole());
     }
+  }
+
+  UserRole? _extractRouteRole() {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is UserRole) return args;
+    if (args is Map) {
+      final r = args['role'];
+      if (r is UserRole) return r;
+      if (r is String && r.isNotEmpty) return UserRole.fromString(r);
+    }
+    return null;
+  }
+
+  Future<void> _loadOverview({UserRole? routeRole}) async {
+    if (!_isLoading && mounted) {
+      setState(() => _isLoading = true);
+    }
+    try {
+      final resolved = routeRole ??
+          (widget.initialRole != UserRole.creator
+              ? widget.initialRole
+              : await _repo.resolveActiveRole(fallback: widget.initialRole));
+      _currentRole = resolved;
+      final data = await _repo.getProfileOverview(role: _currentRole);
+      if (mounted) {
+        setState(() {
+          _overview = data;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showBrandPlanSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfacePure,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.borderLight,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Starter Plan (Free)',
+              style: TextStyle(
+                fontFamily: 'Archivo',
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'You are currently on the Free plan. You can post campaign briefs, browse verified creators, and unlock Level 2 business verification at no extra cost.',
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.45,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text(
+                  'Got it',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _navigateToSection(String key) async {
@@ -70,11 +175,22 @@ class _C01ProfileCompletionScreenState extends State<C01ProfileCompletionScreen>
         await Navigator.pushNamed(context, '/profile/social-accounts');
         break;
       case 'verification':
-        await Navigator.pushNamed(context, '/profile/verification-centre');
+        await Navigator.pushNamed(
+          context,
+          '/profile/verification-centre',
+          arguments: _currentRole,
+        );
         break;
       case 'addRole':
-        await Navigator.pushNamed(context, '/profile/add-role');
+        await Navigator.pushNamed(
+          context,
+          '/profile/add-role',
+          arguments: _currentRole,
+        );
         break;
+      case 'plan':
+        _showBrandPlanSheet();
+        return;
       default:
         break;
     }
@@ -137,17 +253,138 @@ class _C01ProfileCompletionScreenState extends State<C01ProfileCompletionScreen>
                   const SizedBox(height: 24),
                   _buildSectionHeader('REQUIRED FOR LEVEL 1'),
                   const SizedBox(height: 10),
-                  ...(_overview?.requiredSections ?? []).map(_buildSectionTile),
+                  ...(_overview?.requiredSections ?? []).asMap().entries.map(
+                    (e) => StaggeredEntrance(
+                      index: e.key,
+                      child: _buildSectionTile(e.value),
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   _buildSectionHeader('VERIFICATION & LEVEL 2'),
                   const SizedBox(height: 10),
-                  ...(_overview?.verificationSections ?? []).map(_buildSectionTile),
+                  ...(_overview?.verificationSections ?? []).asMap().entries.map(
+                    (e) => StaggeredEntrance(
+                      index: (_overview?.requiredSections.length ?? 0) + e.key,
+                      child: _buildSectionTile(e.value),
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   _buildAddRoleBanner(),
                   const SizedBox(height: 32),
                 ],
               ),
             ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        decoration: const BoxDecoration(
+          color: AppColors.surfacePure,
+          border: Border(top: BorderSide(color: AppColors.borderLight, width: 1)),
+        ),
+        child: SizedBox(
+          height: 48,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: (_overview?.isLevel1 ?? false) || (_overview?.completionPercentage ?? 0) >= 80
+                  ? AppColors.primary
+                  : AppColors.textPrimary,
+              foregroundColor: (_overview?.isLevel1 ?? false) || (_overview?.completionPercentage ?? 0) >= 80
+                  ? AppColors.textPrimary
+                  : Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+            ),
+            onPressed: () {
+              if ((_overview?.isLevel1 ?? false) || (_overview?.completionPercentage ?? 0) >= 80) {
+                _showCompletionCelebrationAndLaunch();
+              } else if (_overview?.nextActionKey.isNotEmpty == true) {
+                _navigateToSection(_overview!.nextActionKey);
+              } else {
+                Navigator.pushNamedAndRemoveUntil(context, '/home', (r) => false);
+              }
+            },
+            child: Text(
+              (_overview?.completionPercentage ?? 0) == 100
+                  ? 'Launch Dashboard 🚀'
+                  : ((_overview?.isLevel1 ?? false) || (_overview?.completionPercentage ?? 0) >= 80)
+                      ? 'Review & Launch Dashboard ➔'
+                      : 'Continue: ${_overview?.nextActionTitle ?? 'Complete Profile'} ➔',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCompletionCelebrationAndLaunch() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        backgroundColor: AppColors.surfacePure,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: const BoxDecoration(
+                color: Color(0xFFE8F5E9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.verified_rounded, color: Color(0xFF2E7D32), size: 26),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Profile Ready! 🎉',
+                style: TextStyle(
+                  fontFamily: 'Archivo',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Your profile is set up and published to the talent discovery catalog.',
+              style: TextStyle(fontSize: 14, color: AppColors.textPrimary, height: 1.4),
+            ),
+            SizedBox(height: 12),
+            Text(
+              '• Unlocked Level 1 creator discovery\n• Receive collaboration invitations\n• Real-time creator-to-creator messaging',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.5),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.textPrimary,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+              ),
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                Navigator.pushNamedAndRemoveUntil(context, '/home', (r) => false);
+              },
+              child: const Text(
+                'Launch Dashboard ➔',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -371,11 +608,11 @@ class _C01ProfileCompletionScreenState extends State<C01ProfileCompletionScreen>
               child: const Icon(Icons.add_circle_outline_rounded, color: AppColors.textPrimary, size: 24),
             ),
             const SizedBox(width: 14),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'Add another profile role',
                     style: TextStyle(
                       fontFamily: 'Archivo',
@@ -384,10 +621,13 @@ class _C01ProfileCompletionScreenState extends State<C01ProfileCompletionScreen>
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(
-                    'E.g. Creator + Video Editor, or Brand',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    (FeatureFlags.enableProfessionalRegistration ||
+                            FeatureFlags.enableBrandRegistration)
+                        ? 'E.g. Creator + Video Editor, or Brand'
+                        : 'E.g. Operate as both Creator & Podcaster',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ],
               ),

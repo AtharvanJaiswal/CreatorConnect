@@ -17,13 +17,30 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
+  Future<ConversationItem> createOrGetDirectConversation(String recipientId) async {
+    return _remoteDataSource.createOrGetDirectConversation(recipientId);
+  }
+
+  @override
   Future<ConversationItem?> getConversation(String conversationId) async {
     return _remoteDataSource.getConversation(conversationId);
   }
 
   @override
-  Future<List<ChatMessage>> getMessages(String conversationId) async {
-    return _remoteDataSource.getMessages(conversationId);
+  Future<List<ChatMessage>> getMessages(
+    String conversationId, {
+    String? currentUserId,
+    String? peerId,
+    String? peerName,
+    String? peerAvatar,
+  }) async {
+    return _remoteDataSource.getMessages(
+      conversationId,
+      currentUserId: currentUserId,
+      peerId: peerId,
+      peerName: peerName,
+      peerAvatar: peerAvatar,
+    );
   }
 
   @override

@@ -59,7 +59,7 @@ class _C09ConnectingSocialScreenState extends State<C09ConnectingSocialScreen> {
             Navigator.pushReplacementNamed(
               context,
               '/profile/connection-error',
-              arguments: {'platform': widget.platform},
+              arguments: {'platform': widget.platform, 'handle': widget.handle},
             );
           }
         }
@@ -183,6 +183,25 @@ class _C09ConnectingSocialScreenState extends State<C09ConnectingSocialScreen> {
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: TextButton(
+                    onPressed: () {
+                      _timer?.cancel();
+                      Navigator.pop(context, false);
+                    },
+                    child: const Text(
+                      'Cancel connection',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ),

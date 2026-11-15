@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/discovery_entities.dart';
+import '../../domain/entities/dashboard_category_config.dart';
 import '../../../../core/widgets/safe_image.dart';
 
 class ProfileDiscoveryCard extends StatelessWidget {
@@ -124,7 +125,7 @@ class ProfileDiscoveryCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${profile.niche} • ${profile.city}',
+                        '${DashboardCategoryCatalog.metaFor(profile.niche)?.name ?? DashboardCategoryCatalog.formatCategoryName(profile.niche)} • ${profile.city.isNotEmpty ? profile.city : 'India'}',
                         style: AppTypography.bodyMedium().copyWith(
                           fontSize: 11,
                           color: AppColors.textSecondary,

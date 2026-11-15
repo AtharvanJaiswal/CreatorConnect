@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/config/feature_flags.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/discovery_entities.dart';
@@ -209,7 +210,9 @@ class _D07FilterBottomSheetState extends ConsumerState<D07FilterBottomSheet> {
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
-          children: DiscoveryRole.values.map((role) {
+          children: DiscoveryRole.values
+              .where((role) => FeatureFlags.isRoleEnabled(role.keyName))
+              .map((role) {
             final isSelected = _tempFilter.role == role;
             return ChoiceChip(
               label: Text(role.displayName),

@@ -95,7 +95,8 @@ class ProfileRepositoryImpl implements ProfileRepository {
   );
 
   bool _hasFetchedFromBackend = false;
-  bool _hasLoadedFromLocal = false;
+  Future<void>? _loadLocalFuture;
+  final Set<String> _dirtyLocalSections = {};
 
   /// Default singleton access for the app so state persists across all screens
   static ProfileRepositoryImpl get instance {
@@ -111,6 +112,65 @@ class ProfileRepositoryImpl implements ProfileRepository {
   /// Set singleton instance for testing
   static void setMockInstanceForTesting(ProfileRepositoryImpl instance) {
     _sharedInstance = instance;
+  }
+
+  /// Reloads profile cleanly from backend for current authenticated user,
+  /// clearing any prior session's in-memory cache to prevent cross-account pollution.
+  Future<void> reloadFromBackend() async {
+    _hasFetchedFromBackend = false;
+    _loadLocalFuture = null;
+    _dirtyLocalSections.clear();
+    _basicInfo = const BasicInfoData(
+      displayName: '',
+      bio: '',
+      city: '',
+      hubName: '',
+      languages: [],
+    );
+    _userSkills = [];
+    _selectedCategoryIds = [];
+    _creatorDetails = const CreatorDetailsData(
+      contentTypes: [],
+      minRate: null,
+      maxRate: null,
+      rateUnit: RateUnit.perProject,
+      showRateOnProfile: true,
+      availability: AvailabilityStatus.availableNow,
+    );
+    _professionalDetails = const ProfessionalDetailsData(
+      professionalType: '',
+      experience: '',
+      tools: [],
+      minRate: null,
+      maxRate: null,
+      rateUnit: RateUnit.perProject,
+      hasPortfolioSample: false,
+    );
+    _podcastDetails = const PodcastDetailsData(
+      showName: '',
+      category: '',
+      description: '',
+      platformLinks: [],
+      frequency: ReleaseFrequency.weekly,
+    );
+    _companyDetails = const CompanyDetailsData(
+      companyName: '',
+      description: '',
+      businessCategory: '',
+      city: '',
+      teamSize: '',
+      websiteUrl: '',
+      gstNumber: null,
+    );
+    _socialAccounts = [
+      const SocialPlatformAccount(platform: 'Instagram', status: SocialPlatformStatus.notConnected),
+      const SocialPlatformAccount(platform: 'YouTube', status: SocialPlatformStatus.notConnected),
+      const SocialPlatformAccount(platform: 'LinkedIn', status: SocialPlatformStatus.notConnected),
+      const SocialPlatformAccount(platform: 'X', status: SocialPlatformStatus.notConnected),
+    ];
+    _verificationData = const VerificationData(state: VerificationState.notStarted, attemptsRemaining: 3);
+
+    await _syncWithBackend();
   }
 
   factory ProfileRepositoryImpl({
@@ -137,57 +197,62 @@ class ProfileRepositoryImpl implements ProfileRepository {
   })  : _remoteDataSource = remoteDataSource ?? ProfileRemoteDataSource(),
         _localDataSource = localDataSource ?? AuthLocalDataSource(),
         _profileLocalDataSource =
-            profileLocalDataSource ?? ProfileLocalDataSource() {
-    _loadFromLocalStorage();
+            profileLocalDataSource ?? ProfileLocalDataSource();
+
+  Future<void> _loadFromLocalStorage() {
+    return _loadLocalFuture ??= _performLoadFromLocalStorage();
   }
 
-  Future<void> _loadFromLocalStorage() async {
-    if (_hasLoadedFromLocal) return;
-    _hasLoadedFromLocal = true;
-
+  Future<void> _performLoadFromLocalStorage() async {
     try {
       final savedBasic = await _profileLocalDataSource.getBasicInfo();
-      if (savedBasic != null) {
+      if (savedBasic != null && !_dirtyLocalSections.contains('basic')) {
         _basicInfo = savedBasic;
       }
 
       final savedCatIds = await _profileLocalDataSource.getSelectedCategories();
-      if (savedCatIds != null && savedCatIds.isNotEmpty) {
+      if (savedCatIds != null &&
+          savedCatIds.isNotEmpty &&
+          !_dirtyLocalSections.contains('categories')) {
         _selectedCategoryIds = savedCatIds;
       }
 
       final savedSkills = await _profileLocalDataSource.getUserSkills();
-      if (savedSkills != null && savedSkills.isNotEmpty) {
+      if (savedSkills != null &&
+          savedSkills.isNotEmpty &&
+          !_dirtyLocalSections.contains('skills')) {
         _userSkills = savedSkills;
       }
 
       final savedCreator = await _profileLocalDataSource.getCreatorDetails();
-      if (savedCreator != null) {
+      if (savedCreator != null && !_dirtyLocalSections.contains('creator')) {
         _creatorDetails = savedCreator;
       }
 
       final savedPro = await _profileLocalDataSource.getProfessionalDetails();
-      if (savedPro != null) {
+      if (savedPro != null && !_dirtyLocalSections.contains('professional')) {
         _professionalDetails = savedPro;
       }
 
       final savedPod = await _profileLocalDataSource.getPodcastDetails();
-      if (savedPod != null) {
+      if (savedPod != null && !_dirtyLocalSections.contains('podcast')) {
         _podcastDetails = savedPod;
       }
 
       final savedCompany = await _profileLocalDataSource.getCompanyDetails();
-      if (savedCompany != null) {
+      if (savedCompany != null && !_dirtyLocalSections.contains('company')) {
         _companyDetails = savedCompany;
       }
 
       final savedSocial = await _profileLocalDataSource.getSocialAccounts();
-      if (savedSocial != null && savedSocial.isNotEmpty) {
+      if (savedSocial != null &&
+          savedSocial.isNotEmpty &&
+          !_dirtyLocalSections.contains('social')) {
         _socialAccounts = savedSocial;
       }
 
       final savedVerif = await _profileLocalDataSource.getVerificationData();
-      if (savedVerif != null) {
+      if (savedVerif != null && !_dirtyLocalSections.contains('verification')) {
         _verificationData = savedVerif;
       }
     } catch (e) {
@@ -319,42 +384,49 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Future<void> saveBasicInfoDraft(BasicInfoData data) async {
+    _dirtyLocalSections.add('basic');
     _basicInfo = data;
     await _profileLocalDataSource.saveBasicInfo(data);
   }
 
   @override
   Future<void> saveCategorySelection(List<String> categoryIds) async {
+    _dirtyLocalSections.add('categories');
     _selectedCategoryIds = List.from(categoryIds);
     await _profileLocalDataSource.saveSelectedCategories(_selectedCategoryIds);
   }
 
   @override
   Future<void> saveSkillSelection(List<UserSkillSelection> skills) async {
+    _dirtyLocalSections.add('skills');
     _userSkills = List.from(skills);
     await _profileLocalDataSource.saveUserSkills(_userSkills);
   }
 
   @override
   Future<void> saveCreatorDetailsDraft(CreatorDetailsData data) async {
+    _dirtyLocalSections.add('creator');
     _creatorDetails = data;
     await _profileLocalDataSource.saveCreatorDetails(data);
   }
 
   @override
   Future<void> saveProfessionalDetailsDraft(ProfessionalDetailsData data) async {
+    _dirtyLocalSections.add('professional');
     _professionalDetails = data;
     await _profileLocalDataSource.saveProfessionalDetails(data);
   }
 
   @override
   Future<void> savePodcastDetailsDraft(PodcastDetailsData data) async {
+    _dirtyLocalSections.add('podcast');
     _podcastDetails = data;
     await _profileLocalDataSource.savePodcastDetails(data);
   }
 
   @override
   Future<void> saveCompanyDetailsDraft(CompanyDetailsData data) async {
+    _dirtyLocalSections.add('company');
     _companyDetails = data;
     await _profileLocalDataSource.saveCompanyDetails(data);
   }
@@ -362,14 +434,65 @@ class ProfileRepositoryImpl implements ProfileRepository {
   @override
   Future<void> saveSocialAccountsDraft(
       List<SocialPlatformAccount> accounts) async {
+    _dirtyLocalSections.add('social');
     _socialAccounts = List.from(accounts);
     await _profileLocalDataSource.saveSocialAccounts(_socialAccounts);
   }
 
   @override
   Future<void> saveVerificationDraft(VerificationData data) async {
+    _dirtyLocalSections.add('verification');
     _verificationData = data;
     await _profileLocalDataSource.saveVerificationData(data);
+  }
+
+  // ==============================================================================
+  // Helpers & Role Resolution
+  // ==============================================================================
+
+  @override
+  Future<UserRole> resolveActiveRole({UserRole? fallback}) async {
+    final savedRole = await _localDataSource.getSelectedRole();
+    if (savedRole != null && savedRole.trim().isNotEmpty) {
+      return UserRole.fromString(savedRole);
+    }
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      final metaRole = user?.userMetadata?['role'] as String?;
+      if (metaRole != null && metaRole.trim().isNotEmpty) {
+        return UserRole.fromString(metaRole);
+      }
+    } catch (_) {
+      // Supabase may not be initialized in unit/widget tests.
+    }
+    return fallback ?? UserRole.creator;
+  }
+
+  String? _normalizeHttpsUrl(String? raw) {
+    if (raw == null) return null;
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return null;
+    if (trimmed.startsWith('https://')) return trimmed;
+    if (trimmed.startsWith('http://')) {
+      return 'https://${trimmed.substring(7)}';
+    }
+    return 'https://$trimmed';
+  }
+
+  String _buildSocialProfileUrl(String platform, String cleanHandle) {
+    switch (platform.toLowerCase()) {
+      case 'instagram':
+        return 'instagram.com/$cleanHandle';
+      case 'youtube':
+        return 'youtube.com/@$cleanHandle';
+      case 'linkedin':
+        return 'linkedin.com/in/$cleanHandle';
+      case 'x':
+      case 'twitter':
+        return 'x.com/$cleanHandle';
+      default:
+        return '${platform.toLowerCase()}.com/$cleanHandle';
+    }
   }
 
   // ==============================================================================
@@ -382,8 +505,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
     if (role == UserRole.brand) {
       final isCompanyDone = _companyDetails.companyName.isNotEmpty &&
-          _companyDetails.description.isNotEmpty &&
-          _companyDetails.websiteUrl.isNotEmpty;
+          _companyDetails.description.isNotEmpty;
       final isVerificationDone =
           _verificationData.state == VerificationState.approved;
 
@@ -405,7 +527,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
             title: 'Company details',
             subtitle: isCompanyDone
                 ? '${_companyDetails.businessCategory} · ${_companyDetails.city}'
-                : 'Website and description missing',
+                : 'Company name and description missing',
             isRequired: true,
             isDone: isCompanyDone,
           ),
@@ -437,32 +559,35 @@ class ProfileRepositoryImpl implements ProfileRepository {
     final isBasicDone = _basicInfo.displayName.isNotEmpty &&
         _basicInfo.bio.isNotEmpty &&
         _basicInfo.city.isNotEmpty;
-    final isTaxonomyDone = _userSkills.isNotEmpty;
+    final isTaxonomyDone =
+        _userSkills.isNotEmpty || _selectedCategoryIds.isNotEmpty;
     bool isRoleDone = false;
 
     if (role == UserRole.creator) {
-      isRoleDone = _creatorDetails.contentTypes.isNotEmpty &&
-          _creatorDetails.minRate != null;
+      isRoleDone = _creatorDetails.contentTypes.isNotEmpty;
     } else if (role == UserRole.professional) {
-      isRoleDone = _professionalDetails.professionalType.isNotEmpty &&
-          _professionalDetails.minRate != null;
+      isRoleDone = _professionalDetails.professionalType.isNotEmpty;
     } else {
       isRoleDone = _podcastDetails.showName.isNotEmpty &&
           _podcastDetails.platformLinks.isNotEmpty;
     }
 
+    final connectedAccounts = _socialAccounts
+        .where((a) =>
+            a.status == SocialPlatformStatus.connected ||
+            a.status == SocialPlatformStatus.verified)
+        .toList();
+    final isSocialConnected = connectedAccounts.isNotEmpty;
     final isLevel1 = isBasicDone && isTaxonomyDone && isRoleDone;
-    final isSocialConnected = _socialAccounts.any((a) =>
-        a.status == SocialPlatformStatus.connected ||
-        a.status == SocialPlatformStatus.verified);
     final isVerified = _verificationData.state == VerificationState.approved;
 
+    // Creator & Podcaster Level 1 weighted breakdown:
+    // Basic Info (30%) + Categories & Skills (25%) + Rates & Availability (25%) + Social Accounts (20%) = 100%
     int pct = 0;
     if (isBasicDone) pct += 30;
-    if (isTaxonomyDone) pct += 20;
-    if (isRoleDone) pct += 20;
-    if (isSocialConnected) pct += 15;
-    if (isVerified) pct += 15;
+    if (isTaxonomyDone) pct += 25;
+    if (isRoleDone) pct += 25;
+    if (isSocialConnected) pct += 20;
 
     String nextKey = 'basicInfo';
     String nextTitle = 'Basic information';
@@ -483,6 +608,8 @@ class ProfileRepositoryImpl implements ProfileRepository {
       nextKey = 'verification';
       nextTitle = 'Get verified';
     }
+
+    final connectedSummary = connectedAccounts.map((a) => a.platform).join(', ');
 
     return ProfileOverviewData(
       completionPercentage: pct,
@@ -517,8 +644,8 @@ class ProfileRepositoryImpl implements ProfileRepository {
                   ? 'Professional details'
                   : 'Podcast details'),
           subtitle: isRoleDone
-              ? 'Rates and availability set'
-              : 'Rate and availability missing',
+              ? 'Formats and details saved'
+              : 'Add formats or role details',
           isRequired: true,
           isDone: isRoleDone,
         ),
@@ -528,8 +655,8 @@ class ProfileRepositoryImpl implements ProfileRepository {
           key: 'socialAccounts',
           title: 'Social accounts',
           subtitle: isSocialConnected
-              ? 'Instagram connected'
-              : 'Connect Instagram to start',
+              ? '$connectedSummary connected'
+              : 'Connect a social account to start',
           isRequired: false,
           isDone: isSocialConnected,
         ),
@@ -560,26 +687,49 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Future<void> updateBasicInfo(BasicInfoData data) async {
+    _dirtyLocalSections.add('basic');
     _basicInfo = data;
     await _profileLocalDataSource.saveBasicInfo(data);
 
-    // Sync with Supabase Auth metadata
-    await _remoteDataSource.syncWithSupabaseUserMetadata(
-      displayName: data.displayName,
-      avatarUrl: data.photoUrl,
-      bio: data.bio,
-      city: data.city,
-    );
+    // Best-effort sync with Supabase Auth metadata
+    try {
+      await _remoteDataSource.syncWithSupabaseUserMetadata(
+        displayName: data.displayName,
+        avatarUrl: data.photoUrl,
+        bio: data.bio,
+        city: data.city,
+      );
+    } catch (e) {
+      debugPrint('Notice: Supabase metadata sync skipped/failed: $e');
+    }
 
-    // Sync via Backend API
-    await _remoteDataSource.updateUserInfo(
-      firstName: data.displayName,
-      avatarUrl: data.photoUrl,
-    );
-    await _remoteDataSource.updateCreatorProfile({
-      'bio': data.bio,
-      'locationCity': data.city,
-    });
+    // Best-effort sync via Backend API
+    try {
+      final nameParts = data.displayName.trim().split(RegExp(r'\s+'));
+      final firstName = nameParts.isNotEmpty ? nameParts.first : data.displayName.trim();
+      final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : null;
+
+      await _remoteDataSource.updateUserInfo(
+        firstName: firstName,
+        lastName: lastName,
+        avatarUrl: data.photoUrl,
+      );
+      final activeRole = await resolveActiveRole();
+      if (activeRole == UserRole.creator) {
+        await _remoteDataSource.updateCreatorProfile({
+          'bio': data.bio,
+          'locationCity': data.city,
+        });
+      } else if (activeRole == UserRole.brand &&
+          _companyDetails.companyName.isNotEmpty) {
+        await _remoteDataSource.updateBrandProfile({
+          'companyName': _companyDetails.companyName,
+          'bio': data.bio,
+        });
+      }
+    } catch (e) {
+      debugPrint('Notice: Remote basic info sync failed (saved locally): $e');
+    }
   }
 
   @override
@@ -598,21 +748,27 @@ class ProfileRepositoryImpl implements ProfileRepository {
   @override
   Future<void> updateUserSkills(
       List<UserSkillSelection> skills, List<String> categoryIds) async {
+    _dirtyLocalSections.add('skills');
+    _dirtyLocalSections.add('categories');
     _userSkills = List.from(skills);
     _selectedCategoryIds = List.from(categoryIds);
 
-    // Save locally
+    // Save locally first
     await _profileLocalDataSource.saveUserSkills(_userSkills);
     await _profileLocalDataSource.saveSelectedCategories(_selectedCategoryIds);
 
-    // Sync via Backend API
-    await _remoteDataSource.updateUserSkills(skills);
+    // Best-effort sync via Backend API
+    try {
+      await _remoteDataSource.updateUserSkills(skills);
 
-    final currentRole = await _localDataSource.getSelectedRole();
-    if (currentRole == null || currentRole.toUpperCase() == 'CREATOR') {
-      await _remoteDataSource.updateCreatorProfile({
-        'categoryIds': categoryIds,
-      });
+      final currentRole = await resolveActiveRole();
+      if (currentRole == UserRole.creator) {
+        await _remoteDataSource.updateCreatorProfile({
+          'categoryIds': categoryIds,
+        });
+      }
+    } catch (e) {
+      debugPrint('Notice: Remote skills sync failed (saved locally): $e');
     }
   }
 
@@ -624,17 +780,22 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Future<void> updateCreatorDetails(CreatorDetailsData data) async {
+    _dirtyLocalSections.add('creator');
     _creatorDetails = data;
     await _profileLocalDataSource.saveCreatorDetails(data);
 
-    // Sync via Backend API
-    final payload = <String, dynamic>{
-      'isRemote': data.availability != AvailabilityStatus.busy,
-    };
-    if (data.minRate != null) {
-      payload['startingRate'] = data.minRate;
+    // Best-effort sync via Backend API
+    try {
+      final payload = <String, dynamic>{
+        'isRemote': data.availability != AvailabilityStatus.busy,
+      };
+      if (data.minRate != null) {
+        payload['startingRate'] = data.minRate;
+      }
+      await _remoteDataSource.updateCreatorProfile(payload);
+    } catch (e) {
+      debugPrint('Notice: Remote creator details sync failed (saved locally): $e');
     }
-    await _remoteDataSource.updateCreatorProfile(payload);
   }
 
   @override
@@ -645,18 +806,23 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Future<void> updateProfessionalDetails(ProfessionalDetailsData data) async {
+    _dirtyLocalSections.add('professional');
     _professionalDetails = data;
     await _profileLocalDataSource.saveProfessionalDetails(data);
 
-    // Sync via Backend API
-    final payload = <String, dynamic>{
-      'headline': data.professionalType,
-      'equipmentList': data.tools,
-    };
-    if (data.minRate != null) {
-      payload['dayRate'] = data.minRate;
+    // Best-effort sync via Backend API
+    try {
+      final payload = <String, dynamic>{
+        'headline': data.professionalType,
+        'equipmentList': data.tools,
+      };
+      if (data.minRate != null) {
+        payload['dayRate'] = data.minRate;
+      }
+      await _remoteDataSource.updateProfessionalProfile(payload);
+    } catch (e) {
+      debugPrint('Notice: Remote professional details sync failed (saved locally): $e');
     }
-    await _remoteDataSource.updateProfessionalProfile(payload);
   }
 
   @override
@@ -667,16 +833,23 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Future<void> updatePodcastDetails(PodcastDetailsData data) async {
+    _dirtyLocalSections.add('podcast');
     _podcastDetails = data;
     await _profileLocalDataSource.savePodcastDetails(data);
 
-    // Sync via Backend API
-    await _remoteDataSource.updatePodcasterProfile({
-      'podcastName': data.showName,
-      'description': data.description,
-      'rssFeedUrl':
-          data.platformLinks.isNotEmpty ? data.platformLinks.first : null,
-    });
+    // Best-effort sync via Backend API (omit null/empty URLs to satisfy HttpsUrlSchema)
+    try {
+      final firstLink = data.platformLinks.isNotEmpty
+          ? _normalizeHttpsUrl(data.platformLinks.first)
+          : null;
+      await _remoteDataSource.updatePodcasterProfile({
+        'podcastName': data.showName,
+        'description': data.description,
+        if (firstLink != null) 'rssFeedUrl': firstLink,
+      });
+    } catch (e) {
+      debugPrint('Notice: Remote podcast details sync failed (saved locally): $e');
+    }
   }
 
   @override
@@ -687,17 +860,23 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Future<void> updateCompanyDetails(CompanyDetailsData data) async {
+    _dirtyLocalSections.add('company');
     _companyDetails = data;
     await _profileLocalDataSource.saveCompanyDetails(data);
 
-    // Sync via Backend API
-    await _remoteDataSource.updateBrandProfile({
-      'companyName': data.companyName,
-      'industry': data.businessCategory,
-      'companySize': data.teamSize,
-      'websiteUrl': data.websiteUrl,
-      'bio': data.description,
-    });
+    // Best-effort sync via Backend API (normalize website URL to https://)
+    try {
+      final cleanWebsite = _normalizeHttpsUrl(data.websiteUrl);
+      await _remoteDataSource.updateBrandProfile({
+        'companyName': data.companyName,
+        if (data.businessCategory.isNotEmpty) 'industry': data.businessCategory,
+        if (data.teamSize.isNotEmpty) 'companySize': data.teamSize,
+        if (cleanWebsite != null) 'websiteUrl': cleanWebsite,
+        if (data.description.isNotEmpty) 'bio': data.description,
+      });
+    } catch (e) {
+      debugPrint('Notice: Remote company details sync failed (saved locally): $e');
+    }
   }
 
   @override
@@ -709,38 +888,54 @@ class ProfileRepositoryImpl implements ProfileRepository {
   @override
   Future<SocialPlatformAccount> connectSocialAccount(
       String platform, String handle) async {
+    final cleanHandle = handle.trim().replaceFirst(RegExp(r'^@+'), '');
     final updated = SocialPlatformAccount(
       platform: platform,
-      handle: handle,
+      handle: cleanHandle,
       status: SocialPlatformStatus.connected,
       followersCount: null,
       postsCount: null,
       lastSyncedText: 'Just now',
-      profileUrl: '$platform.com/$handle',
+      profileUrl: _buildSocialProfileUrl(platform, cleanHandle),
     );
 
-    _socialAccounts = _socialAccounts.map((a) {
-      if (a.platform.toLowerCase() == platform.toLowerCase()) {
-        return updated;
-      }
-      return a;
-    }).toList();
+    final exists = _socialAccounts
+        .any((a) => a.platform.toLowerCase() == platform.toLowerCase());
+    if (exists) {
+      _socialAccounts = _socialAccounts.map((a) {
+        if (a.platform.toLowerCase() == platform.toLowerCase()) {
+          return updated;
+        }
+        return a;
+      }).toList();
+    } else {
+      _socialAccounts = [..._socialAccounts, updated];
+    }
 
-    // Persist locally
+    // Persist locally first
+    _dirtyLocalSections.add('social');
     await _profileLocalDataSource.saveSocialAccounts(_socialAccounts);
 
-    // Persist to backend
-    await _remoteDataSource.updateCreatorProfile({
-      'socialLinks': _socialAccounts
-          .where((a) => a.handle != null && a.profileUrl != null && a.profileUrl!.trim().isNotEmpty)
-          .map((a) {
-            final cleanUrl = a.profileUrl!.trim().startsWith('http')
-                ? a.profileUrl!.trim()
-                : 'https://${a.profileUrl!.trim()}';
-            return {'platform': a.platform, 'url': cleanUrl};
-          })
-          .toList(),
-    });
+    // Best-effort persist to backend
+    try {
+      final activeRole = await resolveActiveRole();
+      if (activeRole == UserRole.creator) {
+        await _remoteDataSource.updateCreatorProfile({
+          'socialLinks': _socialAccounts
+              .where((a) =>
+                  a.handle != null &&
+                  a.profileUrl != null &&
+                  a.profileUrl!.trim().isNotEmpty)
+              .map((a) {
+                final cleanUrl = _normalizeHttpsUrl(a.profileUrl);
+                return {'platform': a.platform, 'url': cleanUrl ?? a.profileUrl!.trim()};
+              })
+              .toList(),
+        });
+      }
+    } catch (e) {
+      debugPrint('Notice: Remote social account sync failed (saved locally): $e');
+    }
 
     return updated;
   }
@@ -755,20 +950,29 @@ class ProfileRepositoryImpl implements ProfileRepository {
       return a;
     }).toList();
 
-    // Persist locally
+    // Persist locally first
+    _dirtyLocalSections.add('social');
     await _profileLocalDataSource.saveSocialAccounts(_socialAccounts);
 
-    await _remoteDataSource.updateCreatorProfile({
-      'socialLinks': _socialAccounts
-          .where((a) => a.handle != null && a.profileUrl != null && a.profileUrl!.trim().isNotEmpty)
-          .map((a) {
-            final cleanUrl = a.profileUrl!.trim().startsWith('http')
-                ? a.profileUrl!.trim()
-                : 'https://${a.profileUrl!.trim()}';
-            return {'platform': a.platform, 'url': cleanUrl};
-          })
-          .toList(),
-    });
+    try {
+      final activeRole = await resolveActiveRole();
+      if (activeRole == UserRole.creator) {
+        await _remoteDataSource.updateCreatorProfile({
+          'socialLinks': _socialAccounts
+              .where((a) =>
+                  a.handle != null &&
+                  a.profileUrl != null &&
+                  a.profileUrl!.trim().isNotEmpty)
+              .map((a) {
+                final cleanUrl = _normalizeHttpsUrl(a.profileUrl);
+                return {'platform': a.platform, 'url': cleanUrl ?? a.profileUrl!.trim()};
+              })
+              .toList(),
+        });
+      }
+    } catch (e) {
+      debugPrint('Notice: Remote social disconnect sync failed (saved locally): $e');
+    }
   }
 
   @override
@@ -820,14 +1024,23 @@ class ProfileRepositoryImpl implements ProfileRepository {
   @override
   Future<void> submitCreatorVerification(
       String platform, String handle, String code) async {
-    await _remoteDataSource.submitCreatorVerification(platform, handle, code);
+    _dirtyLocalSections.add('verification');
+    final cleanHandle = handle.trim().replaceFirst(RegExp(r'^@+'), '');
     _verificationData = _verificationData.copyWith(
       state: VerificationState.underReview,
-      submittedAccount: '$platform @$handle',
+      submittedAccount: '$platform @$cleanHandle',
       oneTimeCode: code,
       submittedDate: _formatCurrentTimestamp(),
     );
     await _profileLocalDataSource.saveVerificationData(_verificationData);
+
+    try {
+      await _remoteDataSource.submitCreatorVerification(
+          platform, cleanHandle, code);
+    } catch (e) {
+      debugPrint(
+          'Notice: Remote creator verification sync failed (saved locally): $e');
+    }
   }
 
   @override
@@ -837,12 +1050,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     required String person,
     required List<String> documents,
   }) async {
-    await _remoteDataSource.submitBrandVerification(
-      businessName: businessName,
-      regNumber: regNumber,
-      person: person,
-      documents: documents,
-    );
+    _dirtyLocalSections.add('verification');
     _verificationData = _verificationData.copyWith(
       state: VerificationState.underReview,
       submittedAccount: businessName,
@@ -850,11 +1058,27 @@ class ProfileRepositoryImpl implements ProfileRepository {
       submittedDate: _formatCurrentTimestamp(),
     );
     await _profileLocalDataSource.saveVerificationData(_verificationData);
+
+    try {
+      await _remoteDataSource.submitBrandVerification(
+        businessName: businessName,
+        regNumber: regNumber,
+        person: person,
+        documents: documents,
+      );
+    } catch (e) {
+      debugPrint(
+          'Notice: Remote brand verification sync failed (saved locally): $e');
+    }
   }
 
   @override
   Future<void> addSecondaryRole(UserRole role) async {
-    await _remoteDataSource.syncSecondaryRole(role.apiValue);
     await _localDataSource.saveSelectedRole(role.apiValue);
+    try {
+      await _remoteDataSource.syncSecondaryRole(role.apiValue);
+    } catch (e) {
+      debugPrint('Notice: Remote secondary role sync failed (saved locally): $e');
+    }
   }
 }

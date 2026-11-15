@@ -1,10 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/profile_entities.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../../data/repositories/profile_repository_impl.dart';
+import '../bottom_sheets/file_source_sheet.dart';
 import '../bottom_sheets/upload_in_progress_sheet.dart';
 import '../dialogs/confirm_verification_dialog.dart';
 
@@ -30,6 +33,7 @@ class _C13VerificationRequestScreenState extends State<C13VerificationRequestScr
   String _targetAccount = '';
   String _creatorPlatform = 'Instagram';
   String _creatorHandle = '';
+  List<SocialPlatformAccount> _connectedAccounts = [];
 
   // Brand state
   final _brandFormKey = GlobalKey<FormState>();
@@ -65,16 +69,19 @@ class _C13VerificationRequestScreenState extends State<C13VerificationRequestScr
         _verificationCode = 'CC-$codeNum';
       }
 
-      final connected = accounts.where(
-        (a) => a.status == SocialPlatformStatus.connected || a.status == SocialPlatformStatus.verified,
-      );
+      final connected = accounts
+          .where((a) =>
+              a.status == SocialPlatformStatus.connected ||
+              a.status == SocialPlatformStatus.verified)
+          .toList();
+      _connectedAccounts = connected;
       if (connected.isNotEmpty) {
         final first = connected.first;
         _creatorPlatform = first.platform;
         _creatorHandle = first.handle ?? basicInfo.displayName;
         _targetAccount = '${first.platform} @$_creatorHandle';
       } else {
-        _creatorPlatform = 'Profile';
+        _creatorPlatform = 'Instagram';
         _creatorHandle = basicInfo.displayName.isNotEmpty ? basicInfo.displayName : 'creator';
         _targetAccount = '@$_creatorHandle';
       }
@@ -103,29 +110,75 @@ class _C13VerificationRequestScreenState extends State<C13VerificationRequestScr
   }
 
   Future<void> _handleAttachDocument() async {
-    try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg'],
+    if (_attachedDocs.length >= 5) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Maximum 5 documents can be attached per verification'),
+          backgroundColor: Color(0xFFD32F2F),
+        ),
       );
-      if (result != null && result.files.isNotEmpty && mounted) {
-        final picked = result.files.first;
-        final fileName = picked.name;
-        final sizeBytes = picked.size;
-        final sizeFormatted = sizeBytes > 1024 * 1024
-            ? '${(sizeBytes / (1024 * 1024)).toStringAsFixed(1)} MB'
-            : '${(sizeBytes / 1024).toStringAsFixed(1)} KB';
+      return;
+    }
 
-        final uploaded = await UploadInProgressSheet.show(
-          context,
-          fileName: fileName,
-          fileSize: sizeFormatted,
+    final source = await FileSourceSheet.show(context);
+    if (source == null || !mounted) return;
+
+    try {
+      String? fileName;
+      int sizeBytes = 0;
+
+      if (source == FileSourceType.documents) {
+        final result = await FilePicker.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg'],
         );
-        if (uploaded && mounted) {
-          setState(() {
-            _attachedDocs.add(fileName);
-          });
+        if (result != null && result.files.isNotEmpty) {
+          final picked = result.files.first;
+          fileName = picked.name;
+          sizeBytes = picked.size;
         }
+      } else {
+        final picker = ImagePicker();
+        final pickedImage = await picker.pickImage(
+          source: source == FileSourceType.scan
+              ? ImageSource.camera
+              : ImageSource.gallery,
+          imageQuality: 85,
+        );
+        if (pickedImage != null) {
+          fileName = pickedImage.name;
+          final f = File(pickedImage.path);
+          if (await f.exists()) {
+            sizeBytes = await f.length();
+          }
+        }
+      }
+
+      if (fileName == null || !mounted) return;
+
+      if (sizeBytes > 10 * 1024 * 1024) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('File exceeds the 10MB size limit'),
+            backgroundColor: Color(0xFFD32F2F),
+          ),
+        );
+        return;
+      }
+
+      final sizeFormatted = sizeBytes > 1024 * 1024
+          ? '${(sizeBytes / (1024 * 1024)).toStringAsFixed(1)} MB'
+          : (sizeBytes > 0 ? '${(sizeBytes / 1024).toStringAsFixed(1)} KB' : 'Ready');
+
+      final uploaded = await UploadInProgressSheet.show(
+        context,
+        fileName: fileName,
+        fileSize: sizeFormatted,
+      );
+      if (uploaded && mounted) {
+        setState(() {
+          _attachedDocs.add(fileName!);
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -148,16 +201,29 @@ class _C13VerificationRequestScreenState extends State<C13VerificationRequestScr
 
     if (confirm && mounted) {
       setState(() => _isSubmitting = true);
-      await _repo.submitCreatorVerification(_creatorPlatform, _creatorHandle, _verificationCode);
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-        final data = await _repo.getVerificationData();
-        if (!mounted) return;
-        Navigator.pushReplacementNamed(
-          context,
-          '/profile/verification-result',
-          arguments: data,
-        );
+      try {
+        await _repo.submitCreatorVerification(
+            _creatorPlatform, _creatorHandle, _verificationCode);
+        if (mounted) {
+          final data = await _repo.getVerificationData();
+          if (!mounted) return;
+          Navigator.pushReplacementNamed(
+            context,
+            '/profile/verification-result',
+            arguments: data,
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not submit verification: $e'),
+              backgroundColor: const Color(0xFFD32F2F),
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isSubmitting = false);
       }
     }
   }
@@ -177,21 +243,33 @@ class _C13VerificationRequestScreenState extends State<C13VerificationRequestScr
     final confirm = await ConfirmVerificationDialog.show(context, isBrand: true);
     if (confirm && mounted) {
       setState(() => _isSubmitting = true);
-      await _repo.submitBrandVerification(
-        businessName: _companyCtrl.text.trim(),
-        regNumber: _regCtrl.text.trim(),
-        person: _personCtrl.text.trim(),
-        documents: _attachedDocs,
-      );
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-        final data = await _repo.getVerificationData();
-        if (!mounted) return;
-        Navigator.pushReplacementNamed(
-          context,
-          '/profile/verification-result',
-          arguments: data,
+      try {
+        await _repo.submitBrandVerification(
+          businessName: _companyCtrl.text.trim(),
+          regNumber: _regCtrl.text.trim().toUpperCase(),
+          person: _personCtrl.text.trim(),
+          documents: _attachedDocs,
         );
+        if (mounted) {
+          final data = await _repo.getVerificationData();
+          if (!mounted) return;
+          Navigator.pushReplacementNamed(
+            context,
+            '/profile/verification-result',
+            arguments: data,
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not submit business verification: $e'),
+              backgroundColor: const Color(0xFFD32F2F),
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isSubmitting = false);
       }
     }
   }
@@ -291,6 +369,28 @@ class _C13VerificationRequestScreenState extends State<C13VerificationRequestScr
         'Prove ownership of $_targetAccount by placing this temporary code in your bio.',
         style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
       ),
+      if (_connectedAccounts.length > 1) ...[
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _connectedAccounts.map((acct) {
+            final selected = acct.platform == _creatorPlatform;
+            return ChoiceChip(
+              label: Text('${acct.platform} (@${acct.handle ?? ""})'),
+              selected: selected,
+              selectedColor: const Color(0xFFFFF3CD),
+              onSelected: (_) {
+                setState(() {
+                  _creatorPlatform = acct.platform;
+                  _creatorHandle = acct.handle ?? _creatorHandle;
+                  _targetAccount = '${acct.platform} @$_creatorHandle';
+                });
+              },
+            );
+          }).toList(),
+        ),
+      ],
       const SizedBox(height: 24),
       // Code Box
       Container(
@@ -356,8 +456,8 @@ class _C13VerificationRequestScreenState extends State<C13VerificationRequestScr
       const SizedBox(height: 14),
       _StepCard(
         number: '1',
-        title: 'Open Instagram & Edit Profile',
-        description: 'Navigate to your Instagram profile and tap "Edit profile".',
+        title: 'Open $_creatorPlatform & Edit Profile',
+        description: 'Navigate to your $_creatorPlatform profile and open bio settings.',
       ),
       const SizedBox(height: 10),
       _StepCard(
@@ -409,8 +509,21 @@ class _C13VerificationRequestScreenState extends State<C13VerificationRequestScr
             const SizedBox(height: 6),
             TextFormField(
               controller: _regCtrl,
+              textCapitalization: TextCapitalization.characters,
               decoration: _inputDecoration('Enter 15-digit GSTIN or Registration No.'),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+              validator: (v) {
+                final clean = v?.trim().toUpperCase() ?? '';
+                if (clean.isEmpty) return 'Required';
+                if (clean.length == 15 &&
+                    !RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$')
+                        .hasMatch(clean)) {
+                  return 'Enter a valid 15-digit GSTIN';
+                }
+                if (clean.length < 6) {
+                  return 'Enter a valid GSTIN or registration number';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 16),
             const Text('Authorized Person / Title', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),

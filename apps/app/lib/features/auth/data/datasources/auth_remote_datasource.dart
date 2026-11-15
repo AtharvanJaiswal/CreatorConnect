@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -5,22 +6,33 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/config/env_config.dart';
 import '../../../../core/utils/phone_utils.dart';
 
+class IdentityConflictException implements Exception {
+  final String message;
+  const IdentityConflictException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 class AuthRemoteDataSource {
+  static const Duration _supabaseTimeout = Duration(seconds: 12);
+  static const Duration _syncTimeout = Duration(milliseconds: 2500);
+
   final SupabaseClient? _client;
   final http.Client _httpClient;
 
-  AuthRemoteDataSource({
-    SupabaseClient? client,
-    http.Client? httpClient,
-  })  : _client = client,
-        _httpClient = httpClient ?? http.Client();
+  AuthRemoteDataSource({SupabaseClient? client, http.Client? httpClient})
+    : _client = client,
+      _httpClient = httpClient ?? http.Client();
 
   SupabaseClient get _supabase {
     if (_client != null) return _client;
     try {
       return Supabase.instance.client;
     } catch (_) {
-      throw Exception('Supabase client not initialized. Check EnvironmentConfig.');
+      throw Exception(
+        'Supabase client not initialized. Check EnvironmentConfig.',
+      );
     }
   }
 
@@ -34,15 +46,18 @@ class AuthRemoteDataSource {
     }
   }
 
-
   /// Sends a 6-digit SMS OTP via Supabase GoTrue Auth
   Future<void> sendPhoneOtp(String fullPhoneNumber, {String? role}) async {
     final normalized = PhoneUtils.toE164(fullPhoneNumber) ?? fullPhoneNumber;
     try {
-      await _supabase.auth.signInWithOtp(
-        phone: normalized,
-        data: role != null ? {'role': role} : null,
-      );
+      await _supabase.auth
+          .signInWithOtp(
+            phone: normalized,
+            data: role != null ? {'role': role} : null,
+          )
+          .timeout(_supabaseTimeout);
+    } on TimeoutException {
+      throw 'Request timed out. Please check your internet connection and try again.';
     } on AuthException catch (e) {
       debugPrint('Supabase Auth error sending OTP: ${e.message}');
       throw e.message;
@@ -60,17 +75,19 @@ class AuthRemoteDataSource {
   }) async {
     final normalized = PhoneUtils.toE164(fullPhoneNumber) ?? fullPhoneNumber;
     try {
-      final response = await _supabase.auth.verifyOTP(
-        phone: normalized,
-        token: token,
-        type: OtpType.sms,
-      );
+      final response = await _supabase.auth
+          .verifyOTP(phone: normalized, token: token, type: OtpType.sms)
+          .timeout(_supabaseTimeout);
       if (role != null) {
         try {
-          await _supabase.auth.updateUser(UserAttributes(data: {'role': role}));
+          await _supabase.auth
+              .updateUser(UserAttributes(data: {'role': role}))
+              .timeout(_syncTimeout);
         } catch (_) {}
       }
       return response;
+    } on TimeoutException {
+      throw 'Verification timed out. Please check your internet connection and try again.';
     } on AuthException catch (e) {
       debugPrint('Supabase Auth error verifying OTP: ${e.message}');
       throw e.message;
@@ -87,12 +104,16 @@ class AuthRemoteDataSource {
     String? role,
   }) async {
     try {
-      final response = await _supabase.auth.signUp(
-        email: email,
-        password: password,
-        data: role != null ? {'role': role} : null,
-      );
+      final response = await _supabase.auth
+          .signUp(
+            email: email,
+            password: password,
+            data: role != null ? {'role': role} : null,
+          )
+          .timeout(_supabaseTimeout);
       return response;
+    } on TimeoutException {
+      throw 'Registration timed out. Please check your internet connection and try again.';
     } on AuthException catch (e) {
       debugPrint('Supabase Auth error sign up: ${e.message}');
       throw e.message;
@@ -110,42 +131,52 @@ class AuthRemoteDataSource {
   }) async {
     final token = customToken ?? _supabase.auth.currentSession?.accessToken;
     if (token == null || token.isEmpty) {
-      debugPrint('Warning: No Supabase session token available for backend sync');
+      debugPrint(
+        'Warning: No Supabase session token available for backend sync',
+      );
       return {'isNewUser': true, 'synced': false};
     }
 
-    final baseUrl = EnvironmentConfig.current.apiBaseUrl;
-    final url = Uri.parse('$baseUrl/auth/sync');
+    final url = EnvironmentConfig.normalizeApiUri('/auth/sync');
 
-    final response = await _httpClient.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'preferredRole': preferredRole,
-      }),
-    );
+    final response = await _httpClient
+        .post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({'preferredRole': preferredRole}),
+        )
+        .timeout(_syncTimeout);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.body.isEmpty) return {'synced': true};
       return jsonDecode(response.body) as Map<String, dynamic>;
     } else if (response.statusCode == 409) {
       debugPrint('Backend sync identity conflict (HTTP 409): ${response.body}');
-      throw 'An account with this email already exists under another login method.';
+      throw const IdentityConflictException(
+        'An account with this email already exists under another login method.',
+      );
     } else {
-      throw 'Backend database synchronization failed (HTTP ${response.statusCode}). Please ensure the API is running.';
+      throw Exception(
+        'Backend database synchronization failed (HTTP ${response.statusCode}).',
+      );
     }
   }
 
   /// Initiates Google OAuth Sign-in
   Future<bool> signInWithGoogle() async {
     try {
-      final res = await _supabase.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: kIsWeb ? null : 'creatorconnect://auth-callback',
-      );
+      final res = await _supabase.auth
+          .signInWithOAuth(
+            OAuthProvider.google,
+            redirectTo: kIsWeb ? null : 'creatorconnect://auth-callback',
+          )
+          .timeout(_supabaseTimeout);
       return res;
+    } on TimeoutException {
+      throw 'Google Sign-in timed out. Please try again.';
     } catch (e) {
       debugPrint('Google OAuth error: $e');
       throw 'Google Sign-in could not be completed.';
@@ -162,17 +193,19 @@ class AuthRemoteDataSource {
 
     try {
       if (isEmail) {
-        return await _supabase.auth.signInWithPassword(
-          email: trimmed,
-          password: password,
-        );
+        return await _supabase.auth
+            .signInWithPassword(email: trimmed, password: password)
+            .timeout(_supabaseTimeout);
       } else {
-        final fullPhone = PhoneUtils.toE164(trimmed) ?? (trimmed.startsWith('+') ? trimmed : '+$trimmed');
-        return await _supabase.auth.signInWithPassword(
-          phone: fullPhone,
-          password: password,
-        );
+        final fullPhone =
+            PhoneUtils.toE164(trimmed) ??
+            (trimmed.startsWith('+') ? trimmed : '+$trimmed');
+        return await _supabase.auth
+            .signInWithPassword(phone: fullPhone, password: password)
+            .timeout(_supabaseTimeout);
       }
+    } on TimeoutException {
+      throw 'Login timed out. Please check your internet connection and try again.';
     } on AuthException catch (e) {
       debugPrint('Supabase Auth login error: ${e.message}');
       throw e.message;
@@ -185,10 +218,14 @@ class AuthRemoteDataSource {
   /// Sends password recovery link to email
   Future<void> sendPasswordResetEmail(String email) async {
     try {
-      await _supabase.auth.resetPasswordForEmail(
-        email.trim(),
-        redirectTo: kIsWeb ? null : 'creatorconnect://reset-callback',
-      );
+      await _supabase.auth
+          .resetPasswordForEmail(
+            email.trim(),
+            redirectTo: kIsWeb ? null : 'creatorconnect://reset-callback',
+          )
+          .timeout(_supabaseTimeout);
+    } on TimeoutException {
+      throw 'Password reset request timed out. Please try again.';
     } on AuthException catch (e) {
       debugPrint('Supabase Auth reset password error: ${e.message}');
       throw e.message;
@@ -201,10 +238,12 @@ class AuthRemoteDataSource {
   /// Updates current user's password
   Future<UserResponse> updatePassword(String newPassword) async {
     try {
-      final res = await _supabase.auth.updateUser(
-        UserAttributes(password: newPassword),
-      );
+      final res = await _supabase.auth
+          .updateUser(UserAttributes(password: newPassword))
+          .timeout(_supabaseTimeout);
       return res;
+    } on TimeoutException {
+      throw 'Password update timed out. Please try again.';
     } on AuthException catch (e) {
       debugPrint('Supabase Auth update password error: ${e.message}');
       throw e.message;

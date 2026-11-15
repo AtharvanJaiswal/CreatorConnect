@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/animations/app_animations.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/campaign_entities.dart';
@@ -77,21 +78,24 @@ class _E06BrandManageApplicantsScreenState extends ConsumerState<E06BrandManageA
                           itemCount: state.filteredApplicants.length,
                           itemBuilder: (context, idx) {
                             final applicant = state.filteredApplicants[idx];
-                            return ApplicantCardWidget(
-                              application: applicant,
-                              onTap: () {
-                                ApplicantQuickReviewSheet.show(
-                                  context,
-                                  application: applicant,
-                                  onAccept: () => _onAccept(applicant),
-                                  onDecline: () => _onDecline(applicant),
-                                  onChat: () => Navigator.pushNamed(context, '/conversations'),
-                                );
-                              },
-                              onShortlist: () => notifier.shortlistApplicant(applicant.id),
-                              onAccept: () => _onAccept(applicant),
-                              onDecline: () => _onDecline(applicant),
-                              onChat: () => Navigator.pushNamed(context, '/conversations'),
+                            return StaggeredEntrance(
+                              index: idx,
+                              child: ApplicantCardWidget(
+                                application: applicant,
+                                onTap: () {
+                                  ApplicantQuickReviewSheet.show(
+                                    context,
+                                    application: applicant,
+                                    onAccept: () => _onAccept(applicant),
+                                    onDecline: () => _onDecline(applicant),
+                                    onChat: () => Navigator.pushNamed(context, '/conversations'),
+                                  );
+                                },
+                                onShortlist: () => notifier.shortlistApplicant(applicant.id),
+                                onAccept: () => _onAccept(applicant),
+                                onDecline: () => _onDecline(applicant),
+                                onChat: () => Navigator.pushNamed(context, '/conversations'),
+                              ),
                             );
                           },
                         ),

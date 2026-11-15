@@ -166,6 +166,7 @@ class OpportunityBrief {
   final String location;
   final String deadline;
   final String deliverableType;
+  final String category;
   final int applicantsCount;
 
   const OpportunityBrief({
@@ -178,6 +179,7 @@ class OpportunityBrief {
     required this.location,
     required this.deadline,
     required this.deliverableType,
+    this.category = 'General',
     this.applicantsCount = 14,
   });
 
@@ -210,6 +212,7 @@ class OpportunityBrief {
       location: json['location'] as String? ?? 'Mumbai (Remote)',
       deadline: parsedDeadline,
       deliverableType: json['deliverableType'] as String? ?? json['deliverable'] as String? ?? 'Reel + Story',
+      category: json['category'] as String? ?? 'General',
       applicantsCount: json['applicantsCount'] as int? ?? json['appliedCount'] as int? ?? 14,
     );
   }
@@ -224,6 +227,7 @@ class BrandBriefProgress {
   final int targetApplicants;
   final String deadline;
   final String status;
+  final String category;
 
   const BrandBriefProgress({
     required this.id,
@@ -232,6 +236,7 @@ class BrandBriefProgress {
     required this.targetApplicants,
     required this.deadline,
     this.status = 'ACTIVE',
+    this.category = 'General',
   });
 
   double get progressRatio => targetApplicants > 0 ? (applicantsCount / targetApplicants).clamp(0.0, 1.0) : 0.0;
@@ -251,6 +256,7 @@ class BrandBriefProgress {
       targetApplicants: json['targetApplicants'] as int? ?? json['maxApplicants'] as int? ?? 50,
       deadline: parsedDeadline,
       status: json['status'] as String? ?? 'ACTIVE',
+      category: json['category'] as String? ?? 'General',
     );
   }
 }
@@ -507,6 +513,86 @@ class PublicProfileModel {
       portfolioItems: portfolioRaw,
       latestReview: json['latestReview'] as Map<String, dynamic>?,
       activeBriefs: briefsRaw.map((e) => OpportunityBrief.fromJson(e as Map<String, dynamic>)).toList(),
+    );
+  }
+}
+
+/// Collaboration Request / Invitation Entity
+@immutable
+class CollaborationRequestModel {
+  final String id;
+  final String senderId;
+  final String senderName;
+  final String senderHandle;
+  final String? senderAvatarUrl;
+  final String senderRole;
+  final String senderCity;
+  final bool isSenderVerified;
+  final String title;
+  final String description;
+  final int? proposedBudget;
+  final String currency;
+  final String? deadline;
+  final String status; // 'PENDING', 'ACCEPTED', 'DECLINED', 'CANCELLED', 'COMPLETED'
+  final String? createdAt;
+
+  const CollaborationRequestModel({
+    required this.id,
+    required this.senderId,
+    required this.senderName,
+    required this.senderHandle,
+    this.senderAvatarUrl,
+    this.senderRole = 'CREATOR',
+    this.senderCity = 'Delhi NCR',
+    this.isSenderVerified = false,
+    required this.title,
+    required this.description,
+    this.proposedBudget,
+    this.currency = 'INR',
+    this.deadline,
+    this.status = 'PENDING',
+    this.createdAt,
+  });
+
+  CollaborationRequestModel copyWith({
+    String? status,
+  }) {
+    return CollaborationRequestModel(
+      id: id,
+      senderId: senderId,
+      senderName: senderName,
+      senderHandle: senderHandle,
+      senderAvatarUrl: senderAvatarUrl,
+      senderRole: senderRole,
+      senderCity: senderCity,
+      isSenderVerified: isSenderVerified,
+      title: title,
+      description: description,
+      proposedBudget: proposedBudget,
+      currency: currency,
+      deadline: deadline,
+      status: status ?? this.status,
+      createdAt: createdAt,
+    );
+  }
+
+  factory CollaborationRequestModel.fromJson(Map<String, dynamic> json) {
+    return CollaborationRequestModel(
+      id: json['id'] as String? ?? '',
+      senderId: json['senderId'] as String? ?? json['clientId'] as String? ?? '',
+      senderName: json['senderName'] as String? ?? json['clientName'] as String? ?? 'Creative Peer',
+      senderHandle: json['senderHandle'] as String? ?? '@creator',
+      senderAvatarUrl: json['senderAvatarUrl'] as String? ?? json['avatarUrl'] as String?,
+      senderRole: (json['senderRole'] as String? ?? 'CREATOR').toUpperCase(),
+      senderCity: json['senderCity'] as String? ?? json['city'] as String? ?? 'Pan-India',
+      isSenderVerified: json['isSenderVerified'] as bool? ?? false,
+      title: json['title'] as String? ?? 'Peer Collaboration Brief',
+      description: json['description'] as String? ?? json['message'] as String? ?? '',
+      proposedBudget: (json['proposedBudget'] as num?)?.toInt() ?? (json['proposedRate'] as num?)?.toInt(),
+      currency: json['currency'] as String? ?? 'INR',
+      deadline: json['deadline'] as String?,
+      status: (json['status'] as String? ?? 'PENDING').toUpperCase(),
+      createdAt: json['createdAt'] as String?,
     );
   }
 }

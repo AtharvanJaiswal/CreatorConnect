@@ -54,13 +54,23 @@ class EnvironmentConfig {
     return kDebugMode ? AppEnvironment.local : AppEnvironment.dev;
   }
 
+  static String _activeHost = '';
+
+  static void setActiveHost(String host) {
+    _activeHost = host;
+  }
+
+  static String get activeHost => _localHost;
+
   static String get _localHost {
+    if (_activeHost.isNotEmpty) return _activeHost;
     const customHost = String.fromEnvironment('API_HOST', defaultValue: '');
     if (customHost.isNotEmpty) return customHost;
     if (kIsWeb) return '127.0.0.1';
-    // On Android emulators, 10.0.2.2 connects to host computer localhost
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) return '10.0.2.2';
-    // 127.0.0.1 works on desktop and iOS simulators.
+    // On physical Android running over Wi-Fi without USB cable/adb reverse:
+    // Default to host Wi-Fi LAN IP (192.168.1.42). ApiClient.probeBestLocalHost()
+    // also dynamically probes 192.168.1.42, 127.0.0.1, and 10.0.2.2 on startup.
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) return '192.168.1.42';
     return '127.0.0.1';
   }
 
@@ -118,5 +128,28 @@ class EnvironmentConfig {
           supabaseAnonKey: resolvedAnonKey,
         );
     }
+  }
+
+  /// Normalizes any endpoint path cleanly against apiBaseUrl, avoiding
+  /// both double-prefixing (e.g. /api/v1/api/v1/...) and missing prefix (e.g. /...)
+  static String normalizeApiUrl(String path) {
+    var base = current.apiBaseUrl.trim();
+    while (base.endsWith('/')) {
+      base = base.substring(0, base.length - 1);
+    }
+    var cleanPath = path.trim();
+    if (!cleanPath.startsWith('/')) {
+      cleanPath = '/$cleanPath';
+    }
+    // If base already ends with /api/v1 and path starts with /api/v1/, strip from path
+    if (base.endsWith('/api/v1') && cleanPath.startsWith('/api/v1/')) {
+      cleanPath = cleanPath.substring(7);
+    }
+    return '$base$cleanPath';
+  }
+
+  /// Returns a clean Uri resolved against apiBaseUrl.
+  static Uri normalizeApiUri(String path) {
+    return Uri.parse(normalizeApiUrl(path));
   }
 }

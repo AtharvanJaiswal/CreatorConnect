@@ -3,11 +3,43 @@ import '../../../../core/theme/app_colors.dart';
 
 class C11ConnectionErrorScreen extends StatelessWidget {
   final String platform;
+  final String? handle;
 
   const C11ConnectionErrorScreen({
     super.key,
     this.platform = 'Instagram',
+    this.handle,
   });
+
+  List<String> _tipsForPlatform(String platform) {
+    switch (platform.toLowerCase()) {
+      case 'youtube':
+        return const [
+          'Sign in with the Google account that owns or manages the YouTube channel.',
+          'Approve read-only YouTube channel metrics access during Google OAuth.',
+          'Verify that the channel has public visibility enabled.',
+        ];
+      case 'linkedin':
+        return const [
+          'Sign in with your LinkedIn profile and grant read-only public profile access.',
+          'Check that two-factor or session verification completed successfully.',
+          'Make sure your public profile URL is active and not restricted.',
+        ];
+      case 'x':
+      case 'twitter':
+        return const [
+          'Authorize CreatorConnect read-only access during the X sign-in prompt.',
+          'Ensure your account is public and not temporarily locked.',
+          'Confirm the handle matches your active X username without typos.',
+        ];
+      default:
+        return const [
+          'Ensure your Instagram profile is switched to a Creator or Business account in settings.',
+          'Grant all requested read-only permissions during the Meta approval screen.',
+          'Check if you have an active Facebook Page linked to your Instagram creator profile.',
+        ];
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,38 +85,32 @@ class C11ConnectionErrorScreen extends StatelessWidget {
                 style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 32),
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: AppColors.surfacePure,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.borderLight),
-                ),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Common reasons & tips:',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                    ),
-                    SizedBox(height: 12),
-                    _TroubleTip(
-                      number: '1',
-                      text: 'Ensure your Instagram profile is switched to a Creator or Business account in settings.',
-                    ),
-                    SizedBox(height: 10),
-                    _TroubleTip(
-                      number: '2',
-                      text: 'Grant all requested read-only permissions during the Meta approval screen.',
-                    ),
-                    SizedBox(height: 10),
-                    _TroubleTip(
-                      number: '3',
-                      text: 'Check if you have an active Facebook Page linked to your Instagram creator profile.',
-                    ),
-                  ],
-                ),
-              ),
+              Builder(builder: (context) {
+                final tips = _tipsForPlatform(platform);
+                return Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfacePure,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.borderLight),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Common reasons & tips:',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: 12),
+                      _TroubleTip(number: '1', text: tips[0]),
+                      const SizedBox(height: 10),
+                      _TroubleTip(number: '2', text: tips[1]),
+                      const SizedBox(height: 10),
+                      _TroubleTip(number: '3', text: tips[2]),
+                    ],
+                  ),
+                );
+              }),
               const Spacer(),
               SizedBox(
                 width: double.infinity,
@@ -99,7 +125,10 @@ class C11ConnectionErrorScreen extends StatelessWidget {
                     Navigator.pushReplacementNamed(
                       context,
                       '/profile/connecting-social',
-                      arguments: {'platform': platform},
+                      arguments: {
+                        'platform': platform,
+                        if (handle != null && handle!.isNotEmpty) 'handle': handle,
+                      },
                     );
                   },
                   child: Text(

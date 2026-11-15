@@ -7,121 +7,287 @@ class MessageBubbleWidget extends StatelessWidget {
   final ChatMessage message;
   final VoidCallback? onLongPress;
   final ValueChanged<MessageAttachment>? onOpenAttachment;
+  final bool showAvatar;
+  final bool showSenderName;
+  final String? peerAvatar;
+  final String? peerName;
+  final bool isFirstInGroup;
+  final bool isLastInGroup;
 
   const MessageBubbleWidget({
     super.key,
     required this.message,
     this.onLongPress,
     this.onOpenAttachment,
+    this.showAvatar = true,
+    this.showSenderName = true,
+    this.peerAvatar,
+    this.peerName,
+    this.isFirstInGroup = true,
+    this.isLastInGroup = true,
   });
 
   @override
   Widget build(BuildContext context) {
     final isMe = message.isMe;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Align(
-        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.78,
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 6 * (1.0 - value)),
+          child: Opacity(
+            opacity: value.clamp(0.0, 1.0),
+            child: child,
           ),
-          child: GestureDetector(
-            onLongPress: onLongPress,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
-              decoration: BoxDecoration(
-                color: isMe ? AppColors.primary : Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(18),
-                  topRight: const Radius.circular(18),
-                  bottomLeft: Radius.circular(isMe ? 18 : 4),
-                  bottomRight: Radius.circular(isMe ? 4 : 18),
-                ),
-                border: Border.all(
-                  color: isMe ? AppColors.primaryPressed : AppColors.border,
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
+        );
+      },
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: isFirstInGroup ? 6 : 2,
+          bottom: isLastInGroup ? 6 : 2,
+        ),
+        child: isMe ? _buildSentBubble(context) : _buildReceivedBubble(context),
+      ),
+    );
+  }
+
+  /// Sent Message (Current Logged-in User — RIGHT)
+  Widget _buildSentBubble(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Flexible(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.75,
+            ),
+            child: GestureDetector(
+              onLongPress: onLongPress,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary, // #FFD64A
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(18),
+                    topRight: Radius.circular(isFirstInGroup ? 18 : 6),
+                    bottomLeft: const Radius.circular(18),
+                    bottomRight: Radius.circular(isLastInGroup ? 4 : 6),
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Attachment Preview (if any)
-                  if (message.attachment != null) ...[
-                    _buildAttachmentPreview(context, message.attachment!),
-                    const SizedBox(height: 6),
-                  ],
-
-                  // Text content (with Anti-Circumvention masking if shielded)
-                  if (message.text.isNotEmpty)
-                    Text(
-                      message.displayText,
-                      style: TextStyle(
-                        fontSize: 14,
-                        height: 1.4,
-                        fontWeight: FontWeight.w500,
-                        color: isMe ? AppColors.textPrimary : AppColors.textPrimary,
-                      ),
-                    ),
-
-                  // Anti-circumvention notice badge
-                  if (message.isSecurityShielded) ...[
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.backgroundSecondary,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.shield_outlined, size: 12, color: AppColors.warning),
-                          SizedBox(width: 4),
-                          Text(
-                            'Contact shielded until request accepted',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.warning),
-                          ),
-                        ],
-                      ),
+                  border: Border.all(
+                    color: const Color(0xFFE5BE32),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
                     ),
                   ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Attachment Preview (if any)
+                    if (message.attachment != null) ...[
+                      _buildAttachmentPreview(context, message.attachment!),
+                      const SizedBox(height: 6),
+                    ],
 
-                  const SizedBox(height: 4),
-
-                  // Timestamp & Read Receipt Tick marks
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
+                    // Text Content
+                    if (message.text.isNotEmpty)
                       Text(
-                        _formatTime(message.timestamp),
-                        style: TextStyle(
-                          fontSize: 10,
+                        message.displayText,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          height: 1.4,
                           fontWeight: FontWeight.w500,
-                          color: isMe ? AppColors.textPrimary.withOpacity(0.65) : AppColors.textMuted,
+                          color: AppColors.textPrimary,
                         ),
                       ),
-                      if (isMe) ...[
+
+                    const SizedBox(height: 4),
+
+                    // Timestamp & Read Receipt Tick marks
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _formatTime(message.timestamp),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textPrimary.withOpacity(0.7),
+                          ),
+                        ),
                         const SizedBox(width: 4),
                         _buildReceiptTicks(message.status),
                       ],
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
+      ],
+    );
+  }
+
+  /// Received Message (Other Participant — LEFT)
+  Widget _buildReceivedBubble(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // Avatar on the left alongside bubble group
+        if (showAvatar)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: CircleAvatar(
+              radius: 14,
+              backgroundColor: AppColors.backgroundSecondary,
+              backgroundImage: safeNetworkImage(peerAvatar ?? message.senderAvatar),
+              child: safeNetworkImage(peerAvatar ?? message.senderAvatar) == null
+                  ? Text(
+                      (peerName ?? message.senderName).isNotEmpty
+                          ? (peerName ?? message.senderName)[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    )
+                  : null,
+            ),
+          )
+        else
+          const SizedBox(width: 28), // Maintain indentation for consecutive messages
+        const SizedBox(width: 8),
+
+        // Bubble Column with Sender Name above
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (showSenderName)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 4),
+                  child: Text(
+                    peerName ?? message.senderName,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.75,
+                ),
+                child: GestureDetector(
+                  onLongPress: onLongPress,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(isFirstInGroup ? 18 : 6),
+                        topRight: const Radius.circular(18),
+                        bottomRight: const Radius.circular(18),
+                        bottomLeft: Radius.circular(isLastInGroup ? 4 : 6),
+                      ),
+                      border: Border.all(
+                        color: AppColors.border,
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.03),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Attachment Preview (if any)
+                        if (message.attachment != null) ...[
+                          _buildAttachmentPreview(context, message.attachment!),
+                          const SizedBox(height: 6),
+                        ],
+
+                        // Text Content
+                        if (message.text.isNotEmpty)
+                          Text(
+                            message.displayText,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              height: 1.4,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+
+                        // Anti-circumvention notice badge
+                        if (message.isSecurityShielded) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.backgroundSecondary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.shield_outlined, size: 12, color: AppColors.warning),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Contact shielded until request accepted',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.warning,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+
+                        const SizedBox(height: 4),
+
+                        // Timestamp
+                        Text(
+                          _formatTime(message.timestamp),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

@@ -102,30 +102,55 @@ class _C04CreatorDetailsScreenState extends State<C04CreatorDetailsScreen> {
     }
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isSaving = true);
-    final minR = int.tryParse(_minRateCtrl.text.trim());
-    final maxR = int.tryParse(_maxRateCtrl.text.trim());
-
-    final data = CreatorDetailsData(
-      contentTypes: _contentTypes,
-      minRate: minR,
-      maxRate: maxR,
-      rateUnit: _rateUnit,
-      showRateOnProfile: _showRate,
-      availability: _availability,
-    );
-
-    await _repo.updateCreatorDetails(data);
-
-    if (mounted) {
-      setState(() => _isSaving = false);
+    final minText = _minRateCtrl.text.trim();
+    final maxText = _maxRateCtrl.text.trim();
+    final minR = minText.isEmpty ? null : int.tryParse(minText);
+    final maxR = maxText.isEmpty ? null : int.tryParse(maxText);
+    if (minR != null && maxR != null && minR > maxR) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Creator details saved successfully!'),
-          backgroundColor: Color(0xFF2E7D32),
+          content: Text("Minimum rate can't exceed maximum rate"),
+          backgroundColor: Color(0xFFD32F2F),
         ),
       );
-      Navigator.pop(context, true);
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      final data = CreatorDetailsData(
+        contentTypes: _contentTypes,
+        minRate: minR,
+        maxRate: maxR,
+        rateUnit: _rateUnit,
+        showRateOnProfile: _showRate,
+        availability: _availability,
+      );
+
+      await _repo.updateCreatorDetails(data);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Creator details saved successfully!'),
+            backgroundColor: Color(0xFF2E7D32),
+          ),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not save creator details: $e'),
+            backgroundColor: const Color(0xFFD32F2F),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -257,8 +282,14 @@ class _C04CreatorDetailsScreenState extends State<C04CreatorDetailsScreen> {
                                   keyboardType: TextInputType.number,
                                   onChanged: (_) => setState(() => _isDirty = true),
                                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                                  decoration: _rateInputDecoration('₹ min rate'),
-                                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                                  decoration: _rateInputDecoration('₹ min (optional)'),
+                                  validator: (v) {
+                                    final t = v?.trim() ?? '';
+                                    if (t.isEmpty) return null;
+                                    final parsed = int.tryParse(t);
+                                    if (parsed == null || parsed < 0) return 'Enter a valid amount';
+                                    return null;
+                                  },
                                 ),
                               ],
                             ),
@@ -276,6 +307,13 @@ class _C04CreatorDetailsScreenState extends State<C04CreatorDetailsScreen> {
                                   onChanged: (_) => setState(() => _isDirty = true),
                                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                                   decoration: _rateInputDecoration('₹ max rate'),
+                                  validator: (v) {
+                                    final t = v?.trim() ?? '';
+                                    if (t.isEmpty) return null;
+                                    final parsed = int.tryParse(t);
+                                    if (parsed == null || parsed < 0) return 'Enter a valid amount';
+                                    return null;
+                                  },
                                 ),
                               ],
                             ),

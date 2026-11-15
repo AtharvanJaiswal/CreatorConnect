@@ -53,6 +53,24 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     availability: AvailabilityStatus.availableNow,
   );
 
+  ProfessionalDetailsData _professionalDetails = const ProfessionalDetailsData(
+    professionalType: '',
+    experience: '',
+    tools: [],
+    minRate: null,
+    maxRate: null,
+    rateUnit: RateUnit.perProject,
+    hasPortfolioSample: false,
+  );
+
+  PodcastDetailsData _podcastDetails = const PodcastDetailsData(
+    showName: '',
+    category: '',
+    description: '',
+    platformLinks: [],
+    frequency: ReleaseFrequency.weekly,
+  );
+
   CompanyDetailsData _companyDetails = const CompanyDetailsData(
     companyName: '',
     description: '',
@@ -77,7 +95,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Future<void> _loadProfileData() async {
     setState(() => _isLoading = true);
     try {
-      // 1. Authenticated User Identity
+      // 1. Authenticated User Identity + Persisted Local Role
+      UserRole resolvedRole = _userRole;
       try {
         final user = Supabase.instance.client.auth.currentUser;
         if (user != null) {
@@ -86,8 +105,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
           final meta = user.userMetadata ?? {};
           final rawRole = (meta['role'] as String?)?.toUpperCase() ?? 'CREATOR';
-          _roleName = rawRole;
-          _userRole = UserRole.fromString(rawRole);
+          resolvedRole = UserRole.fromString(rawRole);
 
           if (_userPhone.isEmpty && meta['phone'] != null) {
             _userPhone = meta['phone'].toString();
@@ -99,9 +117,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         if (_userPhone.isEmpty) _userPhone = '+91 98765 43210';
       }
 
+      resolvedRole = await _repo.resolveActiveRole(fallback: resolvedRole);
+      _userRole = resolvedRole;
+      _roleName = resolvedRole.apiValue;
+
       // 2. Profile Repository Data (Aggregated from local & backend)
       final basic = await _repo.getBasicInfo();
       final creator = await _repo.getCreatorDetails();
+      final professional = await _repo.getProfessionalDetails();
+      final podcast = await _repo.getPodcastDetails();
       final company = await _repo.getCompanyDetails();
       final socials = await _repo.getSocialAccounts();
       final skills = await _repo.getUserSkills();
@@ -111,6 +135,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         setState(() {
           _basicInfo = basic;
           _creatorDetails = creator;
+          _professionalDetails = professional;
+          _podcastDetails = podcast;
           _companyDetails = company;
           _socialAccounts = socials;
           _userSkills = skills;
@@ -343,12 +369,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        const Icon(
-                          Icons.verified_rounded,
-                          color: Colors.blue,
-                          size: 18,
-                        ),
+                        if (_overview?.isLevel2 == true) ...[
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.verified_rounded,
+                            color: Colors.blue,
+                            size: 18,
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -369,14 +397,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           color: AppColors.textMuted,
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          _basicInfo.city.isNotEmpty
-                              ? _basicInfo.city
-                              : 'Location not set',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textMuted,
-                            fontWeight: FontWeight.w500,
+                        Expanded(
+                          child: Text(
+                            _basicInfo.city.isNotEmpty
+                                ? _basicInfo.city
+                                : 'Location not set',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -429,19 +461,26 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Profile Setup · $pct% Complete',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13.5,
-                  color: AppColors.textPrimary,
+              Expanded(
+                child: Text(
+                  'Profile Setup · $pct% Complete',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13.5,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               TextButton(
-                onPressed: () =>
-                    Navigator.pushNamed(context, '/profile/completion'),
+                onPressed: () => Navigator.pushNamed(
+                  context,
+                  '/profile/completion',
+                  arguments: _userRole,
+                ).then((_) => _loadProfileData()),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
                   minimumSize: const Size(50, 24),
@@ -495,15 +534,19 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 size: 20,
               ),
               const SizedBox(width: 8),
-              const Text(
-                'Account & Security',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 15,
-                  color: AppColors.textPrimary,
+              const Expanded(
+                child: Text(
+                  'Account & Security',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -721,14 +764,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Location & Creator Hub',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 15,
-                  color: AppColors.textPrimary,
+              const Expanded(
+                child: Text(
+                  'Location & Creator Hub',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               IconButton(
@@ -744,16 +790,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           const SizedBox(height: 10),
           Row(
             children: [
-              _infoTile(
-                icon: Icons.location_city_rounded,
-                title: 'City',
-                value: _basicInfo.city.isNotEmpty ? _basicInfo.city : 'Not set',
+              Expanded(
+                child: _infoTile(
+                  icon: Icons.location_city_rounded,
+                  title: 'City',
+                  value: _basicInfo.city.isNotEmpty ? _basicInfo.city : 'Not set',
+                ),
               ),
               const SizedBox(width: 12),
-              _infoTile(
-                icon: Icons.hub_rounded,
-                title: 'Creator Hub',
-                value: _basicInfo.hubName.isNotEmpty ? _basicInfo.hubName : 'Pan-India',
+              Expanded(
+                child: _infoTile(
+                  icon: Icons.hub_rounded,
+                  title: 'Creator Hub',
+                  value: _basicInfo.hubName.isNotEmpty ? _basicInfo.hubName : 'Pan-India',
+                ),
               ),
             ],
           ),
@@ -793,9 +843,47 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   // 6. Creator Role Details Card
   // ==============================================================================
   Widget _buildRoleDetailsCard() {
-    final rate = _creatorDetails.minRate != null
-        ? '₹${_creatorDetails.minRate!.toString()}'
-        : 'Not set';
+    final isPro = _userRole == UserRole.professional;
+    final isPodcast = _userRole == UserRole.podcaster;
+    final cardTitle = isPro
+        ? 'Professional Details'
+        : (isPodcast ? 'Podcast Details' : 'Deliverables & Pricing');
+
+    final leftTitle = isPro
+        ? 'Base Rate'
+        : (isPodcast ? 'Show Name' : 'Starting Rate');
+    final leftValue = isPro
+        ? (_professionalDetails.minRate != null
+            ? '₹${_professionalDetails.minRate}'
+            : 'Not set')
+        : (isPodcast
+            ? (_podcastDetails.showName.isNotEmpty
+                ? _podcastDetails.showName
+                : 'Not set')
+            : (_creatorDetails.minRate != null
+                ? '₹${_creatorDetails.minRate}'
+                : 'Not set'));
+
+    final rightTitle = isPro
+        ? 'Creative Role'
+        : (isPodcast ? 'Frequency' : 'Availability');
+    final rightValue = isPro
+        ? (_professionalDetails.professionalType.isNotEmpty
+            ? _professionalDetails.professionalType
+            : 'Not set')
+        : (isPodcast
+            ? _podcastDetails.frequency.label
+            : (_creatorDetails.availability == AvailabilityStatus.availableNow
+                ? 'Available Now'
+                : 'Booking Soon'));
+
+    final tags = isPro
+        ? _professionalDetails.tools
+        : (isPodcast
+            ? (_podcastDetails.category.isNotEmpty
+                ? [_podcastDetails.category, ..._podcastDetails.platformLinks]
+                : _podcastDetails.platformLinks)
+            : _creatorDetails.contentTypes);
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -808,14 +896,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Deliverables & Pricing',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 15,
-                  color: AppColors.textPrimary,
+              Expanded(
+                child: Text(
+                  cardTitle,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               IconButton(
@@ -825,9 +916,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 constraints: const BoxConstraints(),
                 onPressed: () => Navigator.pushNamed(
                   context,
-                  _userRole == UserRole.professional
+                  isPro
                       ? '/profile/professional-details'
-                      : (_userRole == UserRole.podcaster
+                      : (isPodcast
                           ? '/profile/podcast-details'
                           : '/profile/creator-details'),
                 ).then((_) => _loadProfileData()),
@@ -837,27 +928,35 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           const SizedBox(height: 10),
           Row(
             children: [
-              _infoTile(
-                icon: Icons.payments_outlined,
-                title: 'Starting Rate',
-                value: rate,
+              Expanded(
+                child: _infoTile(
+                  icon: isPodcast
+                      ? Icons.podcasts_rounded
+                      : Icons.payments_outlined,
+                  title: leftTitle,
+                  value: leftValue,
+                ),
               ),
               const SizedBox(width: 12),
-              _infoTile(
-                icon: Icons.event_available_rounded,
-                title: 'Availability',
-                value: _creatorDetails.availability == AvailabilityStatus.availableNow
-                    ? 'Available Now'
-                    : 'Booking Soon',
+              Expanded(
+                child: _infoTile(
+                  icon: isPro
+                      ? Icons.work_outline_rounded
+                      : (isPodcast
+                          ? Icons.schedule_rounded
+                          : Icons.event_available_rounded),
+                  title: rightTitle,
+                  value: rightValue,
+                ),
               ),
             ],
           ),
-          if (_creatorDetails.contentTypes.isNotEmpty) ...[
+          if (tags.isNotEmpty) ...[
             const SizedBox(height: 12),
             Wrap(
               spacing: 6,
               runSpacing: 6,
-              children: _creatorDetails.contentTypes
+              children: tags
                   .map(
                     (tag) => Chip(
                       label: Text(
@@ -868,7 +967,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      backgroundColor: AppColors.primary.withOpacity(0.18),
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.18),
                       side: BorderSide.none,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -898,14 +997,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Company Details',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 15,
-                  color: AppColors.textPrimary,
+              const Expanded(
+                child: Text(
+                  'Company Details',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               IconButton(
@@ -962,14 +1064,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Categories & Skills',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 15,
-                  color: AppColors.textPrimary,
+              const Expanded(
+                child: Text(
+                  'Categories & Skills',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               IconButton(
@@ -1037,14 +1142,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Social Accounts',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 15,
-                  color: AppColors.textPrimary,
+              const Expanded(
+                child: Text(
+                  'Social Accounts',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               TextButton(
@@ -1090,14 +1198,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         ),
                       ),
                     ),
-                    Text(
-                      isConnected
-                          ? (acc.handle != null ? '@${acc.handle}' : 'Connected')
-                          : 'Not Connected',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: isConnected ? Colors.green : AppColors.textMuted,
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        isConnected
+                            ? (acc.handle != null ? '@${acc.handle}' : 'Connected')
+                            : 'Not Connected',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isConnected ? Colors.green : AppColors.textMuted,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.end,
                       ),
                     ),
                   ],
@@ -1141,46 +1255,44 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     required String title,
     required String value,
   }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.backgroundWarm,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 16, color: AppColors.textSecondary),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted,
-                    ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundWarm,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppColors.textSecondary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textMuted,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
                   ),
-                ],
-              ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1377,6 +1489,30 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             final updatedBio = bioCtrl.text.trim();
                             final updatedCity = cityCtrl.text.trim();
 
+                            final messenger = ScaffoldMessenger.of(context);
+                            if (updatedName.length < 2) {
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('Display name must be at least 2 characters'),
+                                  backgroundColor: Color(0xFFD32F2F),
+                                ),
+                              );
+                              return;
+                            }
+                            if (RegExp(
+                                    r'(\+?\d[\d\s\-]{7,}\d)|([\w\.\-]+@[\w\.\-]+\.\w+)|(https?://|www\.)',
+                                    caseSensitive: false)
+                                .hasMatch(updatedBio)) {
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'Bio cannot contain phone numbers, emails, or external links'),
+                                  backgroundColor: Color(0xFFD32F2F),
+                                ),
+                              );
+                              return;
+                            }
+
                             final newBasic = _basicInfo.copyWith(
                               displayName: updatedName,
                               bio: updatedBio,
@@ -1384,17 +1520,25 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             );
 
                             final nav = Navigator.of(ctx);
-                            final messenger = ScaffoldMessenger.of(context);
-                            await _repo.updateBasicInfo(newBasic);
-                            if (mounted) {
-                              nav.pop();
+                            try {
+                              await _repo.updateBasicInfo(newBasic);
+                              if (mounted) {
+                                nav.pop();
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Profile updated successfully!'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                                _loadProfileData();
+                              }
+                            } catch (e) {
                               messenger.showSnackBar(
-                                const SnackBar(
-                                  content: Text('Profile updated successfully!'),
-                                  backgroundColor: Colors.green,
+                                SnackBar(
+                                  content: Text('Could not update profile: $e'),
+                                  backgroundColor: const Color(0xFFD32F2F),
                                 ),
                               );
-                              _loadProfileData();
                             }
                           },
                           style: ElevatedButton.styleFrom(
@@ -1446,7 +1590,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await Supabase.instance.client.auth.signOut();
+              try {
+                await Supabase.instance.client.auth.signOut();
+              } catch (_) {
+                // Ignore if Supabase client is not initialized in tests/offline mode.
+              }
               if (mounted) {
                 Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
               }

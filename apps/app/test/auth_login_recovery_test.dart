@@ -1,7 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:creatorconnect/features/auth/data/datasources/auth_local_datasource.dart';
+import 'package:creatorconnect/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:creatorconnect/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:creatorconnect/features/auth/domain/entities/user_role.dart';
 import 'package:creatorconnect/features/auth/domain/repositories/auth_repository.dart';
 import 'package:creatorconnect/features/auth/presentation/screens/login_screen.dart';
@@ -384,4 +391,126 @@ void main() {
       expect(loginCalled, isTrue);
     });
   });
+
+  group('Login Backend Sync Resilience & Home Redirect Regression Tests', () {
+    AuthResponse buildMockAuthResponse({String role = 'BRAND'}) {
+      final user = User(
+        id: 'user_resilience_1',
+        appMetadata: const {},
+        userMetadata: {'role': role},
+        aud: 'authenticated',
+        createdAt: '2026-10-19T00:00:00Z',
+      );
+      return AuthResponse(
+        user: user,
+        session: Session(
+          accessToken: 'mock_supabase_jwt',
+          tokenType: 'bearer',
+          user: user,
+        ),
+      );
+    }
+
+    testWidgets('LoginScreen redirects to /home when /auth/sync fails with HTTP 500', (
+      WidgetTester tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final failingSyncRemote = _FakeSupabaseAuthRemoteDataSource(
+        httpClient: MockClient((_) async => http.Response('{"error":"db down"}', 500)),
+        authResponse: buildMockAuthResponse(role: 'BRAND'),
+      );
+      final repo = AuthRepositoryImpl(
+        dataSource: failingSyncRemote,
+        localDataSource: AuthLocalDataSource(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          routes: {
+            '/home': (_) => const Scaffold(body: Text('Home Dashboard Screen')),
+          },
+          home: LoginScreen(authRepository: repo),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final textFields = find.byType(TextField);
+      await tester.enterText(textFields.at(0), 'brand@creatorconnect.in');
+      await tester.enterText(textFields.at(1), 'Secret123!');
+      await tester.pump();
+
+      await tester.tap(find.widgetWithText(AppButton, 'Log In'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Home Dashboard Screen'), findsOneWidget);
+      expect(await AuthLocalDataSource().getSelectedRole(), 'BRAND');
+    });
+
+    test('AuthRepositoryImpl times out hung /auth/sync quickly and still resolves login', () async {
+      SharedPreferences.setMockInitialValues({});
+      final stalledRemote = _FakeSupabaseAuthRemoteDataSource(
+        httpClient: MockClient((_) async {
+          await Future<void>.delayed(const Duration(seconds: 6));
+          return http.Response(jsonEncode({'user': {'roles': ['CREATOR']}}), 200);
+        }),
+        authResponse: buildMockAuthResponse(role: 'PODCASTER'),
+      );
+      final repo = AuthRepositoryImpl(
+        dataSource: stalledRemote,
+        localDataSource: AuthLocalDataSource(),
+      );
+
+      final sw = Stopwatch()..start();
+      final res = await repo.signInWithPassword(
+        emailOrPhone: 'podcaster@creatorconnect.in',
+        password: 'Secret123!',
+      );
+      sw.stop();
+
+      expect(res.session?.accessToken, 'mock_supabase_jwt');
+      expect(sw.elapsedMilliseconds, lessThan(4500));
+      expect(await AuthLocalDataSource().getSelectedRole(), 'PODCASTER');
+    });
+
+    test('AuthRepositoryImpl rethrows IdentityConflictException on HTTP 409', () async {
+      SharedPreferences.setMockInitialValues({});
+      final conflictRemote = _FakeSupabaseAuthRemoteDataSource(
+        httpClient: MockClient((_) async => http.Response('{"error":"conflict"}', 409)),
+        authResponse: buildMockAuthResponse(role: 'CREATOR'),
+      );
+      final repo = AuthRepositoryImpl(
+        dataSource: conflictRemote,
+        localDataSource: AuthLocalDataSource(),
+      );
+
+      expect(
+        () => repo.signInWithPassword(
+          emailOrPhone: 'conflict@creatorconnect.in',
+          password: 'Secret123!',
+        ),
+        throwsA(isA<IdentityConflictException>()),
+      );
+    });
+  });
+}
+
+class _FakeSupabaseAuthRemoteDataSource extends AuthRemoteDataSource {
+  final AuthResponse _authResponse;
+
+  _FakeSupabaseAuthRemoteDataSource({
+    required super.httpClient,
+    required AuthResponse authResponse,
+  }) : _authResponse = authResponse;
+
+  @override
+  Future<AuthResponse> signInWithPassword({
+    required String emailOrPhone,
+    required String password,
+  }) async {
+    return _authResponse;
+  }
 }

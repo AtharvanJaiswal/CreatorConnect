@@ -50,6 +50,8 @@ class PinnedBriefBannerWidget extends StatelessWidget {
                 Text(
                   'Budget: ${brief.budgetRange} • ${brief.location}',
                   style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

@@ -38,6 +38,16 @@ class _E04ChatThreadScreenState extends ConsumerState<E04ChatThreadScreen> {
   bool _isSending = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.initialPeer != null) {
+        ref.read(chatThreadProvider(widget.conversationId).notifier).setInitialConversation(widget.initialPeer);
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _textCtrl.dispose();
     _scrollCtrl.dispose();
@@ -199,6 +209,52 @@ class _E04ChatThreadScreenState extends ConsumerState<E04ChatThreadScreen> {
     }
   }
 
+  static bool _isSameDay(DateTime d1, DateTime d2) {
+    return d1.year == d2.year && d1.month == d2.month && d1.day == d2.day;
+  }
+
+  static String _formatDateSeparator(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final messageDate = DateTime(dt.year, dt.month, dt.day);
+    final diffDays = today.difference(messageDate).inDays;
+
+    if (diffDays == 0) {
+      return 'TODAY';
+    } else if (diffDays == 1) {
+      return 'YESTERDAY';
+    } else if (diffDays < 7 && diffDays > 0) {
+      const weekdays = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+      return weekdays[dt.weekday - 1];
+    } else {
+      const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+    }
+  }
+
+  Widget _buildDateSeparator(String text) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFECE7DE),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2DDD2), width: 0.8),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+            color: Color(0xFF736B63),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(chatThreadProvider(widget.conversationId));
@@ -216,15 +272,26 @@ class _E04ChatThreadScreenState extends ConsumerState<E04ChatThreadScreen> {
                 children: [
                   // Pinned Brief Context Banner (SCR-E04)
                   if (brief != null)
-                    PinnedBriefBannerWidget(
-                      brief: brief,
-                      onViewBrief: () {
-                        Navigator.pushNamed(
-                          context,
-                          '/campaigns/brief-detail',
-                          arguments: brief.id,
+                    TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 380),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, child) {
+                        return Transform.translate(
+                          offset: Offset(0, -18 * (1.0 - value)),
+                          child: Opacity(opacity: value.clamp(0.0, 1.0), child: child),
                         );
                       },
+                      child: PinnedBriefBannerWidget(
+                        brief: brief,
+                        onViewBrief: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/campaigns/brief-detail',
+                            arguments: brief.id,
+                          );
+                        },
+                      ),
                     ),
 
                   // Messages viewport
@@ -239,11 +306,36 @@ class _E04ChatThreadScreenState extends ConsumerState<E04ChatThreadScreen> {
                         }
 
                         final msg = state.messages[index];
-                        return MessageBubbleWidget(
+                        final prevMsg = index > 0 ? state.messages[index - 1] : null;
+                        final nextMsg = index < state.messages.length - 1 ? state.messages[index + 1] : null;
+
+                        final isNewDay = prevMsg == null || !_isSameDay(msg.timestamp, prevMsg.timestamp);
+                        final isFirstInGroup = isNewDay || prevMsg.isMe != msg.isMe || msg.timestamp.difference(prevMsg.timestamp).inMinutes > 5;
+                        final isLastInGroup = nextMsg == null || !_isSameDay(msg.timestamp, nextMsg.timestamp) || nextMsg.isMe != msg.isMe || nextMsg.timestamp.difference(msg.timestamp).inMinutes > 5;
+
+                        final bubble = MessageBubbleWidget(
                           message: msg,
+                          showAvatar: isLastInGroup,
+                          showSenderName: isFirstInGroup,
+                          peerName: conv?.peerName,
+                          peerAvatar: conv?.peerAvatar,
+                          isFirstInGroup: isFirstInGroup,
+                          isLastInGroup: isLastInGroup,
                           onOpenAttachment: _openAttachmentViewer,
                           onLongPress: () => _handleDeleteMessage(msg.id),
                         );
+
+                        if (isNewDay) {
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildDateSeparator(_formatDateSeparator(msg.timestamp)),
+                              bubble,
+                            ],
+                          );
+                        }
+
+                        return bubble;
                       },
                     ),
                   ),

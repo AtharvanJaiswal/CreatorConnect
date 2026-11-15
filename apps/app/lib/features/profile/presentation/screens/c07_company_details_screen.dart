@@ -135,28 +135,50 @@ class _C07CompanyDetailsScreenState extends State<C07CompanyDetailsScreen> {
     }
 
     setState(() => _isSaving = true);
+    try {
+      final rawWebsite = _websiteCtrl.text.trim();
+      final cleanWebsite = rawWebsite.isEmpty
+          ? ''
+          : (rawWebsite.startsWith('https://')
+              ? rawWebsite
+              : (rawWebsite.startsWith('http://')
+                  ? 'https://${rawWebsite.substring(7)}'
+                  : 'https://$rawWebsite'));
 
-    final data = CompanyDetailsData(
-      companyName: _nameCtrl.text.trim(),
-      description: _descCtrl.text.trim(),
-      businessCategory: _category,
-      city: _city,
-      teamSize: _teamSize,
-      websiteUrl: _websiteCtrl.text.trim(),
-      gstNumber: _gstCtrl.text.trim().isNotEmpty ? _gstCtrl.text.trim().toUpperCase() : null,
-    );
-
-    await _repo.updateCompanyDetails(data);
-
-    if (mounted) {
-      setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Company details saved!'),
-          backgroundColor: Color(0xFF2E7D32),
-        ),
+      final data = CompanyDetailsData(
+        companyName: _nameCtrl.text.trim(),
+        description: _descCtrl.text.trim(),
+        businessCategory: _category,
+        city: _city,
+        teamSize: _teamSize,
+        websiteUrl: cleanWebsite,
+        gstNumber: _gstCtrl.text.trim().isNotEmpty ? _gstCtrl.text.trim().toUpperCase() : null,
       );
-      Navigator.pop(context, true);
+
+      await _repo.updateCompanyDetails(data);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Company details saved!'),
+            backgroundColor: Color(0xFF2E7D32),
+          ),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not save company details: $e'),
+            backgroundColor: const Color(0xFFD32F2F),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -246,7 +268,7 @@ class _C07CompanyDetailsScreenState extends State<C07CompanyDetailsScreen> {
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
-                            value: _category.isNotEmpty ? _category : null,
+                            value: _industries.contains(_category) ? _category : null,
                             hint: const Text('Select industry sector', style: TextStyle(color: AppColors.textTertiary)),
                             isExpanded: true,
                             items: _industries.map((ind) => DropdownMenuItem(value: ind, child: Text(ind))).toList(),
@@ -364,7 +386,16 @@ class _C07CompanyDetailsScreenState extends State<C07CompanyDetailsScreen> {
                         onChanged: (_) => setState(() => _isDirty = true),
                         style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
                         decoration: _inputDecoration('https://yourcompany.com'),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter website URL' : null,
+                        validator: (v) {
+                          final trimmed = v?.trim() ?? '';
+                          if (trimmed.isEmpty) return 'Please enter website URL';
+                          final normalized = trimmed.startsWith('http') ? trimmed : 'https://$trimmed';
+                          final uri = Uri.tryParse(normalized);
+                          if (uri == null || uri.host.isEmpty || !uri.host.contains('.')) {
+                            return 'Enter a valid website URL';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 20),
                       const Text(
@@ -374,8 +405,18 @@ class _C07CompanyDetailsScreenState extends State<C07CompanyDetailsScreen> {
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _gstCtrl,
+                        maxLength: 15,
                         textCapitalization: TextCapitalization.characters,
                         onChanged: (_) => setState(() => _isDirty = true),
+                        validator: (v) {
+                          final trimmed = v?.trim().toUpperCase() ?? '';
+                          if (trimmed.isEmpty) return null;
+                          if (!RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$')
+                              .hasMatch(trimmed)) {
+                            return 'Enter a valid 15-character GSTIN';
+                          }
+                          return null;
+                        },
                         style: const TextStyle(
                           fontSize: 15,
                           fontFamily: 'Courier',

@@ -93,23 +93,25 @@ class _LoginScreenState extends State<LoginScreen>
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      if (response.session != null) {
+      if (response.session != null || _authRepository.isAuthenticated) {
         Navigator.of(context).pushNamedAndRemoveUntil(
           '/home',
           (route) => false,
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Login successful')),
-        );
+        setState(() {
+          _errorMessage =
+              'Could not start an active session. Please verify your email or try again.';
+        });
       }
     } catch (e) {
       if (!mounted) return;
+      final cleanMsg = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
       setState(() {
         _isLoading = false;
-        _errorMessage = e.toString().contains('Invalid login')
+        _errorMessage = cleanMsg.contains('Invalid login')
             ? "That password isn't right. Try again or reset it."
-            : e.toString();
+            : cleanMsg;
       });
     }
   }
@@ -232,6 +234,9 @@ class _LoginScreenState extends State<LoginScreen>
                         obscureText: _obscurePassword,
                         textInputAction: TextInputAction.done,
                         onChanged: (_) => setState(() {}),
+                        onEditingComplete: () {
+                          if (_canSubmit) _onLogin();
+                        },
                         suffix: IconButton(
                           icon: Icon(
                             _obscurePassword

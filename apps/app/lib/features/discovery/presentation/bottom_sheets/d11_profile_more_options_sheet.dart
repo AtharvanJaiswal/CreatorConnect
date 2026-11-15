@@ -29,6 +29,7 @@ class D11ProfileMoreOptionsSheet extends StatelessWidget {
   }) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => D11ProfileMoreOptionsSheet(
         userName: userName,
@@ -48,10 +49,13 @@ class D11ProfileMoreOptionsSheet extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 36),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           Center(
             child: Container(
               width: 40,
@@ -91,7 +95,7 @@ class D11ProfileMoreOptionsSheet extends StatelessWidget {
             title: const Text('Save Profile to List', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
             onTap: () {
               Navigator.pop(context);
-              PopDialogs.showProfileSavedSnackbar(context);
+              PopDialogs.showProfileSavedDialog(context, handle: userHandle);
             },
           ),
           const Divider(color: AppColors.border),
@@ -126,6 +130,8 @@ class D11ProfileMoreOptionsSheet extends StatelessWidget {
           ),
         ],
       ),
+    ),
+    ),
     );
   }
 }

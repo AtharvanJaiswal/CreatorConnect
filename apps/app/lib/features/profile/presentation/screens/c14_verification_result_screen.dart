@@ -47,26 +47,74 @@ class C14VerificationResultScreen extends StatelessWidget {
               const Spacer(),
               _buildStateCard(vData),
               const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'Return to Profile Setup',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+              if (vData.state == VerificationState.changesNeeded) ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                    ),
+                    onPressed: () {
+                      Navigator.pushReplacementNamed(
+                        context,
+                        '/profile/verification-request',
+                        arguments: {'isBrand': vData.brandDocumentNames.isNotEmpty},
+                      );
+                    },
+                    child: const Text(
+                      'Fix and resubmit',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                      side: const BorderSide(color: AppColors.borderLight, width: 1.5),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      'Return to Profile Setup',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+              ] else
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      'Return to Profile Setup',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -204,7 +252,35 @@ class C14VerificationResultScreen extends StatelessWidget {
         );
 
       default:
-        return const SizedBox.shrink();
+        return Column(
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: const BoxDecoration(
+                color: AppColors.surfaceWarm,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.shield_outlined, color: AppColors.textPrimary, size: 40),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Not Verified Yet',
+              style: TextStyle(
+                fontFamily: 'Archivo',
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Complete your Level 1 profile setup and submit a verification request to earn the verified badge.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
+            ),
+          ],
+        );
     }
   }
 }

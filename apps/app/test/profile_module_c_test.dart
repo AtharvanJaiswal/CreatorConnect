@@ -79,13 +79,25 @@ void main() {
         languages: ['English'],
       ));
       final updatedOverview = await repo.getProfileOverview(role: UserRole.creator);
-      expect(updatedOverview.completionPercentage, greaterThan(0));
+      expect(updatedOverview.completionPercentage, 30);
       expect(updatedOverview.requiredSections.length, 3);
       expect(updatedOverview.requiredSections.any((s) => s.key == 'basicInfo'), isTrue);
       expect(updatedOverview.requiredSections.any((s) => s.key == 'categorySkills'), isTrue);
       expect(updatedOverview.requiredSections.any((s) => s.key == 'roleDetails'), isTrue);
       expect(updatedOverview.verificationSections.any((s) => s.key == 'socialAccounts'), isTrue);
       expect(updatedOverview.verificationSections.any((s) => s.key == 'verification'), isTrue);
+
+      await repo.updateUserSkills(
+        const [],
+        const ['018f0001-0000-7000-8000-000000000004'],
+      );
+      expect((await repo.getProfileOverview(role: UserRole.creator)).completionPercentage, 55);
+
+      await repo.updateCreatorDetails(const CreatorDetailsData(contentTypes: ['Reels']));
+      expect((await repo.getProfileOverview(role: UserRole.creator)).completionPercentage, 80);
+
+      await repo.connectSocialAccount('Instagram', 'real.creator');
+      expect((await repo.getProfileOverview(role: UserRole.creator)).completionPercentage, 100);
     });
 
     test('Calculates Brand profile overview with Company Details and Verification', () async {
@@ -285,16 +297,16 @@ void main() {
       expect(find.text('Return to Profile Setup'), findsOneWidget);
     });
 
-    testWidgets('C15 Add Another Role Screen renders all 4 roles', (tester) async {
+    testWidgets('C15 Add Another Role Screen renders Phase 1 creator-tier roles and hides gated roles', (tester) async {
       await tester.pumpWidget(buildTestScreen(const C15AddAnotherRoleScreen()));
       await tester.pumpAndSettle();
 
       expect(find.text('Add Another Role'), findsOneWidget);
       expect(find.text('Multi-Role Account'), findsOneWidget);
       expect(find.text('Creator / Influencer'), findsOneWidget);
-      expect(find.text('Production Professional'), findsOneWidget);
       expect(find.text('Podcaster'), findsOneWidget);
-      expect(find.text('Brand'), findsOneWidget);
+      expect(find.text('Production Professional'), findsNothing);
+      expect(find.text('Brand'), findsNothing);
     });
   });
 }

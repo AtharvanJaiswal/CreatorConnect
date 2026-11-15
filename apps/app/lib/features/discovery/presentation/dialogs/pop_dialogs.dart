@@ -130,21 +130,76 @@ class PopDialogs {
     );
   }
 
-  // POP-D03: Save Profile Confirmation
-  static void showProfileSavedSnackbar(BuildContext context) {
+  // POP-D03: Save Profile Confirmation (Snackbar & Modal Dialog)
+  static void showProfileSavedSnackbar(BuildContext context, {String? handle}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Row(
+        content: Row(
           children: [
-            Icon(Icons.bookmark_added_rounded, color: AppColors.primary, size: 20),
-            SizedBox(width: 10),
-            Text('Profile saved to your bookmarked list'),
+            const Icon(Icons.bookmark_added_rounded, color: AppColors.primary, size: 20),
+            const SizedBox(width: 10),
+            Text(handle != null ? 'Added $handle to your saved collaborators list' : 'Profile saved to your bookmarked list'),
           ],
         ),
         backgroundColor: AppColors.textPrimary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  static Future<void> showProfileSavedDialog(BuildContext context, {required String handle, VoidCallback? onViewSaved}) {
+    return showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        backgroundColor: AppColors.surface,
+        title: Column(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE6F4EC),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.bookmark_rounded, color: AppColors.success, size: 28),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Profile Saved',
+              style: AppTypography.headingMedium().copyWith(fontSize: 18),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        content: Text(
+          'Added $handle to your saved collaborators list.',
+          style: AppTypography.bodyMedium().copyWith(fontSize: 13),
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              onViewSaved?.call();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.textPrimary,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            ),
+            child: const Text('View Saved Profiles', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Done', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w700)),
+          ),
+        ],
       ),
     );
   }
@@ -266,6 +321,57 @@ class PopDialogs {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
             ),
             child: const Text('Reset', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // POP-D07: Offline Mode Indicator Dialog
+  static Future<void> showOfflineDialog(BuildContext context, {VoidCallback? onRetry}) {
+    return showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        backgroundColor: AppColors.surface,
+        title: Column(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFBF1DC),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.wifi_off_rounded, color: Color(0xFFC98A16), size: 28),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              "You're Offline",
+              style: AppTypography.headingMedium().copyWith(fontSize: 18),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        content: Text(
+          'Showing previously cached creators. Connect to the internet to refresh discovery.',
+          style: AppTypography.bodyMedium().copyWith(fontSize: 13),
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          OutlinedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              onRetry?.call();
+            },
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.textPrimary,
+              side: const BorderSide(color: AppColors.textPrimary, width: 1.5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            ),
+            child: const Text('Retry Connection', style: TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
       ),

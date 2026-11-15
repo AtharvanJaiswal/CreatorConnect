@@ -1,42 +1,11 @@
 import 'package:dio/dio.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/config/env_config.dart';
+import '../../../../core/network/api_client.dart';
 import '../../domain/entities/campaign_entities.dart';
 
 class CampaignRemoteDataSource {
   final Dio _dio;
 
-  CampaignRemoteDataSource({Dio? dio}) : _dio = dio ?? _createDefaultDio();
-
-  static Dio _createDefaultDio() {
-    final dio = Dio(
-      BaseOptions(
-        baseUrl: EnvironmentConfig.current.apiBaseUrl,
-        connectTimeout: const Duration(seconds: 8),
-        receiveTimeout: const Duration(seconds: 8),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      ),
-    );
-
-    dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          try {
-            final token = Supabase.instance.client.auth.currentSession?.accessToken;
-            if (token != null && token.isNotEmpty) {
-              options.headers['Authorization'] = 'Bearer $token';
-            }
-          } catch (_) {}
-          return handler.next(options);
-        },
-      ),
-    );
-
-    return dio;
-  }
+  CampaignRemoteDataSource({Dio? dio}) : _dio = dio ?? ApiClient.createDio();
 
   // ---------------------------------------------------------------------------
   // 1. Briefs / Assignments (E01, E07)

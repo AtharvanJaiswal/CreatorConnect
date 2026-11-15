@@ -124,9 +124,10 @@ class PermissionExplainerSheet extends StatelessWidget {
           const SizedBox(height: 10),
           _PermissionItem(
             icon: Icons.cancel_rounded,
-            iconColor: Color(0xFFD32F2F),
+            iconColor: const Color(0xFFD32F2F),
             title: 'Passwords & payment cards',
-            subtitle: 'Your login credentials stay encrypted directly with Meta',
+            subtitle:
+                'Your login credentials stay encrypted directly with ${platform.toLowerCase() == 'instagram' ? 'Meta' : platform}',
           ),
           const SizedBox(height: 28),
           SizedBox(

@@ -112,6 +112,7 @@ class ChatMessage {
   final String conversationId;
   final String senderId;
   final String senderName;
+  final String? senderAvatar;
   final bool isMe;
   final String text;
   final DateTime timestamp;
@@ -124,6 +125,7 @@ class ChatMessage {
     required this.conversationId,
     required this.senderId,
     required this.senderName,
+    this.senderAvatar,
     required this.isMe,
     required this.text,
     required this.timestamp,
@@ -137,6 +139,7 @@ class ChatMessage {
     String? conversationId,
     String? senderId,
     String? senderName,
+    String? senderAvatar,
     bool? isMe,
     String? text,
     DateTime? timestamp,
@@ -149,6 +152,7 @@ class ChatMessage {
       conversationId: conversationId ?? this.conversationId,
       senderId: senderId ?? this.senderId,
       senderName: senderName ?? this.senderName,
+      senderAvatar: senderAvatar ?? this.senderAvatar,
       isMe: isMe ?? this.isMe,
       text: text ?? this.text,
       timestamp: timestamp ?? this.timestamp,
@@ -173,15 +177,47 @@ class ChatMessage {
     return masked;
   }
 
-  factory ChatMessage.fromJson(Map<String, dynamic> json, {String currentUserId = ''}) {
+  factory ChatMessage.fromJson(
+    Map<String, dynamic> json, {
+    String currentUserId = '',
+    String peerId = '',
+    String peerName = '',
+    String peerAvatar = '',
+  }) {
     final senderId = json['senderId'] as String? ?? '';
-    final isMe = (json['isMe'] as bool?) ?? (currentUserId.isNotEmpty && senderId == currentUserId);
+
+    // Explicit isMe if provided in JSON or optimistic message
+    bool isMe = json['isMe'] as bool? ?? false;
+
+    // Sender-based identification per SOW §7.1:
+    // 1. Matches authenticated user ID
+    if (!isMe && currentUserId.isNotEmpty && senderId.isNotEmpty && senderId == currentUserId) {
+      isMe = true;
+    }
+    // 2. In 1-to-1 conversations: if peerId is known, check against peerId
+    if (!isMe && peerId.isNotEmpty && senderId.isNotEmpty) {
+      if (senderId != peerId) {
+        isMe = true;
+      }
+    }
+
+    final rawName = json['senderName'] as String?;
+    final resolvedSenderName = isMe
+        ? 'You'
+        : (rawName != null && rawName.isNotEmpty && rawName != 'User'
+            ? rawName
+            : (peerName.isNotEmpty ? peerName : 'User'));
+
+    final resolvedAvatar = isMe
+        ? null
+        : (json['senderAvatar'] as String? ?? (peerAvatar.isNotEmpty ? peerAvatar : null));
 
     return ChatMessage(
       id: json['id'] as String? ?? '',
       conversationId: json['conversationId'] as String? ?? '',
       senderId: senderId,
-      senderName: json['senderName'] as String? ?? 'User',
+      senderName: resolvedSenderName,
+      senderAvatar: resolvedAvatar,
       isMe: isMe,
       text: json['text'] as String? ?? json['content'] as String? ?? '',
       timestamp: json['timestamp'] != null
@@ -205,6 +241,7 @@ class ChatMessage {
     'conversationId': conversationId,
     'senderId': senderId,
     'senderName': senderName,
+    'senderAvatar': senderAvatar,
     'isMe': isMe,
     'text': text,
     'timestamp': timestamp.toIso8601String(),
@@ -213,6 +250,7 @@ class ChatMessage {
     'isSecurityShielded': isSecurityShielded,
   };
 }
+
 
 /// Inbox conversation item representing peer thread in SCR-E01 / SCR-E02
 @immutable

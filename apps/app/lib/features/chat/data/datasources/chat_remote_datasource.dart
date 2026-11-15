@@ -3,7 +3,8 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/config/env_config.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../auth/data/datasources/auth_local_datasource.dart';
 import '../../domain/entities/chat_entities.dart';
 
 String _generateUuidV4() {
@@ -15,40 +16,15 @@ String _generateUuidV4() {
   return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
 }
 
+bool _isUuid(String id) {
+  final reg = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+  return reg.hasMatch(id);
+}
+
 class ChatRemoteDataSource {
   final Dio _dio;
 
-  ChatRemoteDataSource({Dio? dio}) : _dio = dio ?? _createDefaultDio();
-
-  static Dio _createDefaultDio() {
-    final dio = Dio(
-      BaseOptions(
-        baseUrl: EnvironmentConfig.current.apiBaseUrl,
-        connectTimeout: const Duration(seconds: 8),
-        receiveTimeout: const Duration(seconds: 8),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      ),
-    );
-
-    dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          try {
-            final token = Supabase.instance.client.auth.currentSession?.accessToken;
-            if (token != null && token.isNotEmpty) {
-              options.headers['Authorization'] = 'Bearer $token';
-            }
-          } catch (_) {}
-          return handler.next(options);
-        },
-      ),
-    );
-
-    return dio;
-  }
+  ChatRemoteDataSource({Dio? dio}) : _dio = dio ?? ApiClient.createDio();
 
   // ---------------------------------------------------------------------------
   // 1. Fetch Conversations (SCR-E01, SCR-E02)
@@ -96,10 +72,34 @@ class ChatRemoteDataSource {
   }
 
   // ---------------------------------------------------------------------------
+  // 1b. Create or Retrieve Direct Conversation
+  // ---------------------------------------------------------------------------
+
+  Future<ConversationItem> createOrGetDirectConversation(String recipientId) async {
+    final response = await _dio.post(
+      '/api/v1/conversations',
+      data: {'recipientId': recipientId},
+    );
+    if ((response.statusCode == 200 || response.statusCode == 201) && response.data != null) {
+      final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
+      return ConversationItem.fromJson(
+        response.data as Map<String, dynamic>,
+        currentUserId: currentUserId,
+      );
+    }
+    throw DioException(
+      requestOptions: response.requestOptions,
+      response: response,
+      error: 'Failed to create or retrieve conversation with $recipientId',
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // 2. Fetch Single Conversation
   // ---------------------------------------------------------------------------
 
   Future<ConversationItem?> getConversation(String conversationId) async {
+    if (!_isUuid(conversationId)) return null;
     final response = await _dio.get('/api/v1/conversations/$conversationId');
     if (response.statusCode == 200 && response.data != null) {
       final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
@@ -112,13 +112,26 @@ class ChatRemoteDataSource {
   // 3. Message History (SCR-E04, SCR-E05, SCR-E06)
   // ---------------------------------------------------------------------------
 
-  Future<List<ChatMessage>> getMessages(String conversationId) async {
+  Future<List<ChatMessage>> getMessages(
+    String conversationId, {
+    String? currentUserId,
+    String? peerId,
+    String? peerName,
+    String? peerAvatar,
+  }) async {
+    if (!_isUuid(conversationId)) return [];
     final response = await _dio.get('/api/v1/conversations/$conversationId/messages');
     if (response.statusCode == 200 && response.data != null) {
       final data = response.data;
       final list = (data is List ? data : (data is Map && data['items'] is List ? data['items'] : [])) as List<dynamic>;
-      final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
-      return list.map((e) => ChatMessage.fromJson(e as Map<String, dynamic>, currentUserId: currentUserId)).toList();
+      final effectiveUid = currentUserId ?? await AuthLocalDataSource().getCurrentUserId() ?? Supabase.instance.client.auth.currentUser?.id ?? '';
+      return list.map((e) => ChatMessage.fromJson(
+        e as Map<String, dynamic>,
+        currentUserId: effectiveUid,
+        peerId: peerId ?? '',
+        peerName: peerName ?? '',
+        peerAvatar: peerAvatar ?? '',
+      )).toList();
     }
     return [];
   }
@@ -133,7 +146,22 @@ class ChatRemoteDataSource {
     MessageAttachment? attachment,
   }) async {
     final clientMessageId = _generateUuidV4();
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    final currentUserId = await AuthLocalDataSource().getCurrentUserId() ?? Supabase.instance.client.auth.currentUser?.id ?? '';
+
+    if (!_isUuid(conversationId)) {
+      return ChatMessage(
+        id: clientMessageId,
+        conversationId: conversationId,
+        senderId: currentUserId,
+        senderName: 'You',
+        isMe: true,
+        text: text,
+        timestamp: DateTime.now(),
+        status: MessageStatus.sent,
+        attachment: attachment,
+        isSecurityShielded: false,
+      );
+    }
 
     final response = await _dio.post(
       '/api/v1/conversations/$conversationId/messages',
@@ -145,8 +173,10 @@ class ChatRemoteDataSource {
     );
 
     if (response.statusCode == 201 && response.data != null) {
+      final json = Map<String, dynamic>.from(response.data as Map);
+      json['isMe'] = true;
       return ChatMessage.fromJson(
-        response.data as Map<String, dynamic>,
+        json,
         currentUserId: currentUserId,
       );
     }

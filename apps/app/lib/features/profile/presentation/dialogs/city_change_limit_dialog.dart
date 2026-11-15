@@ -3,21 +3,40 @@ import '../../../../core/theme/app_colors.dart';
 
 class CityChangeLimitDialog extends StatelessWidget {
   final int daysRemaining;
+  final DateTime? unlockDate;
 
   const CityChangeLimitDialog({
     super.key,
     this.daysRemaining = 18,
+    this.unlockDate,
   });
 
-  static Future<void> show(BuildContext context, {int daysRemaining = 18}) {
+  static Future<void> show(
+    BuildContext context, {
+    int daysRemaining = 18,
+    DateTime? unlockDate,
+  }) {
     return showDialog(
       context: context,
-      builder: (_) => CityChangeLimitDialog(daysRemaining: daysRemaining),
+      builder: (_) => CityChangeLimitDialog(
+        daysRemaining: daysRemaining,
+        unlockDate: unlockDate,
+      ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final targetDate = unlockDate ?? DateTime.now().add(Duration(days: daysRemaining));
+    final dateText = _formatDate(targetDate);
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       backgroundColor: AppColors.surfaceWarm,
@@ -69,12 +88,14 @@ class CityChangeLimitDialog extends StatelessWidget {
                 children: [
                   const Icon(Icons.lock_clock_outlined, size: 18, color: Color(0xFF8A6D00)),
                   const SizedBox(width: 8),
-                  Text(
-                    'Available again in $daysRemaining days',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                  Flexible(
+                    child: Text(
+                      'Available again in $daysRemaining days ($dateText)',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ),
                 ],

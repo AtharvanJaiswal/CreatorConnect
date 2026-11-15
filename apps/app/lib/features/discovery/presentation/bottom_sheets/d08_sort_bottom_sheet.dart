@@ -15,6 +15,7 @@ class D08SortBottomSheet extends StatelessWidget {
   static Future<String?> show(BuildContext context, String currentSort) {
     return showModalBottomSheet<String>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => D08SortBottomSheet(
         currentSort: currentSort,
@@ -39,81 +40,86 @@ class D08SortBottomSheet extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text('Sort Results By', style: AppTypography.headingLarge().copyWith(fontSize: 18)),
-          const SizedBox(height: 14),
-          ...sortOptions.map((opt) {
-            final isSelected = currentSort == opt['key'];
-            return InkWell(
-              onTap: () => onSelect(opt['key']!),
-              borderRadius: BorderRadius.circular(16),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected ? AppColors.textPrimary : AppColors.border,
-                          width: 2,
-                        ),
-                      ),
-                      child: isSelected
-                          ? Center(
-                              child: Container(
-                                width: 10,
-                                height: 10,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.primary,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            opt['label']!,
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          Text(
-                            opt['desc']!,
-                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
               ),
-            );
-          }),
-        ],
+              const SizedBox(height: 16),
+              Text('Sort Results By', style: AppTypography.headingLarge().copyWith(fontSize: 18)),
+              const SizedBox(height: 14),
+              ...sortOptions.map((opt) {
+                final isSelected = currentSort == opt['key'];
+                return InkWell(
+                  onTap: () => onSelect(opt['key']!),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected ? AppColors.textPrimary : AppColors.border,
+                              width: 2,
+                            ),
+                          ),
+                          child: isSelected
+                              ? Center(
+                                  child: Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.primary,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                opt['label']!,
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              Text(
+                                opt['desc']!,
+                                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
       ),
     );
   }

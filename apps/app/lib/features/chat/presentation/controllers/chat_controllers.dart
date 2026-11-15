@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../auth/data/datasources/auth_local_datasource.dart';
 import '../../domain/entities/chat_entities.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../data/repositories/chat_repository_impl.dart';
@@ -28,7 +30,9 @@ class ConversationsState {
     this.errorMessage,
   });
 
-  List<ConversationItem> get activeItems => activeTab == ChatTab.primary ? primaryConversations : requestConversations;
+  List<ConversationItem> get activeItems => activeTab == ChatTab.primary
+      ? primaryConversations
+      : requestConversations;
 
   ConversationsState copyWith({
     List<ConversationItem>? primaryConversations,
@@ -60,8 +64,14 @@ class ConversationsNotifier extends StateNotifier<ConversationsState> {
   Future<void> loadInbox() async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final primary = await _repo.getConversations(tab: ChatTab.primary, query: state.searchQuery);
-      final requests = await _repo.getConversations(tab: ChatTab.requests, query: state.searchQuery);
+      final primary = await _repo.getConversations(
+        tab: ChatTab.primary,
+        query: state.searchQuery,
+      );
+      final requests = await _repo.getConversations(
+        tab: ChatTab.requests,
+        query: state.searchQuery,
+      );
       state = state.copyWith(
         primaryConversations: primary,
         requestConversations: requests,
@@ -71,7 +81,8 @@ class ConversationsNotifier extends StateNotifier<ConversationsState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Unable to connect to messaging server: ${e.toString().split('\n').first}',
+        errorMessage:
+            'Unable to connect to messaging server: ${e.toString().split('\n').first}',
       );
     }
   }
@@ -96,10 +107,11 @@ class ConversationsNotifier extends StateNotifier<ConversationsState> {
   }
 }
 
-final conversationsProvider = StateNotifierProvider<ConversationsNotifier, ConversationsState>((ref) {
-  final repo = ref.watch(chatRepositoryProvider);
-  return ConversationsNotifier(repo);
-});
+final conversationsProvider =
+    StateNotifierProvider<ConversationsNotifier, ConversationsState>((ref) {
+      final repo = ref.watch(chatRepositoryProvider);
+      return ConversationsNotifier(repo);
+    });
 
 // -----------------------------------------------------------------------------
 // 2. Chat Thread Notifier (E04, E05, E06)
@@ -136,18 +148,68 @@ class ChatThreadState {
 class ChatThreadNotifier extends StateNotifier<ChatThreadState> {
   final ChatRepository _repo;
   final String conversationId;
+  Timer? _pollTimer;
 
-  ChatThreadNotifier(this._repo, this.conversationId) : super(const ChatThreadState()) {
+  ChatThreadNotifier(this._repo, this.conversationId)
+    : super(const ChatThreadState()) {
     loadThread();
+    _startLivePolling();
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startLivePolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      _pollNewMessages();
+    });
+  }
+
+  Future<void> _pollNewMessages() async {
+    if (!mounted || state.isLoading) return;
+    try {
+      final conv = state.conversation;
+      final currentUserId =
+          await AuthLocalDataSource().getCurrentUserId() ?? '';
+      final latestMsgs = await _repo.getMessages(
+        conversationId,
+        currentUserId: currentUserId,
+        peerId: conv?.peerId,
+        peerName: conv?.peerName,
+        peerAvatar: conv?.peerAvatar,
+      );
+      if (!mounted) return;
+      if (latestMsgs.length != state.messages.length) {
+        state = state.copyWith(messages: latestMsgs);
+      }
+    } catch (_) {}
+  }
+
+  void setInitialConversation(ConversationItem? conv) {
+    if (conv != null && state.conversation == null) {
+      state = state.copyWith(conversation: conv);
+    }
   }
 
   Future<void> loadThread() async {
     state = state.copyWith(isLoading: true);
     try {
       final conv = await _repo.getConversation(conversationId);
-      final msgs = await _repo.getMessages(conversationId);
+      final currentUserId =
+          await AuthLocalDataSource().getCurrentUserId() ?? '';
+      final msgs = await _repo.getMessages(
+        conversationId,
+        currentUserId: currentUserId,
+        peerId: conv?.peerId,
+        peerName: conv?.peerName,
+        peerAvatar: conv?.peerAvatar,
+      );
       state = state.copyWith(
-        conversation: conv,
+        conversation: conv ?? state.conversation,
         messages: msgs,
         isLoading: false,
       );
@@ -161,10 +223,52 @@ class ChatThreadNotifier extends StateNotifier<ChatThreadState> {
 
   Future<void> sendMessage(String text, {MessageAttachment? attachment}) async {
     if (text.trim().isEmpty && attachment == null) return;
+
+    final tempId = 'temp-${DateTime.now().millisecondsSinceEpoch}';
+    final currentUserId = await AuthLocalDataSource().getCurrentUserId() ?? '';
+
+    // 1. Optimistic insertion on the RIGHT side immediately with pending status
+    final optimisticMsg = ChatMessage(
+      id: tempId,
+      conversationId: conversationId,
+      senderId: currentUserId,
+      senderName: 'You',
+      isMe: true,
+      text: text,
+      timestamp: DateTime.now(),
+      status: MessageStatus.pending,
+      attachment: attachment,
+      isSecurityShielded: false,
+    );
+
+    state = state.copyWith(messages: [...state.messages, optimisticMsg]);
+
     try {
-      final newMsg = await _repo.sendMessage(conversationId, text, attachment: attachment);
-      state = state.copyWith(messages: [...state.messages, newMsg]);
-    } catch (_) {}
+      final serverMsg = await _repo.sendMessage(
+        conversationId,
+        text,
+        attachment: attachment,
+      );
+      final confirmedMsg = serverMsg.copyWith(
+        isMe: true,
+        status: MessageStatus.sent,
+      );
+
+      // 2. Replace optimistic message with confirmed server message without duplication
+      final updated = state.messages
+          .map((m) => m.id == tempId ? confirmedMsg : m)
+          .toList();
+      state = state.copyWith(messages: updated);
+    } catch (_) {
+      // 3. Mark failed/pending
+      final updated = state.messages.map((m) {
+        if (m.id == tempId) {
+          return m.copyWith(status: MessageStatus.pending);
+        }
+        return m;
+      }).toList();
+      state = state.copyWith(messages: updated);
+    }
   }
 
   Future<void> acceptRequest() async {
@@ -176,8 +280,15 @@ class ChatThreadNotifier extends StateNotifier<ChatThreadState> {
     await _repo.declineRequest(conversationId);
   }
 
-  Future<void> deleteMessage(String messageId, {required bool forEveryone}) async {
-    await _repo.deleteMessage(conversationId, messageId, forEveryone: forEveryone);
+  Future<void> deleteMessage(
+    String messageId, {
+    required bool forEveryone,
+  }) async {
+    await _repo.deleteMessage(
+      conversationId,
+      messageId,
+      forEveryone: forEveryone,
+    );
     final updated = state.messages.where((m) => m.id != messageId).toList();
     state = state.copyWith(messages: updated);
   }
@@ -203,7 +314,11 @@ class ChatThreadNotifier extends StateNotifier<ChatThreadState> {
   }
 }
 
-final chatThreadProvider = StateNotifierProvider.family<ChatThreadNotifier, ChatThreadState, String>((ref, conversationId) {
-  final repo = ref.watch(chatRepositoryProvider);
-  return ChatThreadNotifier(repo, conversationId);
-});
+final chatThreadProvider =
+    StateNotifierProvider.family<ChatThreadNotifier, ChatThreadState, String>((
+      ref,
+      conversationId,
+    ) {
+      final repo = ref.watch(chatRepositoryProvider);
+      return ChatThreadNotifier(repo, conversationId);
+    });

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/animations/app_animations.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/campaign_entities.dart';
@@ -90,10 +91,13 @@ class BriefCardWidget extends StatelessWidget {
                       StatusBadgeWidget.fromCampaignStatus(brief.status)
                     else if (onBookmark != null)
                       IconButton(
-                        icon: Icon(
-                          brief.isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                          color: brief.isBookmarked ? AppColors.primaryDark : AppColors.textMuted,
-                          size: 22,
+                        icon: SpringScaleBounce(
+                          trigger: brief.isBookmarked,
+                          child: Icon(
+                            brief.isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                            color: brief.isBookmarked ? AppColors.primaryDark : AppColors.textMuted,
+                            size: 22,
+                          ),
                         ),
                         onPressed: onBookmark,
                         padding: EdgeInsets.zero,

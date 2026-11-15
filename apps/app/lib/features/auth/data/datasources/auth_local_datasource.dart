@@ -1,9 +1,11 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Local data source managing device-level auth and onboarding flags
 class AuthLocalDataSource {
   static const String _onboardingCompleteKey = 'cc_has_completed_onboarding';
   static const String _savedRoleKey = 'cc_saved_user_role';
+  static const String _userIdKey = 'cc_authenticated_user_id';
 
   final SharedPreferences? _prefs;
 
@@ -52,6 +54,30 @@ class AuthLocalDataSource {
     try {
       final prefs = await _getPrefs();
       return prefs.getString(_savedRoleKey);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Saves the authenticated user's authoritative PostgreSQL ID
+  Future<void> saveCurrentUserId(String userId) async {
+    try {
+      final prefs = await _getPrefs();
+      await prefs.setString(_userIdKey, userId);
+    } catch (_) {}
+  }
+
+  /// Retrieves the authoritative user ID (PostgreSQL UUID or Supabase Auth ID)
+  Future<String?> getCurrentUserId() async {
+    try {
+      final prefs = await _getPrefs();
+      final id = prefs.getString(_userIdKey);
+      if (id != null && id.isNotEmpty) return id;
+      try {
+        return Supabase.instance.client.auth.currentUser?.id;
+      } catch (_) {
+        return null;
+      }
     } catch (_) {
       return null;
     }

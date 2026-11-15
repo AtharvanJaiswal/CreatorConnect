@@ -79,6 +79,31 @@ class D12RecommendationsScreen extends ConsumerWidget {
           Expanded(
             child: recsAsync.when(
               data: (profiles) {
+                if (profiles.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.people_outline_rounded, size: 48, color: AppColors.textMuted),
+                          SizedBox(height: 14),
+                          Text(
+                            'No peer recommendations yet',
+                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.textPrimary),
+                          ),
+                          SizedBox(height: 6),
+                          Text(
+                            'Complete more profile details or categories to get personalized collaborator matches.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.4),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   itemCount: profiles.length,

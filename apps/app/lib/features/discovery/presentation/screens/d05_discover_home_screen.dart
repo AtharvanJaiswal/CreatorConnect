@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/animations/app_animations.dart';
+import '../../../../core/config/feature_flags.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/discovery_entities.dart';
@@ -110,37 +112,89 @@ class D05DiscoverHomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              // Role Toggle Tabs
+              // Role Toggle Tabs (Filtered by Phase Gating) with Nearby City Filter
               SliverToBoxAdapter(
                 child: SizedBox(
                   height: 38,
                   child: ListView(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     scrollDirection: Axis.horizontal,
-                    children: DiscoveryRole.values.map((role) {
-                      final isSelected = filterState.role == role;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(role.displayName),
-                          selected: isSelected,
-                          onSelected: (_) {
-                            ref.read(filterStateProvider.notifier).setRole(role);
-                          },
-                          selectedColor: AppColors.textPrimary,
-                          backgroundColor: AppColors.surface,
-                          labelStyle: TextStyle(
-                            color: isSelected ? Colors.white : AppColors.textPrimary,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
+                    children: [
+                      // 1. Nearby Location Chip with GPS Permission Primer
+                      Builder(builder: (ctx) {
+                        final userCity = ref.watch(homeDashboardProvider).city.trim();
+                        final isCityFilterActive = filterState.city != null && filterState.city!.isNotEmpty;
+                        final displayLabel = isCityFilterActive
+                            ? '📍 ${filterState.city}'
+                            : (userCity.isNotEmpty ? '📍 Near $userCity' : '📍 Nearby');
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: FilterChip(
+                            avatar: Icon(
+                              Icons.near_me_rounded,
+                              size: 14,
+                              color: isCityFilterActive ? Colors.white : AppColors.textPrimary,
+                            ),
+                            label: Text(
+                              displayLabel,
+                              style: TextStyle(
+                                color: isCityFilterActive ? Colors.white : AppColors.textPrimary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                            selected: isCityFilterActive,
+                            selectedColor: AppColors.textPrimary,
+                            backgroundColor: const Color(0xFFFFF9E6),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                              side: BorderSide(
+                                color: isCityFilterActive ? AppColors.textPrimary : const Color(0xFFFFE486),
+                                width: 1.2,
+                              ),
+                            ),
+                            showCheckmark: false,
+                            onSelected: (selected) async {
+                              if (isCityFilterActive) {
+                                ref.read(filterStateProvider.notifier).setCity(null);
+                              } else {
+                                final allowed = await PopDialogs.showLocationPrimer(context);
+                                if (allowed == true) {
+                                  final targetCity = userCity.isNotEmpty ? userCity : 'New Delhi';
+                                  ref.read(filterStateProvider.notifier).setCity(targetCity);
+                                }
+                              }
+                            },
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(999),
-                            side: BorderSide(color: isSelected ? AppColors.textPrimary : AppColors.border),
+                        );
+                      }),
+                      ...DiscoveryRole.values
+                          .where((role) => FeatureFlags.isRoleEnabled(role.keyName))
+                          .map((role) {
+                        final isSelected = filterState.role == role;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(role.displayName),
+                            selected: isSelected,
+                            onSelected: (_) {
+                              ref.read(filterStateProvider.notifier).setRole(role);
+                            },
+                            selectedColor: AppColors.textPrimary,
+                            backgroundColor: AppColors.surface,
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : AppColors.textPrimary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                              side: BorderSide(color: isSelected ? AppColors.textPrimary : AppColors.border),
+                            ),
                           ),
-                        ),
-                      );
-                    }).toList(),
+                        );
+                      }),
+                    ],
                   ),
                 ),
               ),
@@ -272,18 +326,21 @@ class D05DiscoverHomeScreen extends ConsumerWidget {
                       delegate: SliverChildBuilderDelegate(
                         (context, idx) {
                           final profile = profiles[idx];
-                          return ProfileDiscoveryCard(
-                            profile: profile,
-                            onTap: () => onOpenProfile(profile.id),
-                            onLongPress: () {
-                              D15ProfileQuickViewSheet.show(
-                                context,
-                                profile: profile,
-                                onViewFullProfile: () => onOpenProfile(profile.id),
-                                onConnect: () => _handleConnect(context, ref, profile, remainingQuota),
-                              );
-                            },
-                            onConnect: () => _handleConnect(context, ref, profile, remainingQuota),
+                          return StaggeredEntrance(
+                            index: idx,
+                            child: ProfileDiscoveryCard(
+                              profile: profile,
+                              onTap: () => onOpenProfile(profile.id),
+                              onLongPress: () {
+                                D15ProfileQuickViewSheet.show(
+                                  context,
+                                  profile: profile,
+                                  onViewFullProfile: () => onOpenProfile(profile.id),
+                                  onConnect: () => _handleConnect(context, ref, profile, remainingQuota),
+                                );
+                              },
+                              onConnect: () => _handleConnect(context, ref, profile, remainingQuota),
+                            ),
                           );
                         },
                         childCount: profiles.length,
@@ -305,7 +362,7 @@ class D05DiscoverHomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 80)),
+              const SliverToBoxAdapter(child: SizedBox(height: 88)),
             ],
           ),
         ),

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/env_config.dart';
+import 'core/config/feature_flags.dart';
+import 'core/network/api_client.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/domain/entities/user_role.dart';
 import 'features/auth/presentation/screens/splash_screen.dart';
@@ -49,12 +51,17 @@ import 'features/discovery/presentation/screens/d06_search_results_screen.dart';
 import 'features/discovery/presentation/screens/d09_creator_public_profile_screen.dart';
 import 'features/discovery/presentation/screens/d10_brand_public_profile_screen.dart';
 import 'features/discovery/presentation/screens/d12_recommendations_screen.dart';
+import 'features/discovery/presentation/screens/request_details_screen.dart';
+import 'features/discovery/domain/entities/discovery_entities.dart';
 import 'features/chat/presentation/screens/e01_conversations_list_screen.dart';
 import 'features/chat/presentation/screens/e04_chat_thread_screen.dart';
 import 'features/campaigns/domain/entities/campaign_entities.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Fast auto-probe for live backend host (adb reverse 127.0.0.1, emulator 10.0.2.2, or LAN)
+  await ApiClient.probeBestLocalHost();
 
   final config = EnvironmentConfig.current;
   if (config.supabaseAnonKey.isNotEmpty) {
@@ -116,8 +123,7 @@ class _CreatorConnectAppState extends State<CreatorConnectApp> {
               currentEnv: _currentEnv,
               onEnvironmentChanged: _onEnvironmentChanged,
             ),
-        // Module C: Profile Setup, Social Accounts & Verification
-        '/profile/completion': (context) => const C01ProfileCompletionScreen(),
+        // Module C: Profile Setup, Social Accounts & Verification (static routes without args; arg-aware routes below in onGenerateRoute)
         '/profile/basic-info': (context) => const C02BasicInformationScreen(),
         '/profile/category-skills': (context) => const C03CategoryAndSkillsScreen(),
         '/profile/creator-details': (context) => const C04CreatorDetailsScreen(),
@@ -125,15 +131,21 @@ class _CreatorConnectAppState extends State<CreatorConnectApp> {
         '/profile/podcast-details': (context) => const C06PodcastDetailsScreen(),
         '/profile/company-details': (context) => const C07CompanyDetailsScreen(),
         '/profile/social-accounts': (context) => const C08SocialAccountsScreen(),
-        '/profile/verification-centre': (context) => const C12VerificationCentreScreen(),
-        '/profile/add-role': (context) => const C15AddAnotherRoleScreen(),
         '/profile': (context) => const UserProfileScreen(),
 
-        // Module E: Briefs, Campaigns & Applications
-        '/campaigns/brand-dashboard': (context) => const E01BrandBriefsDashboardScreen(),
-        '/campaigns/create': (context) => const E02CreateBriefWizardScreen(),
-        '/campaigns/my-applications': (context) => const E10CreatorMyApplicationsScreen(),
-        '/campaigns/saved': (context) => const E12SavedBriefsScreen(),
+        // Module E / G / H: Briefs & Campaigns (Gated to Phase 3 unless enabled)
+        '/campaigns/brand-dashboard': (context) => FeatureFlags.enableBrandDashboard
+            ? const E01BrandBriefsDashboardScreen()
+            : const ModuleDShellScreen(),
+        '/campaigns/create': (context) => FeatureFlags.enableCorporateCampaigns
+            ? const E02CreateBriefWizardScreen()
+            : const E01ConversationsListScreen(),
+        '/campaigns/my-applications': (context) => FeatureFlags.enableCorporateApplications
+            ? const E10CreatorMyApplicationsScreen()
+            : const E01ConversationsListScreen(),
+        '/campaigns/saved': (context) => FeatureFlags.enableCorporateCampaigns
+            ? const E12SavedBriefsScreen()
+            : const E01ConversationsListScreen(),
         '/home': (context) => const ModuleDShellScreen(),
         '/discover': (context) => const ModuleDShellScreen(),
         '/notifications': (context) => const D04NotificationCenterScreen(),
@@ -143,6 +155,45 @@ class _CreatorConnectAppState extends State<CreatorConnectApp> {
             ),
       },
       onGenerateRoute: (settings) {
+        UserRole? extractRole(Object? rawArgs) {
+          if (rawArgs is UserRole) return rawArgs;
+          if (rawArgs is Map) {
+            final roleVal = rawArgs['role'];
+            if (roleVal is UserRole) return roleVal;
+            if (roleVal is String && roleVal.isNotEmpty) {
+              return UserRole.fromString(roleVal);
+            }
+          }
+          return null;
+        }
+
+        if (settings.name == '/profile/completion') {
+          final role = extractRole(settings.arguments);
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => C01ProfileCompletionScreen(
+              initialRole: role ?? UserRole.creator,
+            ),
+          );
+        }
+        if (settings.name == '/profile/verification-centre') {
+          final role = extractRole(settings.arguments);
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => C12VerificationCentreScreen(
+              userRole: role ?? UserRole.creator,
+            ),
+          );
+        }
+        if (settings.name == '/profile/add-role') {
+          final role = extractRole(settings.arguments);
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => C15AddAnotherRoleScreen(
+              currentRole: role ?? UserRole.creator,
+            ),
+          );
+        }
         if (settings.name == '/profile/detail') {
           final args = settings.arguments;
           String id = 'self';
@@ -159,6 +210,29 @@ class _CreatorConnectAppState extends State<CreatorConnectApp> {
           }
           return MaterialPageRoute(builder: (_) => D09CreatorPublicProfileScreen(profileId: id));
         }
+        if (settings.name == '/requests/detail' || settings.name == '/invitations/detail') {
+          final args = settings.arguments;
+          String reqId = '';
+          CollaborationRequestModel? initialData;
+          if (args is String) {
+            reqId = args;
+          } else if (args is CollaborationRequestModel) {
+            reqId = args.id;
+            initialData = args;
+          } else if (args is Map) {
+            reqId = (args['id'] as String?) ?? (args['requestId'] as String?) ?? '';
+            if (args['model'] is CollaborationRequestModel) {
+              initialData = args['model'] as CollaborationRequestModel;
+            }
+          }
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => RequestDetailsScreen(
+              requestId: reqId,
+              initialData: initialData,
+            ),
+          );
+        }
         if (settings.name == '/search') {
           final query = settings.arguments as String?;
           return MaterialPageRoute(
@@ -169,10 +243,17 @@ class _CreatorConnectAppState extends State<CreatorConnectApp> {
           );
         }
         if (settings.name == '/profile/connecting-social') {
-          final args = settings.arguments as Map<String, dynamic>?;
+          final args = settings.arguments as Map?;
           final platform = args?['platform'] as String? ?? 'Instagram';
+          final handle = args?['handle'] as String?;
           return MaterialPageRoute(
-            builder: (_) => C09ConnectingSocialScreen(platform: platform),
+            settings: settings,
+            builder: (_) => C09ConnectingSocialScreen(
+              platform: platform,
+              handle: (handle != null && handle.trim().isNotEmpty)
+                  ? handle.trim()
+                  : 'creator.handle',
+            ),
           );
         }
         if (settings.name == '/profile/social-account-detail') {
@@ -214,7 +295,7 @@ class _CreatorConnectAppState extends State<CreatorConnectApp> {
           );
         }
         if (settings.name == '/chat') {
-          final convId = settings.arguments as String? ?? 'conv-zara-01';
+          final convId = settings.arguments as String? ?? '';
           return MaterialPageRoute(
             builder: (_) => E04ChatThreadScreen(conversationId: convId),
           );

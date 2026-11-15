@@ -286,9 +286,12 @@ class _E07AttachmentViewerScreenState extends State<E07AttachmentViewerScreen> {
               children: [
                 Icon(Icons.shield_outlined, size: 12, color: Color(0xFFFFD700)),
                 SizedBox(width: 4),
-                Text(
-                  'Encrypted Cloudflare R2 Object',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFFFD700)),
+                Flexible(
+                  child: Text(
+                    'Encrypted Cloudflare R2 Object',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFFFD700)),
+                  ),
                 ),
               ],
             ),

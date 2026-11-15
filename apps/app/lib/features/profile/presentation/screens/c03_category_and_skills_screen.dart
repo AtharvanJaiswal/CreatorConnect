@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/taxonomy_data.dart';
@@ -24,13 +25,24 @@ class _C03CategoryAndSkillsScreenState extends State<C03CategoryAndSkillsScreen>
   List<CategoryItem> _categories = [];
   List<SkillItem> _allSkills = [];
   Set<String> _selectedCategoryIds = {};
+  final Set<String> _selectedSubcategories = {};
   Map<String, SkillProficiencyLevel> _selectedSkills = {};
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _searchQuery = '';
+  Timer? _searchDebounce;
 
   @override
   void initState() {
     super.initState();
     _repo = widget.repository ?? ProfileRepositoryImpl();
     _loadTaxonomy();
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadTaxonomy() async {
@@ -111,6 +123,15 @@ class _C03CategoryAndSkillsScreenState extends State<C03CategoryAndSkillsScreen>
   }
 
   void _toggleSkill(SkillItem item) {
+    if (!_selectedSkills.containsKey(item.id) && _selectedSkills.length >= 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You can choose up to 10 skills'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
     setState(() {
       _isDirty = true;
       if (_selectedSkills.containsKey(item.id)) {
@@ -156,28 +177,41 @@ class _C03CategoryAndSkillsScreenState extends State<C03CategoryAndSkillsScreen>
     }
 
     setState(() => _isSaving = true);
+    try {
+      final userSkillList = _selectedSkills.entries.map((e) {
+        final item = _allSkills.firstWhere((s) => s.id == e.key,
+            orElse: () => SkillItem(id: e.key, slug: 'skill', name: 'Skill'));
+        return UserSkillSelection(
+          skillId: e.key,
+          name: item.name,
+          proficiency: e.value,
+        );
+      }).toList();
 
-    final userSkillList = _selectedSkills.entries.map((e) {
-      final item = _allSkills.firstWhere((s) => s.id == e.key,
-          orElse: () => SkillItem(id: e.key, slug: 'skill', name: 'Skill'));
-      return UserSkillSelection(
-        skillId: e.key,
-        name: item.name,
-        proficiency: e.value,
-      );
-    }).toList();
+      await _repo.updateUserSkills(userSkillList, _selectedCategoryIds.toList());
 
-    await _repo.updateUserSkills(userSkillList, _selectedCategoryIds.toList());
-
-    if (mounted) {
-      setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Categories and skills saved!'),
-          backgroundColor: Color(0xFF2E7D32),
-        ),
-      );
-      Navigator.pop(context, true);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Categories and skills saved!'),
+            backgroundColor: Color(0xFF2E7D32),
+          ),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not save categories & skills: $e'),
+            backgroundColor: const Color(0xFFD32F2F),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -274,22 +308,133 @@ class _C03CategoryAndSkillsScreenState extends State<C03CategoryAndSkillsScreen>
                             }).toList(),
                           ),
                           const SizedBox(height: 28),
-                          const Text(
-                            'Skills & Expertise',
-                            style: TextStyle(
-                              fontFamily: 'Archivo',
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
+                          if (_categories
+                              .where((c) => _selectedCategoryIds.contains(c.id))
+                              .any((c) => c.subcategories.isNotEmpty)) ...[
+                            const Text(
+                              'Subcategories',
+                              style: TextStyle(
+                                fontFamily: 'Archivo',
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Optional specializations under your chosen niches.',
+                              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: _categories
+                                  .where((c) => _selectedCategoryIds.contains(c.id))
+                                  .expand((c) => c.subcategories)
+                                  .toSet()
+                                  .map((sub) {
+                                final isSubPicked = _selectedSubcategories.contains(sub);
+                                return FilterChip(
+                                  label: Text(
+                                    sub,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: isSubPicked ? FontWeight.w700 : FontWeight.w500,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  selected: isSubPicked,
+                                  selectedColor: AppColors.surfaceWarm,
+                                  backgroundColor: AppColors.surfacePure,
+                                  side: BorderSide(
+                                    color: isSubPicked ? AppColors.textPrimary : AppColors.borderLight,
+                                  ),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  onSelected: (_) => setState(() {
+                                    _isDirty = true;
+                                    if (isSubPicked) {
+                                      _selectedSubcategories.remove(sub);
+                                    } else {
+                                      _selectedSubcategories.add(sub);
+                                    }
+                                  }),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Skills & Expertise',
+                                style: TextStyle(
+                                  fontFamily: 'Archivo',
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              Text(
+                                '${_selectedSkills.length} of 10',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           const Text(
                             'Tap a skill to add it. Tap the proficiency pill to toggle level.',
                             style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                           ),
-                          const SizedBox(height: 16),
-                          ..._allSkills.map((sk) {
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _searchCtrl,
+                            onChanged: (v) {
+                              _searchDebounce?.cancel();
+                              _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+                                if (mounted) {
+                                  setState(() => _searchQuery = v.trim().toLowerCase());
+                                }
+                              });
+                            },
+                            decoration: InputDecoration(
+                              hintText: 'Search skills',
+                              hintStyle: const TextStyle(fontSize: 14, color: AppColors.textTertiary),
+                              prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.textSecondary),
+                              suffixIcon: _searchQuery.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.close_rounded, size: 18),
+                                      onPressed: () {
+                                        _searchCtrl.clear();
+                                        setState(() => _searchQuery = '');
+                                      },
+                                    )
+                                  : null,
+                              filled: true,
+                              fillColor: AppColors.surfacePure,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: AppColors.borderLight),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: AppColors.borderLight),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          ..._allSkills
+                              .where((sk) =>
+                                  _searchQuery.isEmpty ||
+                                  sk.name.toLowerCase().contains(_searchQuery) ||
+                                  sk.slug.toLowerCase().contains(_searchQuery))
+                              .map((sk) {
                             final isPicked = _selectedSkills.containsKey(sk.id);
                             final prof = _selectedSkills[sk.id] ?? SkillProficiencyLevel.intermediate;
 

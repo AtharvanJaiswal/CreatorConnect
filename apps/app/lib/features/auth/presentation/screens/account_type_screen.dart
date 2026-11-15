@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/config/feature_flags.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -96,44 +97,52 @@ class _AccountTypeScreenState extends State<AccountTypeScreen>
 
                   const SizedBox(height: AppSpacing.xl),
 
-                  // 4 Role Cards with Staggered Entrance Animations
+                  // Role Cards with Staggered Entrance Animations (Filtered by Phase Gating)
                   Expanded(
-                    child: ListView.separated(
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: UserRole.values.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final role = UserRole.values[index];
-                        final isSelected = _selectedRole == role;
+                    child: Builder(
+                      builder: (context) {
+                        final availableRoles = UserRole.values
+                            .where((r) => FeatureFlags.isRoleEnabled(r.apiValue))
+                            .toList();
 
-                        final startInterval = (index * 0.12).clamp(0.0, 0.7);
-                        final endInterval = (startInterval + 0.35).clamp(0.0, 1.0);
+                        return ListView.separated(
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: availableRoles.length,
+                          separatorBuilder: (context, index) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final role = availableRoles[index];
+                            final isSelected = _selectedRole == role;
 
-                        return SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(0.0, 0.15),
-                            end: Offset.zero,
-                          ).animate(
-                            CurvedAnimation(
-                              parent: _fadeController,
-                              curve: Interval(startInterval, endInterval, curve: Curves.easeOutCubic),
-                            ),
-                          ),
-                          child: FadeTransition(
-                            opacity: CurvedAnimation(
-                              parent: _fadeController,
-                              curve: Interval(startInterval, endInterval, curve: Curves.easeIn),
-                            ),
-                            child: RoleCard(
-                              role: role,
-                              isSelected: isSelected,
-                              onSelected: () {
-                                setState(() {
-                                  _selectedRole = role;
-                                });
-                              },
-                            ),
-                          ),
+                            final startInterval = (index * 0.12).clamp(0.0, 0.7);
+                            final endInterval = (startInterval + 0.35).clamp(0.0, 1.0);
+
+                            return SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0.0, 0.15),
+                                end: Offset.zero,
+                              ).animate(
+                                CurvedAnimation(
+                                  parent: _fadeController,
+                                  curve: Interval(startInterval, endInterval, curve: Curves.easeOutCubic),
+                                ),
+                              ),
+                              child: FadeTransition(
+                                opacity: CurvedAnimation(
+                                  parent: _fadeController,
+                                  curve: Interval(startInterval, endInterval, curve: Curves.easeIn),
+                                ),
+                                child: RoleCard(
+                                  role: role,
+                                  isSelected: isSelected,
+                                  onSelected: () {
+                                    setState(() {
+                                      _selectedRole = role;
+                                    });
+                                  },
+                                ),
+                              ),
+                            );
+                          },
                         );
                       },
                     ),

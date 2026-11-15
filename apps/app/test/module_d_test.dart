@@ -10,6 +10,11 @@ import 'package:creatorconnect/features/discovery/presentation/widgets/category_
 import 'package:creatorconnect/features/discovery/presentation/dialogs/pop_dialogs.dart';
 import 'package:creatorconnect/features/discovery/presentation/screens/d01_creator_home_screen.dart';
 import 'package:creatorconnect/features/discovery/presentation/screens/d05_discover_home_screen.dart';
+import 'package:creatorconnect/features/discovery/presentation/bottom_sheets/d08_sort_bottom_sheet.dart';
+import 'package:creatorconnect/features/discovery/presentation/bottom_sheets/d11_profile_more_options_sheet.dart';
+import 'package:creatorconnect/features/discovery/presentation/bottom_sheets/d13_how_matching_works_sheet.dart';
+import 'package:creatorconnect/features/discovery/presentation/bottom_sheets/d15_profile_quick_view_sheet.dart';
+import 'package:creatorconnect/features/discovery/presentation/screens/d14_search_presearch_screen.dart';
 
 // Mock HttpOverrides to avoid NetworkImage 400 errors during widget testing
 class TestHttpOverrides extends HttpOverrides {
@@ -216,10 +221,10 @@ void main() {
       expect(find.text('CreatorConnect'), findsOneWidget);
       expect(find.text('PROFILE VIEWS'), findsOneWidget);
       expect(find.text('AVG RATING'), findsOneWidget);
-      expect(find.text('OPEN BRIEFS'), findsOneWidget);
+      expect(find.text('COLLAB CALLS'), findsOneWidget);
     });
 
-    testWidgets('D05DiscoverHomeScreen displays search input and category grid', (tester) async {
+    testWidgets('D05DiscoverHomeScreen displays search input, category grid, and Phase 1 role tabs', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           child: MaterialApp(
@@ -234,9 +239,338 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Search creators, niches, or cities...'), findsOneWidget);
+      expect(find.text('Creator'), findsOneWidget);
+      expect(find.text('Podcaster'), findsOneWidget);
+      expect(find.text('Brand'), findsNothing);
+      expect(find.text('Production Pro'), findsNothing);
       expect(find.text('Explore Categories'), findsOneWidget);
       expect(find.text('Fashion & Styling'), findsOneWidget);
       expect(find.text('Tech & AI Gadgets'), findsOneWidget);
+    });
+
+    testWidgets('POP-D01 Location Primer renders Find Creators Near You and Enable Location', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => PopDialogs.showLocationPrimer(context),
+                child: const Text('Open Location Primer'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Location Primer'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Find Creators Near You'), findsOneWidget);
+      expect(find.text('Enable Location'), findsOneWidget);
+      expect(find.text('Not Now'), findsOneWidget);
+    });
+
+    testWidgets('POP-D03 Profile Saved dialog renders Profile Saved and handle', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => PopDialogs.showProfileSavedDialog(context, handle: '@aanya.fashion'),
+                child: const Text('Open Saved Dialog'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Saved Dialog'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Profile Saved'), findsOneWidget);
+      expect(find.text('Added @aanya.fashion to your saved collaborators list.'), findsOneWidget);
+      expect(find.text('View Saved Profiles'), findsOneWidget);
+      expect(find.text('Done'), findsOneWidget);
+    });
+
+    testWidgets('POP-D04 Block User dialog renders confirmation with target name', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => PopDialogs.showBlockUserConfirmation(context, 'Rohan Verma'),
+                child: const Text('Open Block Dialog'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Block Dialog'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Block Rohan Verma?'), findsOneWidget);
+      expect(find.text('Block User'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+    });
+
+    testWidgets('POP-D05 Report Profile sheet renders moderation reasons', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => PopDialogs.showReportProfileSheet(context, 'Spammy Bot'),
+                child: const Text('Open Report Sheet'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Report Sheet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Report Spammy Bot'), findsOneWidget);
+      expect(find.text('Spam or fake profile / Bot activity'), findsOneWidget);
+      expect(find.text('Off-platform payment solicitation'), findsOneWidget);
+    });
+
+    testWidgets('POP-D06 Reset Filters dialog renders confirmation message', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => PopDialogs.showResetFiltersConfirmation(context),
+                child: const Text('Open Reset Dialog'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Reset Dialog'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Reset All Filters?'), findsOneWidget);
+      expect(find.text('Reset'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+    });
+
+    testWidgets('POP-D07 Offline dialog renders You\'re Offline and Retry Connection', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => PopDialogs.showOfflineDialog(context),
+                child: const Text('Open Offline Dialog'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Offline Dialog'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('You\'re Offline'), findsOneWidget);
+      expect(find.text('Retry Connection'), findsOneWidget);
+    });
+
+    testWidgets('POP-D08 Share Profile sheet renders sharing channel icons and Copy Link', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => PopDialogs.showShareProfileSheet(
+                  context,
+                  name: 'Kabir Sen',
+                  handle: '@kabirsen',
+                ),
+                child: const Text('Open Share Sheet'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Share Sheet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Share Profile'), findsOneWidget);
+      expect(find.text('WhatsApp'), findsOneWidget);
+      expect(find.text('Instagram'), findsOneWidget);
+      expect(find.text('Copy Link'), findsOneWidget);
+    });
+
+    testWidgets('D08SortBottomSheet renders all 5 sort criteria', (tester) async {
+      String? selectedSort;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => D08SortBottomSheet.show(context, 'relevance').then((v) => selectedSort = v),
+                child: const Text('Open Sort Sheet'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Sort Sheet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sort Results By'), findsOneWidget);
+      expect(find.text('Relevance (Recommended)'), findsOneWidget);
+      expect(find.text('Rating: High to Low'), findsOneWidget);
+      expect(find.text('Followers: High to Low'), findsOneWidget);
+      expect(find.text('Most Recently Active'), findsOneWidget);
+      expect(find.text('Budget: Low to High'), findsOneWidget);
+
+      await tester.tap(find.text('Rating: High to Low'));
+      await tester.pumpAndSettle();
+      expect(selectedSort, equals('rating'));
+    });
+
+    testWidgets('D11ProfileMoreOptionsSheet renders options for user handle', (tester) async {
+      bool blocked = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => D11ProfileMoreOptionsSheet.show(
+                  context,
+                  userName: 'Sneha Patel',
+                  userHandle: '@snehap',
+                  userId: 'u-123',
+                  onUserBlocked: () => blocked = true,
+                ),
+                child: const Text('Open Options Sheet'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Options Sheet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Options for @snehap'), findsOneWidget);
+      expect(find.text('Share Profile'), findsOneWidget);
+      expect(find.text('Copy Profile Link'), findsOneWidget);
+      expect(find.text('Save Profile to List'), findsOneWidget);
+      expect(find.text('Block Sneha Patel'), findsOneWidget);
+      expect(find.text('Report Sneha Patel'), findsOneWidget);
+      expect(blocked, isFalse);
+    });
+
+    testWidgets('D13HowMatchingWorksSheet renders all 3 SOW §13 matching pillars', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => D13HowMatchingWorksSheet.show(context),
+                child: const Text('Open Matching Sheet'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Matching Sheet'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('How Matching Works'), findsOneWidget);
+      expect(find.text('Niche & Category Overlap'), findsOneWidget);
+      expect(find.text('Geographic Proximity'), findsOneWidget);
+      expect(find.text('Rating & Response Track Record'), findsOneWidget);
+      expect(find.text('Got it'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Got it'));
+      await tester.tap(find.text('Got it'));
+      await tester.pumpAndSettle();
+      expect(find.text('How Matching Works'), findsNothing);
+    });
+
+    testWidgets('D14SearchPreSearchScreen renders recent searches and trending tags', (tester) async {
+      String? selectedQuery;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: D14SearchPreSearchScreen(
+            onSelectQuery: (q) => selectedQuery = q,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Recent Searches'), findsOneWidget);
+      expect(find.text('Sustainable Fashion Mumbai'), findsOneWidget);
+      expect(find.text('Trending Tags'), findsOneWidget);
+      expect(find.text('Popular Categories'), findsOneWidget);
+
+      await tester.tap(find.text('Sustainable Fashion Mumbai'));
+      await tester.pumpAndSettle();
+      expect(selectedQuery, equals('Sustainable Fashion Mumbai'));
+    });
+
+    testWidgets('D15ProfileQuickViewSheet renders profile preview and actions', (tester) async {
+      const profile = ProfileCardModel(
+        id: 'c-quick-01',
+        name: 'Arjun Das',
+        handle: '@arjundas',
+        role: 'CREATOR',
+        avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
+        niche: 'Tech Reviews',
+        city: 'Bengaluru',
+        rating: 4.9,
+        reviewCount: 32,
+        bio: 'Creating deep dive tech reviews and gadget tear downs.',
+        portfolioThumbnails: [
+          'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=200',
+        ],
+      );
+
+      bool viewFullTapped = false;
+      bool connectTapped = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => D15ProfileQuickViewSheet.show(
+                  context,
+                  profile: profile,
+                  onViewFullProfile: () => viewFullTapped = true,
+                  onConnect: () => connectTapped = true,
+                ),
+                child: const Text('Open Quick View'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Quick View'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Arjun Das'), findsOneWidget);
+      expect(find.text('@arjundas • Bengaluru'), findsOneWidget);
+      expect(find.text('View Full Profile'), findsOneWidget);
+      expect(find.text('Connect'), findsOneWidget);
+
+      await tester.tap(find.text('View Full Profile'));
+      await tester.pumpAndSettle();
+      expect(viewFullTapped, isTrue);
+      expect(connectTapped, isFalse);
     });
   });
 }

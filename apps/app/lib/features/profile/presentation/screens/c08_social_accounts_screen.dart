@@ -29,26 +29,112 @@ class _C08SocialAccountsScreenState extends State<C08SocialAccountsScreen> {
 
   Future<void> _loadAccounts() async {
     setState(() => _isLoading = true);
-    final list = await _repo.getSocialAccounts();
-    if (mounted) {
-      setState(() {
-        _accounts = list;
-        _isLoading = false;
-      });
+    try {
+      final list = await _repo.getSocialAccounts();
+      if (mounted) {
+        setState(() {
+          _accounts = list;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<String?> _promptForHandle(String platform) async {
+    var defaultHandle = 'creator.handle';
+    try {
+      final info = await _repo.getBasicInfo();
+      if (info.displayName.trim().isNotEmpty) {
+        final slug = info.displayName
+            .trim()
+            .toLowerCase()
+            .replaceAll(RegExp(r'[^a-z0-9._]+'), '.')
+            .replaceAll(RegExp(r'^\.+|\.+$'), '');
+        if (slug.isNotEmpty) defaultHandle = slug;
+      }
+    } catch (_) {}
+
+    if (!mounted) return null;
+    final ctrl = TextEditingController(text: defaultHandle);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surfaceWarm,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(
+          'Connect $platform',
+          style: const TextStyle(
+            fontFamily: 'Archivo',
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Enter your $platform username/handle to link:',
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              decoration: InputDecoration(
+                prefixText: '@',
+                hintText: 'your.handle',
+                filled: true,
+                fillColor: AppColors.surfacePure,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: AppColors.borderLight),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+            ),
+            onPressed: () {
+              final clean = ctrl.text.trim().replaceFirst(RegExp(r'^@+'), '');
+              if (clean.isEmpty) return;
+              Navigator.pop(ctx, clean);
+            },
+            child: const Text(
+              'Authorize & Connect',
+              style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+            ),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    return result;
   }
 
   Future<void> _handleConnect(SocialPlatformAccount item) async {
     final confirmed = await PermissionExplainerSheet.show(context, platform: item.platform);
-    if (confirmed == true && mounted) {
-      final result = await Navigator.pushNamed(
-        context,
-        '/profile/connecting-social',
-        arguments: {'platform': item.platform},
-      );
-      if (result == true) {
-        _loadAccounts();
-      }
+    if (confirmed != true || !mounted) return;
+    final enteredHandle = await _promptForHandle(item.platform);
+    if (enteredHandle == null || enteredHandle.isEmpty || !mounted) return;
+    final result = await Navigator.pushNamed(
+      context,
+      '/profile/connecting-social',
+      arguments: {'platform': item.platform, 'handle': enteredHandle},
+    );
+    if (result == true) {
+      _loadAccounts();
     }
   }
 
@@ -60,15 +146,25 @@ class _C08SocialAccountsScreenState extends State<C08SocialAccountsScreen> {
     );
 
     if (confirm && mounted) {
-      await _repo.disconnectSocialAccount(item.platform);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${item.platform} disconnected'),
-          backgroundColor: AppColors.textPrimary,
-        ),
-      );
-      _loadAccounts();
+      try {
+        await _repo.disconnectSocialAccount(item.platform);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${item.platform} disconnected'),
+            backgroundColor: AppColors.textPrimary,
+          ),
+        );
+        _loadAccounts();
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not disconnect ${item.platform}: $e'),
+            backgroundColor: const Color(0xFFD32F2F),
+          ),
+        );
+      }
     }
   }
 

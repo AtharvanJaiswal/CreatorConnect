@@ -6,6 +6,9 @@ abstract class ProfileRepository {
   /// Currently selected category IDs
   List<String> get selectedCategoryIds;
 
+  /// Resolves the currently active user role from local storage / auth metadata
+  Future<UserRole> resolveActiveRole({UserRole? fallback});
+
   /// Retrieves calculated profile overview with checklist sections & completion percentage
   Future<ProfileOverviewData> getProfileOverview({required UserRole role});
 

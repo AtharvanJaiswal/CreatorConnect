@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
@@ -5,7 +6,7 @@ import '../theme/app_typography.dart';
 
 enum AppButtonVariant { primary, dark, outlined }
 
-class AppButton extends StatelessWidget {
+class AppButton extends StatefulWidget {
   final String text;
   final VoidCallback? onPressed;
   final AppButtonVariant variant;
@@ -26,14 +27,55 @@ class AppButton extends StatelessWidget {
   });
 
   @override
+  State<AppButton> createState() => _AppButtonState();
+}
+
+class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMixin {
+  bool _isThrottled = false;
+  Timer? _throttleTimer;
+  late final AnimationController _pressController;
+  late final Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 110),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.97).animate(
+      CurvedAnimation(parent: _pressController, curve: Curves.easeOutCubic),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pressController.dispose();
+    _throttleTimer?.cancel();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    if (_isThrottled || widget.onPressed == null || widget.isLoading) return;
+    setState(() => _isThrottled = true);
+    _throttleTimer?.cancel();
+    _throttleTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() => _isThrottled = false);
+      }
+    });
+    widget.onPressed?.call();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isDisabled = onPressed == null || isLoading;
+    final isDisabled = widget.onPressed == null || widget.isLoading || _isThrottled;
 
     Color backgroundColor;
     Color foregroundColor;
     BorderSide borderSide = BorderSide.none;
 
-    switch (variant) {
+    switch (widget.variant) {
       case AppButtonVariant.primary:
         backgroundColor = isDisabled ? AppColors.disabled : AppColors.primary;
         foregroundColor = isDisabled ? AppColors.textMuted : AppColors.textPrimary;
@@ -52,7 +94,7 @@ class AppButton extends StatelessWidget {
         break;
     }
 
-    final child = isLoading
+    final child = widget.isLoading
         ? SizedBox(
             height: 20,
             width: 20,
@@ -65,13 +107,13 @@ class AppButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (leading != null) ...[
-                leading!,
+              if (widget.leading != null) ...[
+                widget.leading!,
                 const SizedBox(width: AppSpacing.sm),
               ],
               Flexible(
                 child: Text(
-                  text,
+                  widget.text,
                   style: AppTypography.buttonLarge(color: foregroundColor),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -81,22 +123,32 @@ class AppButton extends StatelessWidget {
           );
 
     return SizedBox(
-      width: width,
-      height: height,
-      child: Material(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(AppRadii.button),
-        child: InkWell(
+      width: widget.width,
+      height: widget.height,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Material(
+          color: backgroundColor,
           borderRadius: BorderRadius.circular(AppRadii.button),
-          onTap: isDisabled ? null : onPressed,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppRadii.button),
-              border: Border.fromBorderSide(borderSide),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadii.button),
+            onHighlightChanged: (highlighted) {
+              if (highlighted && !isDisabled) {
+                _pressController.forward();
+              } else {
+                _pressController.reverse();
+              }
+            },
+            onTap: (widget.onPressed == null || widget.isLoading) ? null : _handleTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadii.button),
+                border: Border.fromBorderSide(borderSide),
+              ),
+              alignment: Alignment.center,
+              child: child,
             ),
-            alignment: Alignment.center,
-            child: child,
           ),
         ),
       ),

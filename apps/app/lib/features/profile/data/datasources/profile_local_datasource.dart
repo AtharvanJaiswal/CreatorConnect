@@ -1,23 +1,41 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/profile_entities.dart';
 import '../../domain/entities/taxonomy_data.dart';
 
-/// Local data source to persist Module C user inputs, selections, and drafts on-device
+/// Local data source to persist Module C user inputs, selections, and drafts on-device,
+/// strictly scoped per authenticated user ID to eliminate cross-account pollution.
 class ProfileLocalDataSource {
-  static const String _keyBasicInfo = 'cc_profile_basic_info';
-  static const String _keySelectedCategories = 'cc_profile_selected_categories';
-  static const String _keyUserSkills = 'cc_profile_user_skills';
-  static const String _keyCreatorDetails = 'cc_profile_creator_details';
-  static const String _keyProfessionalDetails = 'cc_profile_professional_details';
-  static const String _keyPodcastDetails = 'cc_profile_podcast_details';
-  static const String _keyCompanyDetails = 'cc_profile_company_details';
-  static const String _keySocialAccounts = 'cc_profile_social_accounts';
-  static const String _keyVerificationData = 'cc_profile_verification_data';
-
   final SharedPreferences? _prefs;
+  final String? _explicitUserId;
 
-  ProfileLocalDataSource({SharedPreferences? prefs}) : _prefs = prefs;
+  ProfileLocalDataSource({SharedPreferences? prefs, String? userId})
+      : _prefs = prefs,
+        _explicitUserId = userId;
+
+  String _key(String base) {
+    if (_explicitUserId != null && _explicitUserId.isNotEmpty) {
+      return 'cc_${_explicitUserId}_$base';
+    }
+    try {
+      final uid = Supabase.instance.client.auth.currentUser?.id;
+      if (uid != null && uid.isNotEmpty) {
+        return 'cc_${uid}_$base';
+      }
+    } catch (_) {}
+    return 'cc_anon_$base';
+  }
+
+  String get _keyBasicInfo => _key('basic_info');
+  String get _keySelectedCategories => _key('selected_categories');
+  String get _keyUserSkills => _key('user_skills');
+  String get _keyCreatorDetails => _key('creator_details');
+  String get _keyProfessionalDetails => _key('professional_details');
+  String get _keyPodcastDetails => _key('podcast_details');
+  String get _keyCompanyDetails => _key('company_details');
+  String get _keySocialAccounts => _key('social_accounts');
+  String get _keyVerificationData => _key('verification_data');
 
   Future<SharedPreferences> _getPrefs() async {
     return _prefs ?? await SharedPreferences.getInstance();
@@ -204,15 +222,22 @@ class ProfileLocalDataSource {
   Future<void> clearAll() async {
     try {
       final prefs = await _getPrefs();
-      await prefs.remove(_keyBasicInfo);
-      await prefs.remove(_keySelectedCategories);
-      await prefs.remove(_keyUserSkills);
-      await prefs.remove(_keyCreatorDetails);
-      await prefs.remove(_keyProfessionalDetails);
-      await prefs.remove(_keyPodcastDetails);
-      await prefs.remove(_keyCompanyDetails);
-      await prefs.remove(_keySocialAccounts);
-      await prefs.remove(_keyVerificationData);
+      final currentUid = _explicitUserId ??
+          (() {
+            try {
+              return Supabase.instance.client.auth.currentUser?.id ?? '';
+            } catch (_) {
+              return '';
+            }
+          })();
+      final allKeys = prefs.getKeys().toList();
+      for (final k in allKeys) {
+        if (currentUid.isNotEmpty && k.startsWith('cc_${currentUid}_')) {
+          await prefs.remove(k);
+        } else if (k.startsWith('cc_profile_') || k.startsWith('cc_anon_')) {
+          await prefs.remove(k);
+        }
+      }
     } catch (_) {}
   }
 }

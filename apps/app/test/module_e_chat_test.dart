@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:creatorconnect/features/chat/domain/entities/chat_entities.dart';
 import 'package:creatorconnect/features/chat/domain/repositories/chat_repository.dart';
 import 'package:creatorconnect/features/chat/data/datasources/chat_remote_datasource.dart';
@@ -11,6 +12,12 @@ import 'package:creatorconnect/features/chat/presentation/screens/e01_conversati
 import 'package:creatorconnect/features/chat/presentation/widgets/pinned_brief_banner_widget.dart';
 import 'package:creatorconnect/features/chat/presentation/widgets/message_bubble_widget.dart';
 import 'package:creatorconnect/features/chat/presentation/widgets/typing_indicator_widget.dart';
+import 'package:creatorconnect/features/chat/presentation/screens/e04_chat_thread_screen.dart';
+import 'package:creatorconnect/features/chat/presentation/screens/e07_attachment_viewer_screen.dart';
+import 'package:creatorconnect/features/chat/presentation/dialogs/dlg_e09_delete_message_dialog.dart';
+import 'package:creatorconnect/features/chat/presentation/dialogs/dlg_e10_block_user_dialog.dart';
+import 'package:creatorconnect/features/chat/presentation/bottom_sheets/dlg_e08_attachment_picker_sheet.dart';
+import 'package:creatorconnect/features/chat/presentation/bottom_sheets/dlg_e11_report_user_sheet.dart';
 
 // Mock HttpOverrides to avoid NetworkImage 400 errors during widget testing
 class TestHttpOverrides extends HttpOverrides {
@@ -170,12 +177,39 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
+  Future<ConversationItem> createOrGetDirectConversation(String recipientId) async {
+    final existing = _conversations.where((c) => c.peerId == recipientId).toList();
+    if (existing.isNotEmpty) {
+      return existing.first;
+    }
+    final newConv = ConversationItem(
+      id: 'conv-new-${_conversations.length + 1}',
+      peerId: recipientId,
+      peerName: 'Collaborator',
+      peerHandle: '@collaborator',
+      peerRole: 'CREATOR',
+      peerAvatar: '',
+      lastMessage: 'Started new direct chat',
+      lastMessageTime: 'Just now',
+      isAccepted: true,
+    );
+    _conversations.add(newConv);
+    return newConv;
+  }
+
+  @override
   Future<ConversationItem?> getConversation(String conversationId) async {
     return _conversations.firstWhere((c) => c.id == conversationId);
   }
 
   @override
-  Future<List<ChatMessage>> getMessages(String conversationId) async {
+  Future<List<ChatMessage>> getMessages(
+    String conversationId, {
+    String? currentUserId,
+    String? peerId,
+    String? peerName,
+    String? peerAvatar,
+  }) async {
     return _messages[conversationId] ?? [];
   }
 
@@ -237,8 +271,17 @@ class FakeChatRepository implements ChatRepository {
   }
 }
 
+class EmptyFakeChatRepository extends FakeChatRepository {
+  @override
+  Future<List<ConversationItem>> getConversations({ChatTab tab = ChatTab.primary, String? query}) async {
+    return [];
+  }
+}
+
 void main() {
   setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({'user_auth_id': 'me'});
     HttpOverrides.global = TestHttpOverrides();
   });
 
@@ -486,6 +529,486 @@ void main() {
       expect(find.text('Ananya Sen'), findsOneWidget);
       expect(find.text('Accept Chat'), findsWidgets);
       expect(find.text('Decline'), findsWidgets);
+    });
+
+    testWidgets('E01ConversationsListScreen renders empty state with "Explore Collaborators →" button', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            chatRepositoryProvider.overrideWithValue(EmptyFakeChatRepository()),
+          ],
+          child: const MaterialApp(
+            home: E01ConversationsListScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('No conversations yet'), findsOneWidget);
+      expect(find.text('Explore Collaborators →'), findsOneWidget);
+    });
+
+    testWidgets('E04ChatThreadScreen renders locked request panel for pending requests (SCR-E05)', (tester) async {
+      const requestConv = ConversationItem(
+        id: 'conv-test-03',
+        peerId: 'creator-02',
+        peerName: 'Ananya Sen',
+        peerHandle: '@ananya.style',
+        peerRole: 'CREATOR',
+        peerAvatar: '',
+        isPeerVerified: false,
+        lastMessage: 'Hey, loved your lookbook!',
+        lastMessageTime: 'Yesterday',
+        isRequest: true,
+        isAccepted: false,
+        pinnedBrief: PinnedBriefContext(
+          id: 'b-1',
+          title: 'Summer Fashion Collab',
+          budgetRange: '₹10k–20k',
+          location: 'Mumbai',
+        ),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            chatRepositoryProvider.overrideWithValue(FakeChatRepository()),
+          ],
+          child: MaterialApp(
+            home: E04ChatThreadScreen(
+              conversationId: 'conv-test-03',
+              initialPeer: requestConv,
+              initialBrief: requestConv.pinnedBrief,
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ananya Sen'), findsWidgets);
+      expect(find.text('Summer Fashion Collab'), findsOneWidget);
+      expect(find.text('Accept Request'), findsOneWidget);
+      expect(find.text('Decline'), findsOneWidget);
+      expect(find.byTooltip('Block User'), findsOneWidget);
+      expect(find.textContaining('Phone numbers and direct contact details are shielded', findRichText: true), findsOneWidget);
+    });
+
+    testWidgets('DlgE08AttachmentPickerSheet renders attachment options and triggers selection callback', (tester) async {
+      AttachmentType? selectedType;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () async {
+                  selectedType = await DlgE08AttachmentPickerSheet.show(context);
+                },
+                child: const Text('Open Picker'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Picker'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Share Content'), findsOneWidget);
+      expect(find.text('Camera'), findsOneWidget);
+      expect(find.text('Photos'), findsOneWidget);
+      expect(find.text('Video Clip'), findsOneWidget);
+      expect(find.text('Document'), findsOneWidget);
+      expect(find.text('Attach Collaboration Brief'), findsOneWidget);
+
+      await tester.tap(find.text('Document'));
+      await tester.pumpAndSettle();
+      expect(selectedType, AttachmentType.document);
+    });
+
+    testWidgets('DlgE09DeleteMessageDialog returns DeleteMessageChoice for everyone and me', (tester) async {
+      DeleteMessageChoice? choice;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () async {
+                  choice = await DlgE09DeleteMessageDialog.show(context);
+                },
+                child: const Text('Delete'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete Message'), findsOneWidget);
+      expect(find.text('Delete for Everyone'), findsOneWidget);
+      expect(find.text('Delete for Me'), findsOneWidget);
+
+      await tester.tap(find.text('Delete for Everyone'));
+      await tester.pumpAndSettle();
+      expect(choice, DeleteMessageChoice.forEveryone);
+    });
+
+    testWidgets('DlgE10BlockUserDialog confirms user blocking', (tester) async {
+      bool? blocked;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () async {
+                  blocked = await DlgE10BlockUserDialog.show(context, peerName: 'Bad Actor');
+                },
+                child: const Text('Block'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Block'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Block Bad Actor?'), findsOneWidget);
+      expect(find.text('Block User'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+
+      await tester.tap(find.text('Block User'));
+      await tester.pumpAndSettle();
+      expect(blocked, isTrue);
+    });
+
+    testWidgets('DlgE11ReportUserSheet allows selecting reason and submitting report', (tester) async {
+      ReportResult? result;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () async {
+                  result = await DlgE11ReportUserSheet.show(context, peerName: 'Suspicious User');
+                },
+                child: const Text('Report'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Report'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Report Conversation'), findsOneWidget);
+      expect(find.text('Off-platform payment soliciting'), findsOneWidget);
+      expect(find.text('Harassment or abusive conduct'), findsOneWidget);
+      expect(find.text('Submit Report'), findsOneWidget);
+
+      await tester.tap(find.text('Harassment or abusive conduct'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Submit Report'));
+      await tester.pumpAndSettle();
+
+      expect(result, isNotNull);
+      expect(result!.reason, 'Harassment or abusive conduct');
+    });
+
+    testWidgets('E07AttachmentViewerScreen renders document attachment details and metadata', (tester) async {
+      const att = MessageAttachment(
+        id: 'att-pdf-1',
+        type: AttachmentType.document,
+        fileName: 'Deliverables_Agreement.pdf',
+        fileSize: '3.4 MB',
+        url: 'https://example.com/agreement.pdf',
+        pageCount: 8,
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: E07AttachmentViewerScreen(
+            attachment: att,
+            sentBy: 'Zara India',
+            timestamp: '11:20 AM',
+          ),
+        ),
+      );
+
+      expect(find.text('Deliverables_Agreement.pdf'), findsWidgets);
+      expect(find.text('3.4 MB'), findsOneWidget);
+      expect(find.text('Sent by Zara India • 11:20 AM'), findsOneWidget);
+      expect(find.text('8 Pages • Verified Cloudflare R2 Upload'), findsOneWidget);
+      expect(find.text('Download File'), findsOneWidget);
+    });
+  });
+
+  group('Module E: Two-Sided Real-Time Messaging & Sender Identification Tests', () {
+    const userAUuid = 'user-a-uuid-1111';
+    const userBUuid = 'user-b-uuid-2222';
+
+    test('ChatMessage.fromJson correctly identifies sender for Current User A (Sender perspective)', () {
+      final jsonSentByA = {
+        'id': 'msg-101',
+        'conversationId': 'conv-ab',
+        'senderId': userAUuid,
+        'senderName': 'Alice',
+        'text': 'Hi Zara! Excited to collaborate.',
+        'createdAt': '2026-11-14T10:00:00.000Z',
+        'deliveryStatus': 'read',
+      };
+
+      final msgFromAPerspective = ChatMessage.fromJson(
+        jsonSentByA,
+        currentUserId: userAUuid,
+        peerId: userBUuid,
+        peerName: 'Zara India',
+      );
+
+      expect(msgFromAPerspective.isMe, isTrue);
+      expect(msgFromAPerspective.senderName, 'You');
+      expect(msgFromAPerspective.status, MessageStatus.read);
+    });
+
+    test('ChatMessage.fromJson correctly identifies sender for Current User B (Receiver perspective)', () {
+      final jsonSentByA = {
+        'id': 'msg-101',
+        'conversationId': 'conv-ab',
+        'senderId': userAUuid,
+        'senderName': 'Alice',
+        'text': 'Hi Zara! Excited to collaborate.',
+        'createdAt': '2026-11-14T10:00:00.000Z',
+        'deliveryStatus': 'read',
+      };
+
+      final msgFromBPerspective = ChatMessage.fromJson(
+        jsonSentByA,
+        currentUserId: userBUuid,
+        peerId: userAUuid,
+        peerName: 'Alice',
+      );
+
+      expect(msgFromBPerspective.isMe, isFalse);
+      expect(msgFromBPerspective.senderName, 'Alice');
+    });
+
+    test('ChatMessage.fromJson dual-guard fallback works when currentUserId is empty but peerId is known', () {
+      final jsonPeerMsg = {
+        'id': 'msg-102',
+        'conversationId': 'conv-ab',
+        'senderId': userBUuid,
+        'senderName': 'Zara India',
+        'text': 'Sounds great, Alice!',
+        'createdAt': '2026-11-14T10:05:00.000Z',
+      };
+
+      final jsonOwnMsg = {
+        'id': 'msg-103',
+        'conversationId': 'conv-ab',
+        'senderId': userAUuid,
+        'senderName': 'Alice',
+        'text': 'Let us finalize the deliverables.',
+        'createdAt': '2026-11-14T10:06:00.000Z',
+      };
+
+      // In thread with peer userBUuid (currentUserId unknown / empty string)
+      final peerMsg = ChatMessage.fromJson(jsonPeerMsg, peerId: userBUuid, peerName: 'Zara India');
+      final ownMsg = ChatMessage.fromJson(jsonOwnMsg, peerId: userBUuid, peerName: 'Zara India');
+
+      expect(peerMsg.isMe, isFalse);
+      expect(peerMsg.senderName, 'Zara India');
+
+      expect(ownMsg.isMe, isTrue);
+      expect(ownMsg.senderName, 'You');
+    });
+
+    testWidgets('Sent message aligns RIGHT in yellow bubble with delivery tick receipt', (tester) async {
+      final sentMsg = ChatMessage(
+        id: 'msg-sent-1',
+        conversationId: 'c-1',
+        senderId: 'user-me',
+        senderName: 'You',
+        isMe: true,
+        text: 'Hi Zara! I am good.',
+        timestamp: DateTime(2026, 11, 14, 10, 31),
+        status: MessageStatus.read,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MessageBubbleWidget(message: sentMsg),
+          ),
+        ),
+      );
+
+      expect(find.text('Hi Zara! I am good.'), findsOneWidget);
+      expect(find.text('10:31 AM'), findsOneWidget);
+      expect(find.byIcon(Icons.done_all_rounded), findsOneWidget);
+
+      // Sent message Row is right-aligned
+      final row = tester.widget<Row>(find.byType(Row).first);
+      expect(row.mainAxisAlignment, MainAxisAlignment.end);
+
+      // Verify no peer avatar is present for sent message
+      expect(find.byType(CircleAvatar), findsNothing);
+    });
+
+    testWidgets('Received message aligns LEFT in white bubble with sender avatar and name', (tester) async {
+      final receivedMsg = ChatMessage(
+        id: 'msg-rec-1',
+        conversationId: 'c-1',
+        senderId: 'user-peer',
+        senderName: 'Zara India',
+        isMe: false,
+        text: 'Hey! How are you?',
+        timestamp: DateTime(2026, 11, 14, 10, 30),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MessageBubbleWidget(
+              message: receivedMsg,
+              showAvatar: true,
+              showSenderName: true,
+              peerName: 'Zara India',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Hey! How are you?'), findsOneWidget);
+      expect(find.text('Zara India'), findsOneWidget);
+      expect(find.text('10:30 AM'), findsOneWidget);
+      expect(find.byType(CircleAvatar), findsOneWidget);
+
+      // Received message Row is left-aligned
+      final row = tester.widget<Row>(find.byType(Row).first);
+      expect(row.mainAxisAlignment, MainAxisAlignment.start);
+    });
+
+    testWidgets('Consecutive received messages omit repeated avatar and sender name', (tester) async {
+      final middleMsg = ChatMessage(
+        id: 'msg-rec-2',
+        conversationId: 'c-1',
+        senderId: 'user-peer',
+        senderName: 'Zara India',
+        isMe: false,
+        text: 'Following up on our campaign brief.',
+        timestamp: DateTime(2026, 11, 14, 10, 32),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MessageBubbleWidget(
+              message: middleMsg,
+              showAvatar: false, // Consecutive message in cluster
+              showSenderName: false,
+              peerName: 'Zara India',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Following up on our campaign brief.'), findsOneWidget);
+      // Sender name and CircleAvatar omitted to avoid clutter
+      expect(find.text('Zara India'), findsNothing);
+      expect(find.byType(CircleAvatar), findsNothing);
+    });
+
+    testWidgets('E04ChatThreadScreen displays two-sided chat layout with date separator badges', (tester) async {
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      final today = DateTime.now();
+
+      final fakeRepo = FakeChatRepository();
+      const testConvId = 'conv-two-sided-test';
+
+      final convItem = const ConversationItem(
+        id: testConvId,
+        peerId: 'peer-zara',
+        peerName: 'Zara India',
+        peerHandle: '@zara_india',
+        peerRole: 'BRAND',
+        peerAvatar: '',
+        isAccepted: true,
+        lastMessage: 'Looking forward to it!',
+        lastMessageTime: '10:33 AM',
+      );
+
+      fakeRepo._conversations.add(convItem);
+      fakeRepo._messages[testConvId] = [
+        ChatMessage(
+          id: 'msg-1',
+          conversationId: testConvId,
+          senderId: 'peer-zara',
+          senderName: 'Zara India',
+          isMe: false,
+          text: 'Hey! How are you?',
+          timestamp: yesterday,
+        ),
+        ChatMessage(
+          id: 'msg-2',
+          conversationId: testConvId,
+          senderId: 'me',
+          senderName: 'You',
+          isMe: true,
+          text: 'Hi Zara! I am good.',
+          timestamp: today.subtract(const Duration(minutes: 2)),
+          status: MessageStatus.read,
+        ),
+        ChatMessage(
+          id: 'msg-3',
+          conversationId: testConvId,
+          senderId: 'peer-zara',
+          senderName: 'Zara India',
+          isMe: false,
+          text: 'That is great!',
+          timestamp: today.subtract(const Duration(minutes: 1)),
+        ),
+        ChatMessage(
+          id: 'msg-4',
+          conversationId: testConvId,
+          senderId: 'me',
+          senderName: 'You',
+          isMe: true,
+          text: 'Thank you!',
+          timestamp: today,
+          status: MessageStatus.sent,
+        ),
+      ];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            chatRepositoryProvider.overrideWithValue(fakeRepo),
+          ],
+          child: MaterialApp(
+            home: E04ChatThreadScreen(
+              conversationId: testConvId,
+              initialPeer: convItem,
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Check messages are present
+      expect(find.text('Hey! How are you?'), findsOneWidget);
+      expect(find.text('Hi Zara! I am good.'), findsOneWidget);
+      expect(find.text('That is great!'), findsOneWidget);
+      expect(find.text('Thank you!'), findsOneWidget);
+
+      // Verify date separators
+      expect(find.text('YESTERDAY'), findsOneWidget);
+      expect(find.text('TODAY'), findsOneWidget);
     });
   });
 }

@@ -4,11 +4,20 @@ abstract class ChatRepository {
   /// Fetches conversations for either the Primary or Requests tab
   Future<List<ConversationItem>> getConversations({ChatTab tab = ChatTab.primary, String? query});
 
+  /// Creates a new direct conversation or retrieves the existing one between peers
+  Future<ConversationItem> createOrGetDirectConversation(String recipientId);
+
   /// Fetches a single conversation item by ID
   Future<ConversationItem?> getConversation(String conversationId);
 
   /// Retrieves message history for a conversation
-  Future<List<ChatMessage>> getMessages(String conversationId);
+  Future<List<ChatMessage>> getMessages(
+    String conversationId, {
+    String? currentUserId,
+    String? peerId,
+    String? peerName,
+    String? peerAvatar,
+  });
 
   /// Sends a new message in a conversation thread
   Future<ChatMessage> sendMessage(

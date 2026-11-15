@@ -134,31 +134,56 @@ class _C05ProfessionalDetailsScreenState extends State<C05ProfessionalDetailsScr
     }
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isSaving = true);
-    final minR = int.tryParse(_minRateCtrl.text.trim());
-    final maxR = int.tryParse(_maxRateCtrl.text.trim());
-
-    final data = ProfessionalDetailsData(
-      professionalType: _proType,
-      experience: _experience,
-      tools: _tools,
-      minRate: minR,
-      maxRate: maxR,
-      rateUnit: _rateUnit,
-      hasPortfolioSample: _hasPortfolioSample,
-    );
-
-    await _repo.updateProfessionalDetails(data);
-
-    if (mounted) {
-      setState(() => _isSaving = false);
+    final minText = _minRateCtrl.text.trim();
+    final maxText = _maxRateCtrl.text.trim();
+    final minR = minText.isEmpty ? null : int.tryParse(minText);
+    final maxR = maxText.isEmpty ? null : int.tryParse(maxText);
+    if (minR != null && maxR != null && minR > maxR) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Professional details saved!'),
-          backgroundColor: Color(0xFF2E7D32),
+          content: Text("Minimum rate can't exceed maximum rate"),
+          backgroundColor: Color(0xFFD32F2F),
         ),
       );
-      Navigator.pop(context, true);
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      final data = ProfessionalDetailsData(
+        professionalType: _proType,
+        experience: _experience,
+        tools: _tools,
+        minRate: minR,
+        maxRate: maxR,
+        rateUnit: _rateUnit,
+        hasPortfolioSample: _hasPortfolioSample,
+      );
+
+      await _repo.updateProfessionalDetails(data);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Professional details saved!'),
+            backgroundColor: Color(0xFF2E7D32),
+          ),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not save professional details: $e'),
+            backgroundColor: const Color(0xFFD32F2F),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -238,7 +263,7 @@ class _C05ProfessionalDetailsScreenState extends State<C05ProfessionalDetailsScr
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
-                            value: _proType.isNotEmpty ? _proType : null,
+                            value: _proTypes.contains(_proType) ? _proType : null,
                             hint: const Text('Select your creative role', style: TextStyle(color: AppColors.textTertiary)),
                             isExpanded: true,
                             items: _proTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
@@ -274,7 +299,7 @@ class _C05ProfessionalDetailsScreenState extends State<C05ProfessionalDetailsScr
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
-                            value: _experience.isNotEmpty ? _experience : null,
+                            value: _experienceTiers.contains(_experience) ? _experience : null,
                             hint: const Text('Select experience tier', style: TextStyle(color: AppColors.textTertiary)),
                             isExpanded: true,
                             items: _experienceTiers.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
@@ -354,8 +379,14 @@ class _C05ProfessionalDetailsScreenState extends State<C05ProfessionalDetailsScr
                                   keyboardType: TextInputType.number,
                                   onChanged: (_) => setState(() => _isDirty = true),
                                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                                  decoration: _rateInputDecoration('Min rate'),
-                                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                                  decoration: _rateInputDecoration('Min rate (optional)'),
+                                  validator: (v) {
+                                    final t = v?.trim() ?? '';
+                                    if (t.isEmpty) return null;
+                                    final parsed = int.tryParse(t);
+                                    if (parsed == null || parsed < 0) return 'Enter valid rate';
+                                    return null;
+                                  },
                                 ),
                               ],
                             ),
@@ -416,6 +447,76 @@ class _C05ProfessionalDetailsScreenState extends State<C05ProfessionalDetailsScr
                             ),
                           );
                         }).toList(),
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: _hasPortfolioSample
+                              ? const Color(0xFFE8F5E9)
+                              : const Color(0xFFFFF8E1),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: _hasPortfolioSample
+                                ? const Color(0xFFA5D6A7)
+                                : AppColors.primary,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _hasPortfolioSample
+                                  ? Icons.check_circle_rounded
+                                  : Icons.perm_media_rounded,
+                              color: _hasPortfolioSample
+                                  ? const Color(0xFF2E7D32)
+                                  : AppColors.textPrimary,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Portfolio sample',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _hasPortfolioSample
+                                        ? 'Portfolio sample attached and ready for Level 1 review'
+                                        : 'Add at least one portfolio sample to finish this profile',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _hasPortfolioSample = !_hasPortfolioSample;
+                                  _isDirty = true;
+                                });
+                                _saveDraft();
+                              },
+                              child: Text(
+                                _hasPortfolioSample ? 'Added' : 'Add sample →',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 24),
                     ],

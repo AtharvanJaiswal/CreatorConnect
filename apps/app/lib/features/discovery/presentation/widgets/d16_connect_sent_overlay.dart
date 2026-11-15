@@ -52,12 +52,47 @@ class D16ConnectSentOverlay extends StatefulWidget {
 }
 
 class _D16ConnectSentOverlayState extends State<D16ConnectSentOverlay>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _animController;
+  late AnimationController _entranceController;
+  late Animation<double> _scaleBadgeAnimation;
+  late Animation<Offset> _slideCardAnimation;
+  late Animation<double> _fadeCardAnimation;
 
   @override
   void initState() {
     super.initState();
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+
+    _slideCardAnimation = Tween<Offset>(
+      begin: const Offset(0.0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _entranceController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _fadeCardAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _entranceController,
+      curve: Curves.easeOut,
+    ));
+
+    _scaleBadgeAnimation = Tween<double>(
+      begin: 0.2,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.2, 1.0, curve: Curves.elasticOut),
+    ));
+
+    _entranceController.forward();
+
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -72,41 +107,49 @@ class _D16ConnectSentOverlayState extends State<D16ConnectSentOverlay>
 
   @override
   void dispose() {
+    _entranceController.dispose();
     _animController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.textPrimary,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.18),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
+    return SlideTransition(
+      position: _slideCardAnimation,
+      child: FadeTransition(
+        opacity: _fadeCardAnimation,
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.textPrimary,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.18),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.check, size: 16, color: AppColors.textPrimary),
-                ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    ScaleTransition(
+                      scale: _scaleBadgeAnimation,
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.check, size: 16, color: AppColors.textPrimary),
+                      ),
+                    ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -159,6 +202,8 @@ class _D16ConnectSentOverlayState extends State<D16ConnectSentOverlay>
           ),
         ],
       ),
-    );
+    ),
+  ),
+);
   }
 }

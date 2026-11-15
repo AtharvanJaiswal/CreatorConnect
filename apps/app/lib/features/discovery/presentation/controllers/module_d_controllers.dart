@@ -4,7 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../auth/data/datasources/auth_local_datasource.dart';
+import '../../../auth/domain/entities/user_role.dart';
 import '../../data/datasources/module_d_remote_datasource.dart';
+import '../../../profile/data/repositories/profile_repository_impl.dart';
+import '../../../profile/domain/entities/profile_entities.dart';
+import '../../domain/entities/dashboard_category_config.dart';
 import '../../domain/entities/discovery_entities.dart';
 
 // -----------------------------------------------------------------------------
@@ -23,8 +27,13 @@ final authLocalDataSourceProvider = Provider<AuthLocalDataSource>((ref) {
 // -----------------------------------------------------------------------------
 @immutable
 class HomeDashboardState {
-  final String role; // 'CREATOR', 'BRAND', 'EMPTY'
+  final String role; // 'CREATOR', 'PROFESSIONAL', 'PODCASTER', 'BRAND', 'EMPTY'
   final String greeting;
+  final String city;
+  final String roleSpecialty;
+  final List<String> selectedCategories;
+  final String? activeCategoryFilter;
+  final bool isOfflineFallback;
   final int completionPercentage;
   final Map<String, dynamic> stats;
   final List<ProfileCardModel> recommendedProfiles;
@@ -36,7 +45,12 @@ class HomeDashboardState {
 
   const HomeDashboardState({
     this.role = 'CREATOR',
-    this.greeting = 'Good morning, Priya 👋',
+    this.greeting = 'Good morning 👋',
+    this.city = 'Mumbai MMR',
+    this.roleSpecialty = '',
+    this.selectedCategories = const [],
+    this.activeCategoryFilter,
+    this.isOfflineFallback = false,
     this.completionPercentage = 85,
     this.stats = const {},
     this.recommendedProfiles = const [],
@@ -47,9 +61,81 @@ class HomeDashboardState {
     this.errorMessage,
   });
 
+  DashboardPersonaConfig get persona =>
+      DashboardCategoryCatalog.personaForRole(role);
+
+  List<ProfileCardModel> get filteredRecommendations {
+    if (activeCategoryFilter == null || activeCategoryFilter!.isEmpty) {
+      return recommendedProfiles;
+    }
+    return recommendedProfiles
+        .where(
+          (p) => DashboardCategoryCatalog.matchesCategory(
+            activeCategory: activeCategoryFilter,
+            primaryNiche: p.niche,
+            extraTags: p.deliverableTags,
+            titleOrBio: '${p.name} ${p.bio}',
+          ),
+        )
+        .toList();
+  }
+
+  List<OpportunityBrief> get filteredOpportunities {
+    if (activeCategoryFilter == null || activeCategoryFilter!.isEmpty) {
+      return nearbyOpportunities;
+    }
+    return nearbyOpportunities
+        .where(
+          (o) => DashboardCategoryCatalog.matchesCategory(
+            activeCategory: activeCategoryFilter,
+            primaryNiche: o.category,
+            extraTags: [o.deliverableType, o.brandName],
+            titleOrBio: o.title,
+          ),
+        )
+        .toList();
+  }
+
+  List<BrandBriefProgress> get filteredCampaigns {
+    if (activeCategoryFilter == null || activeCategoryFilter!.isEmpty) {
+      return activeCampaigns;
+    }
+    return activeCampaigns
+        .where(
+          (c) => DashboardCategoryCatalog.matchesCategory(
+            activeCategory: activeCategoryFilter,
+            primaryNiche: c.category,
+            titleOrBio: c.title,
+          ),
+        )
+        .toList();
+  }
+
+  List<ProfileCardModel> get filteredFeaturedCreators {
+    if (activeCategoryFilter == null || activeCategoryFilter!.isEmpty) {
+      return featuredCreators;
+    }
+    return featuredCreators
+        .where(
+          (p) => DashboardCategoryCatalog.matchesCategory(
+            activeCategory: activeCategoryFilter,
+            primaryNiche: p.niche,
+            extraTags: p.deliverableTags,
+            titleOrBio: '${p.name} ${p.bio}',
+          ),
+        )
+        .toList();
+  }
+
   HomeDashboardState copyWith({
     String? role,
     String? greeting,
+    String? city,
+    String? roleSpecialty,
+    List<String>? selectedCategories,
+    String? activeCategoryFilter,
+    bool clearActiveCategoryFilter = false,
+    bool? isOfflineFallback,
     int? completionPercentage,
     Map<String, dynamic>? stats,
     List<ProfileCardModel>? recommendedProfiles,
@@ -62,6 +148,13 @@ class HomeDashboardState {
     return HomeDashboardState(
       role: role ?? this.role,
       greeting: greeting ?? this.greeting,
+      city: city ?? this.city,
+      roleSpecialty: roleSpecialty ?? this.roleSpecialty,
+      selectedCategories: selectedCategories ?? this.selectedCategories,
+      activeCategoryFilter: clearActiveCategoryFilter
+          ? null
+          : (activeCategoryFilter ?? this.activeCategoryFilter),
+      isOfflineFallback: isOfflineFallback ?? this.isOfflineFallback,
       completionPercentage: completionPercentage ?? this.completionPercentage,
       stats: stats ?? this.stats,
       recommendedProfiles: recommendedProfiles ?? this.recommendedProfiles,
@@ -74,12 +167,33 @@ class HomeDashboardState {
   }
 }
 
+class _UserDashboardProfileContext {
+  final String displayName;
+  final String city;
+  final String roleSpecialty;
+  final List<String> selectedCategories;
+  final int completionPercentage;
+
+  const _UserDashboardProfileContext({
+    required this.displayName,
+    required this.city,
+    required this.roleSpecialty,
+    required this.selectedCategories,
+    required this.completionPercentage,
+  });
+}
+
 class HomeDashboardNotifier extends StateNotifier<HomeDashboardState> {
   final ModuleDRemoteDataSource _dataSource;
   final AuthLocalDataSource _localDataSource;
+  final ProfileRepositoryImpl? _profileRepository;
 
-  HomeDashboardNotifier(this._dataSource, [AuthLocalDataSource? localDataSource])
-      : _localDataSource = localDataSource ?? AuthLocalDataSource(),
+  HomeDashboardNotifier(
+    this._dataSource, [
+    AuthLocalDataSource? localDataSource,
+    ProfileRepositoryImpl? profileRepository,
+  ])  : _localDataSource = localDataSource ?? AuthLocalDataSource(),
+        _profileRepository = profileRepository ?? ProfileRepositoryImpl.instance,
         super(const HomeDashboardState()) {
     initDashboard();
   }
@@ -100,60 +214,275 @@ class HomeDashboardNotifier extends StateNotifier<HomeDashboardState> {
     await loadDashboard(resolvedRole);
   }
 
-  Future<void> loadDashboard([String? targetRole, String? userId]) async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
-    try {
-      String? roleToUse = targetRole;
-      if (roleToUse == null || roleToUse.isEmpty) {
+  Future<String> _resolveEffectiveRole(String? targetRole) async {
+    String? roleToUse = targetRole;
+    if (roleToUse == null || roleToUse.isEmpty) {
+      try {
         roleToUse = await _localDataSource.getSelectedRole();
+      } catch (_) {}
+    }
+    if (roleToUse == null || roleToUse.isEmpty) {
+      try {
+        final meta = Supabase.instance.client.auth.currentUser?.userMetadata;
+        roleToUse = meta?['role'] as String?;
+      } catch (_) {}
+    }
+    return (roleToUse != null && roleToUse.trim().isNotEmpty)
+        ? roleToUse.trim().toUpperCase()
+        : 'CREATOR';
+  }
+
+  Future<_UserDashboardProfileContext> _loadProfileContext(
+    String roleKey,
+  ) async {
+    var displayName = '';
+    var city = 'Mumbai MMR';
+    var specialty = '';
+    var completion = 85;
+    CreatorDetailsData? creatorDetails;
+    ProfessionalDetailsData? proDetails;
+    PodcastDetailsData? podcastDetails;
+    CompanyDetailsData? companyDetails;
+    var selectedCatIds = <String>[];
+
+    try {
+      final repo = _profileRepository;
+      if (repo != null) {
+        final overview = await repo.getProfileOverview(
+          role: UserRole.fromString(roleKey),
+        );
+        completion = overview.completionPercentage;
+        final basic = await repo.getBasicInfo();
+        displayName = basic.displayName.trim();
+        if (basic.city.trim().isNotEmpty) {
+          city = basic.city.trim();
+        }
+        selectedCatIds = List<String>.from(repo.selectedCategoryIds);
+
+        switch (roleKey) {
+          case 'PROFESSIONAL':
+            proDetails = await repo.getProfessionalDetails();
+            specialty = proDetails.professionalType.trim();
+            break;
+          case 'PODCASTER':
+            podcastDetails = await repo.getPodcastDetails();
+            specialty = podcastDetails.showName.trim().isNotEmpty
+                ? podcastDetails.showName.trim()
+                : podcastDetails.category.trim();
+            break;
+          case 'BRAND':
+            companyDetails = await repo.getCompanyDetails();
+            if (companyDetails.companyName.trim().isNotEmpty) {
+              displayName = companyDetails.companyName.trim();
+            }
+            if (companyDetails.city.trim().isNotEmpty) {
+              city = companyDetails.city.trim();
+            }
+            specialty = companyDetails.businessCategory.trim();
+            break;
+          default:
+            creatorDetails = await repo.getCreatorDetails();
+            if (creatorDetails.contentTypes.isNotEmpty) {
+              specialty = creatorDetails.contentTypes.take(2).join(' · ');
+            }
+            break;
+        }
       }
-      if (roleToUse == null || roleToUse.isEmpty) {
+    } catch (_) {
+      // Safe fallback in isolated unit/widget tests without shared preferences.
+    }
+
+    if (displayName.isEmpty) {
+      try {
+        final user = Supabase.instance.client.auth.currentUser;
+        final meta = user?.userMetadata;
+        final metaName =
+            (meta?['full_name'] as String?) ?? (meta?['name'] as String?);
+        if (metaName != null && metaName.trim().isNotEmpty) {
+          displayName = metaName.trim();
+        } else if (user?.email != null && user!.email!.contains('@')) {
+          displayName = user.email!.split('@').first;
+        }
+      } catch (_) {}
+    }
+
+    final resolvedCats = DashboardCategoryCatalog.resolveUserCategories(
+      roleKey: roleKey,
+      selectedCategoryIds: selectedCatIds,
+      creatorDetails: creatorDetails,
+      professionalDetails: proDetails,
+      podcastDetails: podcastDetails,
+      companyDetails: companyDetails,
+    );
+
+    if (specialty.isEmpty && resolvedCats.isNotEmpty) {
+      specialty = resolvedCats.first;
+    }
+
+    return _UserDashboardProfileContext(
+      displayName: displayName,
+      city: city,
+      roleSpecialty: specialty,
+      selectedCategories: resolvedCats,
+      completionPercentage: completion,
+    );
+  }
+
+  Future<void> loadDashboard([String? targetRole, String? userId]) async {
+    final requestedRole = await _resolveEffectiveRole(targetRole);
+    state = state.copyWith(
+      role: requestedRole,
+      isLoading: true,
+      errorMessage: null,
+    );
+
+    final profileCtx = await _loadProfileContext(requestedRole);
+
+    try {
+      final data = await _dataSource.getHomeDashboard(
+        role: requestedRole,
+        userId: userId,
+      );
+      final rawRecs = (data['recommendedProfiles'] ?? data['recommendations']) as List<dynamic>? ?? [];
+      final rawOpps = (data['nearbyOpportunities'] ?? data['opportunities']) as List<dynamic>? ?? [];
+      final rawCampaigns = (data['activeCampaigns'] ?? data['campaignPipeline']) as List<dynamic>? ?? [];
+      final rawFeatured = data['featuredCreators'] as List<dynamic>? ?? [];
+
+      final apiRole = (data['role'] as String?)?.toUpperCase();
+      // Preserve PROFESSIONAL / PODCASTER / EMPTY persona even when backend falls back to 'CREATOR'.
+      final resolvedRole = (requestedRole == 'PROFESSIONAL' ||
+              requestedRole == 'PODCASTER' ||
+              requestedRole == 'EMPTY')
+          ? requestedRole
+          : (apiRole ?? requestedRole);
+
+      if (resolvedRole != 'EMPTY') {
         try {
-          final meta = Supabase.instance.client.auth.currentUser?.userMetadata;
-          roleToUse = meta?['role'] as String?;
+          await _localDataSource.saveSelectedRole(resolvedRole);
         } catch (_) {}
       }
 
-      final data = await _dataSource.getHomeDashboard(role: roleToUse, userId: userId);
-      final rawRecs = data['recommendedProfiles'] as List<dynamic>? ?? [];
-      final rawOpps = data['nearbyOpportunities'] as List<dynamic>? ?? [];
-      final rawCampaigns = data['activeCampaigns'] as List<dynamic>? ?? [];
-      final rawFeatured = data['featuredCreators'] as List<dynamic>? ?? [];
+      final persona = DashboardCategoryCatalog.personaForRole(resolvedRole);
+      final fallbackGreeting = profileCtx.displayName.isNotEmpty
+          ? '${persona.defaultGreetingPrefix}, ${profileCtx.displayName} 👋'
+          : '${persona.defaultGreetingPrefix} 👋';
 
-      final resolvedRole =
-          (data['role'] as String?)?.toUpperCase() ?? (roleToUse?.toUpperCase() ?? 'CREATOR');
+      final parsedRecs = rawRecs.map((e) {
+        if (e is ProfileCardModel) return e;
+        return ProfileCardModel.fromJson(e as Map<String, dynamic>);
+      }).toList();
 
-      // Persist the authoritative resolved role
-      await _localDataSource.saveSelectedRole(resolvedRole);
+      final parsedOpps = rawOpps
+          .map((e) => OpportunityBrief.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      final parsedCampaigns = rawCampaigns
+          .map((e) => BrandBriefProgress.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      final parsedFeatured = rawFeatured.map((e) {
+        if (e is ProfileCardModel) return e;
+        return ProfileCardModel.fromJson(e as Map<String, dynamic>);
+      }).toList();
+
+      final apiGreeting = data['greeting'] as String?;
+      final effectiveGreeting = (resolvedRole == 'CREATOR' || resolvedRole == 'BRAND') &&
+              apiGreeting != null &&
+              apiGreeting.trim().isNotEmpty
+          ? apiGreeting
+          : (apiGreeting != null && profileCtx.displayName.isEmpty
+              ? apiGreeting
+              : fallbackGreeting);
 
       state = state.copyWith(
         role: resolvedRole,
-        greeting: data['greeting'] as String? ?? 'Welcome 👋',
-        completionPercentage: data['completionPercentage'] as int? ?? 100,
-        stats: (data['stats'] as Map<String, dynamic>?) ?? (data['metrics'] as Map<String, dynamic>?) ?? {},
-        recommendedProfiles: rawRecs.map((e) {
-          if (e is ProfileCardModel) return e;
-          return ProfileCardModel.fromJson(e as Map<String, dynamic>);
-        }).toList(),
-        nearbyOpportunities: rawOpps.map((e) => OpportunityBrief.fromJson(e as Map<String, dynamic>)).toList(),
-        activeCampaigns: rawCampaigns.map((e) => BrandBriefProgress.fromJson(e as Map<String, dynamic>)).toList(),
-        featuredCreators: rawFeatured.map((e) {
-          if (e is ProfileCardModel) return e;
-          return ProfileCardModel.fromJson(e as Map<String, dynamic>);
-        }).toList(),
+        greeting: effectiveGreeting,
+        city: profileCtx.city,
+        roleSpecialty: profileCtx.roleSpecialty,
+        selectedCategories: profileCtx.selectedCategories,
+        isOfflineFallback: false,
+        completionPercentage:
+            data['completionPercentage'] as int? ?? profileCtx.completionPercentage,
+        stats: (data['stats'] as Map<String, dynamic>?) ??
+            (data['metrics'] as Map<String, dynamic>?) ??
+            {},
+        recommendedProfiles: parsedRecs,
+        nearbyOpportunities: parsedOpps,
+        activeCampaigns: parsedCampaigns,
+        featuredCreators: parsedFeatured,
         isLoading: false,
       );
-    } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+    } catch (e, st) {
+      debugPrint('ModuleD Dashboard Error: $e\n$st');
+      final persona = DashboardCategoryCatalog.personaForRole(requestedRole);
+      final greeting = profileCtx.displayName.isNotEmpty
+          ? '${persona.defaultGreetingPrefix}, ${profileCtx.displayName} 👋'
+          : '${persona.defaultGreetingPrefix} 👋';
+
+      final fallbackProfiles = DashboardCategoryCatalog.buildFallbackProfiles(
+        roleKey: requestedRole,
+        userCategories: profileCtx.selectedCategories,
+        city: profileCtx.city,
+      );
+      final fallbackOpps = DashboardCategoryCatalog.buildFallbackOpportunities(
+        roleKey: requestedRole,
+        userCategories: profileCtx.selectedCategories,
+        city: profileCtx.city,
+      );
+      final fallbackCampaigns =
+          requestedRole == 'BRAND'
+              ? DashboardCategoryCatalog.buildFallbackCampaigns(
+                  userCategories: profileCtx.selectedCategories,
+                )
+              : const <BrandBriefProgress>[];
+
+      state = state.copyWith(
+        role: requestedRole,
+        greeting: greeting,
+        city: profileCtx.city,
+        roleSpecialty: profileCtx.roleSpecialty,
+        selectedCategories: profileCtx.selectedCategories,
+        isOfflineFallback: true,
+        completionPercentage: profileCtx.completionPercentage,
+        stats: requestedRole == 'BRAND'
+            ? {
+                'totalApplicants': 0,
+                'activeBriefs': fallbackCampaigns.length,
+                'hiredCount': 0,
+              }
+            : {
+                'profileViews': 0,
+                'profileViewsTrend': persona.stat1FallbackTrend,
+                'rating': 0,
+                'openBriefsCount': fallbackOpps.length,
+              },
+        recommendedProfiles: fallbackProfiles,
+        nearbyOpportunities: fallbackOpps,
+        activeCampaigns: fallbackCampaigns,
+        featuredCreators: requestedRole == 'BRAND' ? fallbackProfiles : const [],
+        isLoading: false,
+      );
+    }
+  }
+
+  void selectCategoryFilter(String? category) {
+    if (category == null ||
+        category.trim().isEmpty ||
+        category.trim().toLowerCase() == 'all') {
+      state = state.copyWith(clearActiveCategoryFilter: true);
+    } else {
+      state = state.copyWith(activeCategoryFilter: category.trim());
     }
   }
 
   void switchRole(String newRole) {
+    state = state.copyWith(clearActiveCategoryFilter: true);
     loadDashboard(newRole);
   }
 }
 
-final homeDashboardProvider = StateNotifierProvider<HomeDashboardNotifier, HomeDashboardState>((ref) {
+final homeDashboardProvider =
+    StateNotifierProvider<HomeDashboardNotifier, HomeDashboardState>((ref) {
   final ds = ref.watch(moduleDDataSourceProvider);
   final localDs = ref.watch(authLocalDataSourceProvider);
   return HomeDashboardNotifier(ds, localDs);
@@ -383,6 +712,7 @@ class NotificationCenterNotifier extends StateNotifier<NotificationCenterState> 
   }
 
   void markAllAsRead() {
+    _dataSource.markAllNotificationsRead();
     final updated = state.items.map((it) {
       return NotificationItemModel(
         id: it.id,
@@ -393,6 +723,25 @@ class NotificationCenterNotifier extends StateNotifier<NotificationCenterState> 
         isUnread: false,
         actionUrl: it.actionUrl,
       );
+    }).toList();
+    state = state.copyWith(items: updated);
+  }
+
+  void markSingleAsRead(String id) {
+    _dataSource.markNotificationRead(id);
+    final updated = state.items.map((it) {
+      if (it.id == id) {
+        return NotificationItemModel(
+          id: it.id,
+          title: it.title,
+          body: it.body,
+          timeAgo: it.timeAgo,
+          type: it.type,
+          isUnread: false,
+          actionUrl: it.actionUrl,
+        );
+      }
+      return it;
     }).toList();
     state = state.copyWith(items: updated);
   }
@@ -452,5 +801,6 @@ final publicProfileProvider = FutureProvider.family<PublicProfileModel, String>(
 // -----------------------------------------------------------------------------
 final recommendationsProvider = FutureProvider<List<ProfileCardModel>>((ref) async {
   final ds = ref.watch(moduleDDataSourceProvider);
-  return ds.getRecommendations();
+  final dashState = ref.watch(homeDashboardProvider);
+  return ds.getRecommendations(role: dashState.role.isNotEmpty ? dashState.role : 'CREATOR');
 });

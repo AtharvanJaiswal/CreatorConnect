@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/config/feature_flags.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/domain/entities/user_role.dart';
 import '../../domain/repositories/profile_repository.dart';
@@ -21,13 +22,42 @@ class C15AddAnotherRoleScreen extends StatefulWidget {
 
 class _C15AddAnotherRoleScreenState extends State<C15AddAnotherRoleScreen> {
   late final ProfileRepository _repo;
+  late UserRole _effectiveCurrentRole;
   UserRole? _selectedRole;
   bool _isAdding = false;
+  bool _hasInitialized = false;
 
   @override
   void initState() {
     super.initState();
     _repo = widget.repository ?? ProfileRepositoryImpl();
+    _effectiveCurrentRole = widget.currentRole;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_hasInitialized) {
+      _hasInitialized = true;
+      final args = ModalRoute.of(context)?.settings.arguments;
+      UserRole? argRole;
+      if (args is UserRole) {
+        argRole = args;
+      } else if (args is Map && args['role'] is UserRole) {
+        argRole = args['role'] as UserRole;
+      }
+      _resolveRole(argRole);
+    }
+  }
+
+  Future<void> _resolveRole(UserRole? argRole) async {
+    final resolved = argRole ??
+        (widget.currentRole != UserRole.creator
+            ? widget.currentRole
+            : await _repo.resolveActiveRole(fallback: widget.currentRole));
+    if (mounted) {
+      setState(() => _effectiveCurrentRole = resolved);
+    }
   }
 
   Future<void> _handleAddRole() async {
@@ -36,17 +66,31 @@ class _C15AddAnotherRoleScreenState extends State<C15AddAnotherRoleScreen> {
     final confirmed = await AddRoleDialog.show(context, role: _selectedRole!);
     if (confirmed && mounted) {
       setState(() => _isAdding = true);
-      await _repo.addSecondaryRole(_selectedRole!);
-      if (mounted) {
-        setState(() => _isAdding = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${_selectedRole!.title} role added to your account!'),
-            backgroundColor: const Color(0xFF2E7D32),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-        Navigator.pop(context, true);
+      try {
+        await _repo.addSecondaryRole(_selectedRole!);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${_selectedRole!.title} role added to your account!'),
+              backgroundColor: const Color(0xFF2E7D32),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+          Navigator.pop(context, true);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not switch/add role: $e'),
+              backgroundColor: const Color(0xFFD32F2F),
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isAdding = false);
+        }
       }
     }
   }
@@ -90,12 +134,17 @@ class _C15AddAnotherRoleScreenState extends State<C15AddAnotherRoleScreen> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Operate as both a Creator and a Video Editor, or post campaigns as a Brand. Switch between modes instantly.',
-                    style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
+                  Text(
+                    (FeatureFlags.enableProfessionalRegistration ||
+                            FeatureFlags.enableBrandRegistration)
+                        ? 'Operate as both a Creator and a Video Editor, or post campaigns as a Brand. Switch between modes instantly.'
+                        : 'Operate as both a Creator and a Podcaster. Switch between modes instantly.',
+                    style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
                   ),
                   const SizedBox(height: 24),
-                  ...UserRole.values.map(_buildRoleTile),
+                  ...UserRole.values
+                      .where((r) => FeatureFlags.isRoleEnabled(r.apiValue))
+                      .map(_buildRoleTile),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -140,7 +189,7 @@ class _C15AddAnotherRoleScreenState extends State<C15AddAnotherRoleScreen> {
   }
 
   Widget _buildRoleTile(UserRole role) {
-    final isCurrent = role == widget.currentRole;
+    final isCurrent = role == _effectiveCurrentRole;
     final isSelected = _selectedRole == role;
 
     return Container(

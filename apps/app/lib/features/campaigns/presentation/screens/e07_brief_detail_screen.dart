@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/animations/app_animations.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/campaign_entities.dart';
@@ -56,9 +57,12 @@ class _E07BriefDetailScreenState extends ConsumerState<E07BriefDetailScreen> {
               CircleAvatar(
                 backgroundColor: Colors.black45,
                 child: IconButton(
-                  icon: Icon(
-                    brief.isBookmarked || _isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                    color: Colors.white,
+                  icon: SpringScaleBounce(
+                    trigger: brief.isBookmarked || _isBookmarked,
+                    child: Icon(
+                      brief.isBookmarked || _isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                      color: Colors.white,
+                    ),
                   ),
                   onPressed: () async {
                     final saved = await ref.read(campaignRepositoryProvider).toggleBookmarkBrief(brief.id);

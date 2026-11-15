@@ -167,10 +167,14 @@ class _C02BasicInformationScreenState extends State<C02BasicInformationScreen> {
   }
 
   Future<void> _onPickCity() async {
-    if (_cityLastChangedAt != null) {
+    if (_city.isNotEmpty && _cityLastChangedAt != null) {
       final daysSince = DateTime.now().difference(_cityLastChangedAt!).inDays;
       if (daysSince < 30) {
-        CityChangeLimitDialog.show(context, daysRemaining: 30 - daysSince);
+        CityChangeLimitDialog.show(
+          context,
+          daysRemaining: 30 - daysSince,
+          unlockDate: _cityLastChangedAt!.add(const Duration(days: 30)),
+        );
         return;
       }
     }
@@ -210,29 +214,49 @@ class _C02BasicInformationScreenState extends State<C02BasicInformationScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
-    final cityChanged = _initialCity != null && _initialCity!.isNotEmpty && _city != _initialCity;
-    final data = BasicInfoData(
-      photoUrl: _photoUrl,
-      displayName: _nameCtrl.text.trim(),
-      bio: _bioCtrl.text.trim(),
-      city: _city,
-      hubName: _hubName,
-      languages: _languages,
-      cityLastChangedAt: cityChanged ? DateTime.now() : (_cityLastChangedAt ?? DateTime.now()),
-    );
-
-    await _repo.updateBasicInfo(data);
-
-    if (mounted) {
-      setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Basic info updated successfully!'),
-          backgroundColor: Color(0xFF2E7D32),
-          duration: Duration(seconds: 2),
-        ),
+    try {
+      final cityChanged =
+          _initialCity != null && _initialCity!.isNotEmpty && _city != _initialCity;
+      final nextCityChangedAt = _city.isEmpty
+          ? _cityLastChangedAt
+          : (cityChanged || _cityLastChangedAt == null
+              ? DateTime.now()
+              : _cityLastChangedAt);
+      final data = BasicInfoData(
+        photoUrl: _photoUrl,
+        displayName: _nameCtrl.text.trim(),
+        bio: _bioCtrl.text.trim(),
+        city: _city,
+        hubName: _hubName,
+        languages: _languages,
+        cityLastChangedAt: nextCityChangedAt,
       );
-      Navigator.pop(context, true);
+
+      await _repo.updateBasicInfo(data);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Basic info updated successfully!'),
+            backgroundColor: Color(0xFF2E7D32),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not save basic info: $e'),
+            backgroundColor: const Color(0xFFD32F2F),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -398,7 +422,18 @@ class _C02BasicInformationScreenState extends State<C02BasicInformationScreen> {
                         onChanged: (_) => setState(() => _isDirty = true),
                         style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
                         decoration: _inputDecoration('Enter your name or creator pseudonym'),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Please enter a name' : null,
+                        validator: (v) {
+                          final trimmed = v?.trim() ?? '';
+                          if (trimmed.isEmpty) return 'Please enter a name';
+                          if (trimmed.length < 2) {
+                            return 'Display name must be at least 2 characters';
+                          }
+                          if (RegExp(r'(https?://|www\.)', caseSensitive: false)
+                              .hasMatch(trimmed)) {
+                            return 'URLs are not allowed in display name';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
                       // Bio
@@ -410,11 +445,11 @@ class _C02BasicInformationScreenState extends State<C02BasicInformationScreen> {
                             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                           ),
                           Text(
-                            '${_bioCtrl.text.length}/160',
+                            '${_bioCtrl.text.length}/500',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: _bioCtrl.text.length > 160 ? const Color(0xFFD32F2F) : AppColors.textTertiary,
+                              color: _bioCtrl.text.length > 500 ? const Color(0xFFD32F2F) : AppColors.textTertiary,
                             ),
                           ),
                         ],
@@ -423,7 +458,7 @@ class _C02BasicInformationScreenState extends State<C02BasicInformationScreen> {
                       TextFormField(
                         controller: _bioCtrl,
                         maxLines: 3,
-                        maxLength: 160,
+                        maxLength: 500,
                         buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
                         onChanged: (val) {
                           setState(() {
@@ -541,6 +576,7 @@ class _C02BasicInformationScreenState extends State<C02BasicInformationScreen> {
                                   _languages.remove(lang);
                                   _isDirty = true;
                                 });
+                                _saveDraft();
                               },
                             ),
                           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:creatorconnect/core/config/feature_flags.dart';
 import 'package:creatorconnect/features/auth/domain/entities/user_role.dart';
 import 'package:creatorconnect/features/auth/domain/repositories/auth_repository.dart';
 import 'package:creatorconnect/features/auth/presentation/screens/account_type_screen.dart';
@@ -130,9 +131,10 @@ void main() {
   });
 
   group('SCR-05: Account Type Selection Tests', () {
-    testWidgets('Renders all 4 roles and enables Continue on selection', (
+    testWidgets('Renders Phase 1 roles (Creator & Podcaster), hides gated roles, and enables Continue on selection', (
       WidgetTester tester,
     ) async {
+      FeatureFlags.resetToPhase1Defaults();
       tester.view.physicalSize = const Size(800, 1200);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -143,13 +145,15 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.textContaining('How will you'), findsOneWidget);
-      expect(find.byType(RoleCard), findsNWidgets(4));
+      expect(find.byType(RoleCard), findsNWidgets(2));
 
-      // Role titles
+      // Phase 1 active roles
       expect(find.text('Creator / Influencer'), findsOneWidget);
-      expect(find.text('Production Professional'), findsOneWidget);
       expect(find.text('Podcaster'), findsOneWidget);
-      expect(find.text('Brand'), findsOneWidget);
+
+      // Phase 2 & 3 roles gated
+      expect(find.text('Production Professional'), findsNothing);
+      expect(find.text('Brand'), findsNothing);
 
       // Continue starts disabled
       final continueBtnFinder = find.widgetWithText(AppButton, 'Continue');

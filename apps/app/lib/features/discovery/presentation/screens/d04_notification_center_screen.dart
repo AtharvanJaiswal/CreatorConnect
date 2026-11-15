@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/discovery_entities.dart';
 import '../controllers/module_d_controllers.dart';
+import 'request_details_screen.dart';
 
 class D04NotificationCenterScreen extends ConsumerWidget {
   const D04NotificationCenterScreen({super.key});
@@ -61,28 +62,43 @@ class D04NotificationCenterScreen extends ConsumerWidget {
 
           // Notification List
           Expanded(
-            child: state.filteredItems.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.notifications_off_outlined, size: 48, color: AppColors.textMuted),
-                        const SizedBox(height: 12),
-                        Text('No notifications yet', style: AppTypography.headingMedium().copyWith(fontSize: 16)),
-                        const SizedBox(height: 4),
-                        const Text('When someone accepts your brief or connects, it will show up here.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                      ],
-                    ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    itemCount: state.filteredItems.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (context, idx) {
-                      final item = state.filteredItems[idx];
-                      return _buildNotificationItem(context, item);
-                    },
-                  ),
+            child: RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: () async {
+                await notifier.loadNotifications();
+              },
+              child: state.isLoading
+                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                  : state.filteredItems.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                            Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.notifications_off_outlined, size: 48, color: AppColors.textMuted),
+                                  const SizedBox(height: 12),
+                                  Text('No notifications yet', style: AppTypography.headingMedium().copyWith(fontSize: 16)),
+                                  const SizedBox(height: 4),
+                                  const Text('When someone accepts your brief or connects, it will show up here.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      : ListView.separated(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                          itemCount: state.filteredItems.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          itemBuilder: (context, idx) {
+                            final item = state.filteredItems[idx];
+                            return _buildNotificationItem(context, ref, item);
+                          },
+                        ),
+            ),
           ),
         ],
       ),
@@ -112,14 +128,24 @@ class D04NotificationCenterScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildNotificationItem(BuildContext context, NotificationItemModel item) {
+  Widget _buildNotificationItem(BuildContext context, WidgetRef ref, NotificationItemModel item) {
     return InkWell(
       onTap: () {
-        if (item.actionUrl != null) {
-          if (item.actionUrl!.startsWith('/profile/')) {
-            final id = item.actionUrl!.split('/').last;
+        ref.read(notificationCenterProvider.notifier).markSingleAsRead(item.id);
+        if (item.actionUrl != null && item.actionUrl!.isNotEmpty) {
+          final url = item.actionUrl!;
+          if (url.startsWith('/requests/') || url.startsWith('/invitations/')) {
+            final id = url.split('/').last;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => RequestDetailsScreen(requestId: id),
+              ),
+            );
+          } else if (url.startsWith('/profile/')) {
+            final id = url.split('/').last;
             Navigator.pushNamed(context, '/profile/detail', arguments: id);
-          } else if (item.actionUrl == '/conversations') {
+          } else if (url == '/conversations') {
             Navigator.pushNamed(context, '/conversations');
           }
         }

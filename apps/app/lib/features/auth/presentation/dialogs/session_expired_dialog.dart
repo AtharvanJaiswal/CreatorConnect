@@ -25,9 +25,9 @@ class SessionExpiredDialog extends StatelessWidget {
       builder: (dialogContext) => PopScope(
         canPop: false,
         child: SessionExpiredDialog(
-          onLogin: () async {
+          onLogin: () {
             try {
-              await AuthRepositoryImpl().signOut();
+              AuthRepositoryImpl().signOut();
             } catch (_) {}
             onLogin();
           },

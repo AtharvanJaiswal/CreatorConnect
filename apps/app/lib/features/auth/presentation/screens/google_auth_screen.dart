@@ -1,8 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../data/datasources/auth_local_datasource.dart';
+import '../../data/datasources/auth_remote_datasource.dart';
+import '../../domain/entities/user_role.dart';
 import '../../domain/repositories/auth_repository.dart';
 
 class GoogleAuthScreen extends StatefulWidget {
@@ -15,10 +20,47 @@ class GoogleAuthScreen extends StatefulWidget {
 }
 
 class _GoogleAuthScreenState extends State<GoogleAuthScreen> {
+  StreamSubscription<AuthState>? _authSub;
+  bool _navigated = false;
+
   @override
   void initState() {
     super.initState();
+    _listenForOAuthSession();
     _initiateGoogleOAuth();
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
+  }
+
+  void _listenForOAuthSession() {
+    try {
+      final client = Supabase.instance.client;
+      _authSub = client.auth.onAuthStateChange.listen((data) async {
+        if (data.event == AuthChangeEvent.signedIn &&
+            data.session != null &&
+            !_navigated) {
+          _navigated = true;
+          final local = AuthLocalDataSource();
+          await local.setOnboardingCompleted(completed: true);
+          final savedRole = await local.getSelectedRole();
+          try {
+            await AuthRemoteDataSource().syncBackendUser(
+              preferredRole: savedRole ?? UserRole.creator.apiValue,
+              customToken: data.session!.accessToken,
+            );
+          } catch (_) {}
+          if (mounted) {
+            Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+          }
+        }
+      });
+    } catch (_) {
+      // Supabase may not be initialized in isolated widget tests.
+    }
   }
 
   void _initiateGoogleOAuth() async {

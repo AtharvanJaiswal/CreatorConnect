@@ -21,31 +21,68 @@ class C12VerificationCentreScreen extends StatefulWidget {
 
 class _C12VerificationCentreScreenState extends State<C12VerificationCentreScreen> {
   late final ProfileRepository _repo;
+  late UserRole _effectiveRole;
   VerificationData? _data;
+  ProfileOverviewData? _overview;
   bool _isLoading = true;
+  bool _hasInitialized = false;
 
   @override
   void initState() {
     super.initState();
     _repo = widget.repository ?? ProfileRepositoryImpl();
-    _loadData();
+    _effectiveRole = widget.userRole;
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-    final data = await _repo.getVerificationData();
-    if (mounted) {
-      setState(() {
-        _data = data;
-        _isLoading = false;
-      });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_hasInitialized) {
+      _hasInitialized = true;
+      final args = ModalRoute.of(context)?.settings.arguments;
+      UserRole? argRole;
+      if (args is UserRole) {
+        argRole = args;
+      } else if (args is Map && args['role'] is UserRole) {
+        argRole = args['role'] as UserRole;
+      } else if (args is Map && args['role'] is String) {
+        argRole = UserRole.fromString(args['role'] as String);
+      }
+      _loadData(routeRole: argRole);
+    }
+  }
+
+  Future<void> _loadData({UserRole? routeRole}) async {
+    if (!_isLoading && mounted) {
+      setState(() => _isLoading = true);
+    }
+    try {
+      final resolvedRole = routeRole ??
+          (widget.userRole != UserRole.creator
+              ? widget.userRole
+              : await _repo.resolveActiveRole(fallback: widget.userRole));
+      _effectiveRole = resolvedRole;
+      final data = await _repo.getVerificationData();
+      final overview = await _repo.getProfileOverview(role: _effectiveRole);
+      if (mounted) {
+        setState(() {
+          _data = data;
+          _overview = overview;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isBrand = widget.userRole == UserRole.brand;
+    final isBrand = _effectiveRole == UserRole.brand;
     final state = _data?.state ?? VerificationState.notStarted;
+    final isLevel1Done = _overview?.isLevel1 ?? false;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundWarm,
@@ -88,8 +125,8 @@ class _C12VerificationCentreScreenState extends State<C12VerificationCentreScree
                   level: 'Level 1',
                   title: 'Profile Complete',
                   subtitle: 'Basic details, niche skills, deliverables and commercial rates published.',
-                  isDone: true,
-                  isActive: state == VerificationState.notStarted,
+                  isDone: isLevel1Done,
+                  isActive: !isLevel1Done,
                 ),
                 const SizedBox(height: 12),
                 _buildLevelTile(
@@ -131,7 +168,8 @@ class _C12VerificationCentreScreenState extends State<C12VerificationCentreScree
                 ),
                 const SizedBox(height: 32),
                 // Action CTA
-                if (state == VerificationState.notStarted)
+                if (state == VerificationState.notStarted ||
+                    state == VerificationState.changesNeeded) ...[
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -150,7 +188,9 @@ class _C12VerificationCentreScreenState extends State<C12VerificationCentreScree
                         if (res == true) _loadData();
                       },
                       child: Text(
-                        isBrand ? 'Submit Business Documents' : 'Get Verified with Bio Code',
+                        state == VerificationState.changesNeeded
+                            ? (isBrand ? 'Resubmit Business Documents' : 'Fix & Resubmit Verification')
+                            : (isBrand ? 'Submit Business Documents' : 'Get Verified with Bio Code'),
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -158,8 +198,10 @@ class _C12VerificationCentreScreenState extends State<C12VerificationCentreScree
                         ),
                       ),
                     ),
-                  )
-                else
+                  ),
+                  if (state == VerificationState.changesNeeded) const SizedBox(height: 12),
+                ],
+                if (state != VerificationState.notStarted)
                   SizedBox(
                     width: double.infinity,
                     height: 52,

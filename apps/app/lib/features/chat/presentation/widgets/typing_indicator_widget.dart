@@ -27,6 +27,18 @@ class _TypingIndicatorWidgetState extends State<TypingIndicatorWidget> with Sing
   }
 
   @override
+  void deactivate() {
+    _controller.stop();
+    super.deactivate();
+  }
+
+  @override
+  void activate() {
+    super.activate();
+    _controller.repeat();
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();
@@ -34,8 +46,18 @@ class _TypingIndicatorWidgetState extends State<TypingIndicatorWidget> with Sing
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 6 * (1.0 - value)),
+          child: Opacity(opacity: value.clamp(0.0, 1.0), child: child),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -100,6 +122,7 @@ class _TypingIndicatorWidgetState extends State<TypingIndicatorWidget> with Sing
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

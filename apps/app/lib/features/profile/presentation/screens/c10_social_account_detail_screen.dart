@@ -33,22 +33,42 @@ class _C10SocialAccountDetailScreenState extends State<C10SocialAccountDetailScr
 
   Future<void> _syncMetrics() async {
     setState(() => _isSyncing = true);
-    await Future.delayed(const Duration(milliseconds: 1200));
-    if (mounted) {
-      setState(() {
-        _account = _account.copyWith(
-          lastSyncedText: 'Just now',
-          followersCount: '24.9k',
-        );
-        _isSyncing = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Audience metrics updated!'),
-          backgroundColor: Color(0xFF2E7D32),
-          duration: Duration(seconds: 2),
-        ),
+    try {
+      await Future.delayed(const Duration(milliseconds: 600));
+      final updated = _account.copyWith(
+        lastSyncedText: 'Just now',
+        followersCount: _account.followersCount ?? '24.9k',
+        postsCount: _account.postsCount ?? 128,
       );
+      final currentList = await _repo.getSocialAccounts();
+      final nextList = currentList
+          .map((a) => a.platform.toLowerCase() == updated.platform.toLowerCase() ? updated : a)
+          .toList();
+      await _repo.saveSocialAccountsDraft(nextList);
+
+      if (mounted) {
+        setState(() {
+          _account = updated;
+          _isSyncing = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Audience metrics updated!'),
+            backgroundColor: Color(0xFF2E7D32),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSyncing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not sync metrics: $e'),
+            backgroundColor: const Color(0xFFD32F2F),
+          ),
+        );
+      }
     }
   }
 
@@ -59,9 +79,33 @@ class _C10SocialAccountDetailScreenState extends State<C10SocialAccountDetailScr
       handle: _account.handle,
     );
     if (confirm && mounted) {
-      await _repo.disconnectSocialAccount(_account.platform);
-      if (!mounted) return;
-      Navigator.pop(context, true);
+      try {
+        await _repo.disconnectSocialAccount(_account.platform);
+        if (!mounted) return;
+        Navigator.pop(context, true);
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not disconnect account: $e'),
+            backgroundColor: const Color(0xFFD32F2F),
+          ),
+        );
+      }
+    }
+  }
+
+  (IconData, Color, Color) _platformVisuals(String platform) {
+    switch (platform.toLowerCase()) {
+      case 'youtube':
+        return (Icons.play_circle_filled_rounded, const Color(0xFFFFEBEE), const Color(0xFFD32F2F));
+      case 'linkedin':
+        return (Icons.business_center_rounded, const Color(0xFFE3F2FD), const Color(0xFF0A66C2));
+      case 'x':
+      case 'twitter':
+        return (Icons.alternate_email_rounded, AppColors.surfaceWarm, AppColors.textPrimary);
+      default:
+        return (Icons.camera_alt_rounded, const Color(0xFFFFF0F5), const Color(0xFFE1306C));
     }
   }
 
@@ -102,15 +146,18 @@ class _C10SocialAccountDetailScreenState extends State<C10SocialAccountDetailScr
               children: [
                 Row(
                   children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFFF0F5),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.camera_alt, color: Color(0xFFE1306C), size: 28),
-                    ),
+                    Builder(builder: (context) {
+                      final visuals = _platformVisuals(_account.platform);
+                      return Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: visuals.$2,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(visuals.$1, color: visuals.$3, size: 28),
+                      );
+                    }),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(

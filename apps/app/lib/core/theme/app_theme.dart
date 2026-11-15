@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../animations/app_animations.dart';
 import 'app_colors.dart';
 
 abstract final class AppSpacing {
@@ -69,6 +70,15 @@ class AppTheme {
             vertical: 14,
           ),
         ),
+      ),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: AppSlidePageTransitionsBuilder(),
+          TargetPlatform.iOS: AppSlidePageTransitionsBuilder(),
+          TargetPlatform.windows: AppSlidePageTransitionsBuilder(),
+          TargetPlatform.macOS: AppSlidePageTransitionsBuilder(),
+          TargetPlatform.linux: AppSlidePageTransitionsBuilder(),
+        },
       ),
     );
   }

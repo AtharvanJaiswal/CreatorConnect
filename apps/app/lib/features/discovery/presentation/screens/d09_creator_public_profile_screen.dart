@@ -9,6 +9,7 @@ import '../dialogs/pop_dialogs.dart';
 import '../widgets/d16_connect_sent_overlay.dart';
 import 'd10_brand_public_profile_screen.dart';
 import '../../../../core/widgets/safe_image.dart';
+import '../../../chat/presentation/controllers/chat_controllers.dart';
 
 class D09CreatorPublicProfileScreen extends ConsumerWidget {
   final String profileId;
@@ -398,9 +399,7 @@ class D09CreatorPublicProfileScreen extends ConsumerWidget {
             else ...[
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/conversations');
-                  },
+                  onPressed: () => _handleMessage(context, ref, profile),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.textPrimary,
                     side: const BorderSide(color: AppColors.textPrimary, width: 1.5),
@@ -430,6 +429,30 @@ class D09CreatorPublicProfileScreen extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  void _handleMessage(
+    BuildContext context,
+    WidgetRef ref,
+    PublicProfileModel profile,
+  ) async {
+    final targetUserId = profile.userId.isNotEmpty ? profile.userId : profile.id;
+    try {
+      final chatRepo = ref.read(chatRepositoryProvider);
+      final conv = await chatRepo.createOrGetDirectConversation(targetUserId);
+      if (context.mounted) {
+        Navigator.pushNamed(context, '/chat', arguments: conv.id);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not start conversation: ${e.toString().split('\n').first}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   void _handleConnect(

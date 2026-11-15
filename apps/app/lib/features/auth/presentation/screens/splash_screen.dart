@@ -57,7 +57,16 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     // 1. If user is already authenticated (active login/registration session), bypass onboarding & login
-    if (_authRepository.isAuthenticated) {
+    final authRepo = _authRepository;
+    if (authRepo.isAuthenticated) {
+      if (authRepo is AuthRepositoryImpl) {
+        try {
+          await authRepo.syncSession();
+        } catch (e) {
+          debugPrint('Splash sync notice: $e');
+        }
+      }
+      if (!mounted) return;
       Navigator.of(context).pushReplacementNamed('/home');
       return;
     }

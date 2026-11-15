@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/animations/app_animations.dart';
+import '../../../../core/config/feature_flags.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/discovery_entities.dart';
+import '../../domain/entities/dashboard_category_config.dart';
 import '../controllers/module_d_controllers.dart';
 import '../bottom_sheets/d15_profile_quick_view_sheet.dart';
 import '../dialogs/pop_dialogs.dart';
+import '../widgets/dashboard_category_strip.dart';
+import '../widgets/offline_banner_widget.dart';
 import '../widgets/d16_connect_sent_overlay.dart';
+import '../../../../core/network/connectivity_service.dart';
 import '../../../../core/widgets/safe_image.dart';
 
 class D01CreatorHomeScreen extends ConsumerWidget {
@@ -14,6 +20,9 @@ class D01CreatorHomeScreen extends ConsumerWidget {
   final VoidCallback onNavigateToChat;
   final ValueChanged<String> onOpenProfile;
   final ValueChanged<String> onApplyOpportunity;
+  final VoidCallback? onEditCategories;
+  final ValueChanged<String>? onQuickAction;
+  final VoidCallback? onOpenDiscoverTab;
 
   const D01CreatorHomeScreen({
     super.key,
@@ -21,13 +30,25 @@ class D01CreatorHomeScreen extends ConsumerWidget {
     required this.onNavigateToChat,
     required this.onOpenProfile,
     required this.onApplyOpportunity,
+    this.onEditCategories,
+    this.onQuickAction,
+    this.onOpenDiscoverTab,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(homeDashboardProvider);
+    final notifier = ref.read(homeDashboardProvider.notifier);
     final unreadCount = ref.watch(notificationCenterProvider).unreadCount;
     final remainingQuota = ref.watch(connectionQuotaProvider);
+    final persona = state.persona;
+    final visibleRecs = state.filteredRecommendations;
+    final visibleOpps = state.filteredOpportunities;
+    final primaryCategory = state.activeCategoryFilter ??
+        (state.selectedCategories.isNotEmpty
+            ? state.selectedCategories.first
+            : 'Fashion & Lifestyle');
+    final firstOpp = visibleOpps.isNotEmpty ? visibleOpps.first : null;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
@@ -36,7 +57,7 @@ class D01CreatorHomeScreen extends ConsumerWidget {
           color: AppColors.textPrimary,
           backgroundColor: AppColors.primary,
           onRefresh: () async {
-            await ref.read(homeDashboardProvider.notifier).loadDashboard('CREATOR');
+            await notifier.loadDashboard(state.role);
           },
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -46,26 +67,57 @@ class D01CreatorHomeScreen extends ConsumerWidget {
                 pinned: true,
                 delegate: _StickyCreatorHeaderDelegate(
                   unreadCount: unreadCount,
+                  accentColor: persona.accentColor,
+                  avatarInitial: persona.badgeLabel.isNotEmpty
+                      ? persona.badgeLabel[0]
+                      : 'C',
                   onNotificationsTap: onNavigateToNotifications,
                   onChatTap: onNavigateToChat,
                   onAvatarTap: () => onOpenProfile('self'),
                 ),
               ),
 
-              // 2. Greeting & Alert Banner
+              if (state.isOfflineFallback || !ref.watch(networkConnectivityProvider).isOnline)
+                SliverToBoxAdapter(
+                  child: OfflineBannerWidget(
+                    onRetry: () async {
+                      await ref.read(networkConnectivityProvider.notifier).probeConnectivity();
+                      notifier.loadDashboard(state.role);
+                    },
+                  ),
+                ),
+
+              // 2. Role Badge, Greeting, Alert Banner & Category Controls
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      DashboardRoleBadge(
+                        persona: persona,
+                        specialty: state.roleSpecialty,
+                        onTap: onQuickAction != null
+                            ? () => onQuickAction!('role_details')
+                            : null,
+                      ),
+                      const SizedBox(height: 10),
                       Text(
                         state.greeting,
                         style: AppTypography.displayLarge().copyWith(fontSize: 24),
                       ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${persona.dashboardSubtitle} · ${state.city}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                       const SizedBox(height: 12),
 
-                      // Application Review Alert Card
+                      // Role & Category-Personalized Alert Card
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
@@ -77,32 +129,51 @@ class D01CreatorHomeScreen extends ConsumerWidget {
                           children: [
                             Container(
                               padding: const EdgeInsets.all(8),
-                              decoration: const BoxDecoration(
-                                color: AppColors.primary,
+                              decoration: BoxDecoration(
+                                color: persona.accentColor,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.campaign_rounded, size: 20, color: AppColors.textPrimary),
+                              child: Icon(persona.roleIcon, size: 20, color: AppColors.textPrimary),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
-                                    '1 New Brief Match Nearby',
-                                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                                  Text(
+                                    persona.buildAlertTitle(
+                                      visibleOpps.length,
+                                      primaryCategory,
+                                    ),
+                                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    'Urban Vogue matches your Mumbai fashion rates.',
+                                    firstOpp != null
+                                        ? '${firstOpp.brandName} · ${firstOpp.category} (${firstOpp.location})'
+                                        : persona.buildAlertSubtitle(
+                                            primaryCategory: primaryCategory,
+                                            city: state.city,
+                                            specialty: state.roleSpecialty,
+                                          ),
                                     style: AppTypography.bodyMedium().copyWith(fontSize: 11.5),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ),
                             ),
                             const SizedBox(width: 8),
                             ElevatedButton(
-                              onPressed: () => onApplyOpportunity('opp-01'),
+                              onPressed: () {
+                                if (firstOpp != null) {
+                                  onApplyOpportunity(firstOpp.id);
+                                } else if (onOpenDiscoverTab != null) {
+                                  onOpenDiscoverTab!();
+                                } else {
+                                  onApplyOpportunity('opp-01');
+                                }
+                              },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.textPrimary,
                                 foregroundColor: Colors.white,
@@ -116,6 +187,29 @@ class D01CreatorHomeScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
+
+                      if (state.selectedCategories.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        DashboardCategoryFilterBar(
+                          categories: state.selectedCategories,
+                          selectedCategory: state.activeCategoryFilter,
+                          onSelectCategory: notifier.selectCategoryFilter,
+                          onEditCategories: onEditCategories,
+                        ),
+                      ],
+
+                      const SizedBox(height: 14),
+                      DashboardQuickActionsRow(
+                        persona: persona,
+                        onActionTap: (actionId) {
+                          if (onQuickAction != null) {
+                            onQuickAction!(actionId);
+                          } else if (actionId == 'edit_categories' &&
+                              onEditCategories != null) {
+                            onEditCategories!();
+                          }
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -128,23 +222,32 @@ class D01CreatorHomeScreen extends ConsumerWidget {
                   child: Row(
                     children: [
                       _buildStatCard(
-                        value: (state.stats['profileViews'] ?? '0').toString(),
+                        value: (state.stats['profileViews'] ?? 0).toString(),
                         label: 'PROFILE VIEWS',
-                        subtext: 'Real-time',
+                        subtext: (state.stats['profileViewsTrend'] ?? persona.stat1FallbackTrend).toString(),
                         subtextColor: AppColors.success,
                       ),
                       const SizedBox(width: 8),
                       _buildStatCard(
-                        value: (state.stats['avgRating'] ?? '5.0 ⭐').toString(),
+                        value: () {
+                          final rating = state.stats['avgRating'] ?? state.stats['rating'];
+                          if (rating == null || rating == 0 || rating == '0') return '—';
+                          return '$rating ⭐';
+                        }(),
                         label: 'AVG RATING',
-                        subtext: 'Verified score',
+                        subtext: persona.stat2FallbackSub,
                         subtextColor: AppColors.textSecondary,
                       ),
                       const SizedBox(width: 8),
                       _buildStatCard(
-                        value: (state.stats['openBriefs'] ?? state.stats['openBriefsCount'] ?? state.nearbyOpportunities.length).toString(),
-                        label: 'OPEN BRIEFS',
-                        subtext: 'Apply today',
+                        value: (state.stats['collabCalls'] ??
+                                state.stats['collabRequests'] ??
+                                state.stats['openBriefs'] ??
+                                state.stats['openBriefsCount'] ??
+                                visibleOpps.length)
+                            .toString(),
+                        label: 'COLLAB CALLS',
+                        subtext: persona.stat3FallbackSub,
                         subtextColor: const Color(0xFFC98A16),
                       ),
                     ],
@@ -152,26 +255,34 @@ class D01CreatorHomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              // 4. "Recommended for You" Horizontal Carousel
+              // 4. Role-Matched Recommendations Horizontal Carousel
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Text('Recommended for You', style: AppTypography.headingLarge().copyWith(fontSize: 17)),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.secondary.withOpacity(0.4),
-                              borderRadius: BorderRadius.circular(999),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                persona.recommendedSectionTitle,
+                                style: AppTypography.headingLarge().copyWith(fontSize: 17),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            child: const Text('SOW §13', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800)),
-                          ),
-                        ],
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.secondary.withOpacity(0.4),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: const Text('SOW §13', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800)),
+                            ),
+                          ],
+                        ),
                       ),
                       TextButton(
                         onPressed: () {
@@ -184,42 +295,86 @@ class D01CreatorHomeScreen extends ConsumerWidget {
                 ),
               ),
               SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 205,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    scrollDirection: Axis.horizontal,
-                    itemCount: state.recommendedProfiles.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (context, idx) {
-                      final item = state.recommendedProfiles[idx];
-                      return _buildCarouselProfileCard(
-                        context: context,
-                        ref: ref,
-                        profile: item,
-                        remainingQuota: remainingQuota,
-                        onOpenProfile: onOpenProfile,
-                      );
-                    },
-                  ),
-                ),
+                child: visibleRecs.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.border, width: 1.5),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.explore_outlined, color: AppColors.textSecondary),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  state.activeCategoryFilter != null
+                                      ? 'No ${state.activeCategoryFilter} matches in this snapshot yet.'
+                                      : 'Discover verified collaborators matched to your profile.',
+                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              if (state.activeCategoryFilter != null)
+                                TextButton(
+                                  onPressed: () => notifier.selectCategoryFilter(null),
+                                  child: const Text('Show All', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.textPrimary)),
+                                ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : SizedBox(
+                        height: 236,
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          scrollDirection: Axis.horizontal,
+                          itemCount: visibleRecs.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          itemBuilder: (context, idx) {
+                            final item = visibleRecs[idx];
+                            return StaggeredEntrance(
+                              index: idx,
+                              child: _buildCarouselProfileCard(
+                                context: context,
+                                ref: ref,
+                                profile: item,
+                                remainingQuota: remainingQuota,
+                                onOpenProfile: onOpenProfile,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
               ),
 
-              // 5. "Opportunities Near You" Vertical List
+              // 5. Role & Category Opportunities Vertical List
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Opportunities Near You', style: AppTypography.headingLarge().copyWith(fontSize: 17)),
+                      Expanded(
+                        child: Text(
+                          persona.opportunitiesSectionTitle,
+                          style: AppTypography.headingLarge().copyWith(fontSize: 17),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       InkWell(
                         onTap: () => PopDialogs.showLocationPrimer(context),
-                        child: const Row(
+                        child: Row(
                           children: [
-                            Icon(Icons.near_me_outlined, size: 14, color: AppColors.textSecondary),
-                            SizedBox(width: 4),
-                            Text('Mumbai MMR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                            const Icon(Icons.near_me_outlined, size: 14, color: AppColors.textSecondary),
+                            const SizedBox(width: 4),
+                            Text(
+                              state.city.isNotEmpty ? state.city : 'Mumbai MMR',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                            ),
                           ],
                         ),
                       ),
@@ -228,20 +383,62 @@ class D01CreatorHomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, idx) {
-                      final opp = state.nearbyOpportunities[idx];
-                      return _buildOpportunityCard(opp, onApplyOpportunity);
-                    },
-                    childCount: state.nearbyOpportunities.length,
+              if (visibleOpps.isEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.border, width: 1.5),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            state.activeCategoryFilter != null
+                                ? 'No collab calls in "${state.activeCategoryFilter}" right now'
+                                : 'No collab calls in your feed yet',
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Try switching categories or browse verified peers in Discovery.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                          ),
+                          const SizedBox(height: 12),
+                          if (state.activeCategoryFilter != null)
+                            OutlinedButton(
+                              onPressed: () => notifier.selectCategoryFilter(null),
+                              child: const Text('Clear Category Filter'),
+                            )
+                          else if (onOpenDiscoverTab != null)
+                            OutlinedButton(
+                              onPressed: onOpenDiscoverTab,
+                              child: const Text('Explore Discovery →'),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, idx) {
+                        final opp = visibleOpps[idx];
+                        return _buildOpportunityCard(opp, onApplyOpportunity);
+                      },
+                      childCount: visibleOpps.length,
+                    ),
                   ),
                 ),
-              ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 80)),
+              const SliverToBoxAdapter(child: SizedBox(height: 88)),
             ],
           ),
         ),
@@ -257,7 +454,7 @@ class D01CreatorHomeScreen extends ConsumerWidget {
   }) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
@@ -265,12 +462,31 @@ class D01CreatorHomeScreen extends ConsumerWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+              ),
+            ),
             const SizedBox(height: 2),
-            Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.textMuted)),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.textMuted),
+            ),
             const SizedBox(height: 3),
-            Text(subtext, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: subtextColor)),
+            Text(
+              subtext,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: subtextColor),
+            ),
           ],
         ),
       ),
@@ -296,6 +512,7 @@ class D01CreatorHomeScreen extends ConsumerWidget {
       },
       child: Container(
         width: 175,
+        clipBehavior: Clip.antiAlias,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -352,7 +569,8 @@ class D01CreatorHomeScreen extends ConsumerWidget {
                 border: Border.all(color: const Color(0xFFFFE486)),
               ),
               child: Text(
-                profile.niche,
+                DashboardCategoryCatalog.metaFor(profile.niche)?.name ??
+                    DashboardCategoryCatalog.formatCategoryName(profile.niche),
                 style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: Color(0xFF8C6A0A)),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -452,19 +670,48 @@ class D01CreatorHomeScreen extends ConsumerWidget {
             opp.title,
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
           ),
+          if (opp.category.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.28),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    opp.category,
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    opp.deliverableType,
+                    style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 6),
           Row(
             children: [
               Text(
-                '${opp.currency}${opp.budget}',
+                opp.budget > 0 ? '${opp.currency}${opp.budget}' : 'Peer Collab',
                 style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppColors.textPrimary),
               ),
               const Text(' • ', style: TextStyle(color: AppColors.textMuted)),
-              Text(
-                opp.location,
-                style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+              Expanded(
+                child: Text(
+                  opp.location,
+                  style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               ElevatedButton(
                 onPressed: () => onApply(opp.id),
                 style: ElevatedButton.styleFrom(
@@ -475,7 +722,12 @@ class D01CreatorHomeScreen extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
                 ),
-                child: const Text('Apply Now', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11)),
+                child: Text(
+                  FeatureFlags.enableCorporateApplications
+                      ? 'Apply Now'
+                      : 'Connect & Chat',
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
+                ),
               ),
             ],
           ),
@@ -487,12 +739,16 @@ class D01CreatorHomeScreen extends ConsumerWidget {
 
 class _StickyCreatorHeaderDelegate extends SliverPersistentHeaderDelegate {
   final int unreadCount;
+  final Color accentColor;
+  final String avatarInitial;
   final VoidCallback onNotificationsTap;
   final VoidCallback onChatTap;
   final VoidCallback onAvatarTap;
 
   _StickyCreatorHeaderDelegate({
     required this.unreadCount,
+    this.accentColor = AppColors.primary,
+    this.avatarInitial = 'C',
     required this.onNotificationsTap,
     required this.onChatTap,
     required this.onAvatarTap,
@@ -518,13 +774,21 @@ class _StickyCreatorHeaderDelegate extends SliverPersistentHeaderDelegate {
             onTap: onAvatarTap,
             child: Container(
               padding: const EdgeInsets.all(2),
-              decoration: const BoxDecoration(
-                color: AppColors.primary,
+              decoration: BoxDecoration(
+                color: accentColor,
                 shape: BoxShape.circle,
               ),
-              child: const CircleAvatar(
+              child: CircleAvatar(
                 radius: 17,
-                backgroundImage: NetworkImage('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'),
+                backgroundColor: AppColors.surface,
+                child: Text(
+                  avatarInitial,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
               ),
             ),
           ),
@@ -576,6 +840,8 @@ class _StickyCreatorHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant _StickyCreatorHeaderDelegate oldDelegate) {
-    return oldDelegate.unreadCount != unreadCount;
+    return oldDelegate.unreadCount != unreadCount ||
+        oldDelegate.accentColor != accentColor ||
+        oldDelegate.avatarInitial != avatarInitial;
   }
 }

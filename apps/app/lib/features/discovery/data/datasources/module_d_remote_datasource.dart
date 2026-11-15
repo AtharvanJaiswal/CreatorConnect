@@ -1,45 +1,14 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/config/env_config.dart';
+import '../../../../core/network/api_client.dart';
 import '../../domain/entities/discovery_entities.dart';
 
 class ModuleDRemoteDataSource {
   final Dio _dio;
 
   ModuleDRemoteDataSource({Dio? dio})
-      : _dio = dio ?? _createDefaultDio();
-
-  static Dio _createDefaultDio() {
-    final dio = Dio(
-      BaseOptions(
-        baseUrl: EnvironmentConfig.current.apiBaseUrl,
-        connectTimeout: const Duration(seconds: 8),
-        receiveTimeout: const Duration(seconds: 8),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      ),
-    );
-
-    dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          try {
-            final token = Supabase.instance.client.auth.currentSession?.accessToken;
-            if (token != null && token.isNotEmpty) {
-              options.headers['Authorization'] = 'Bearer $token';
-            }
-          } catch (_) {}
-          return handler.next(options);
-        },
-      ),
-    );
-
-    return dio;
-  }
+      : _dio = dio ?? ApiClient.createDio();
 
   // Connection quota tracking (5 per day on Free tier per SOW §17)
   static const String _quotaRemainingKey = 'cc_connections_quota_remaining';
@@ -68,7 +37,6 @@ class ModuleDRemoteDataSource {
       '/api/v1/home/dashboard',
       queryParameters: {
         if (role != null) 'role': role,
-        if (userId != null) 'userId': userId,
       },
     );
     if (response.statusCode == 200 && response.data != null) {
@@ -190,9 +158,12 @@ class ModuleDRemoteDataSource {
   }
 
   // 4. Recommendations ("For You" - SOW §13 Rule-based)
-  Future<List<ProfileCardModel>> getRecommendations({CancelToken? cancelToken}) async {
+  Future<List<ProfileCardModel>> getRecommendations({String? role, CancelToken? cancelToken}) async {
     final response = await _dio.get(
       '/api/v1/discover/recommendations',
+      queryParameters: {
+        if (role != null) 'role': role,
+      },
       cancelToken: cancelToken,
     );
     if (response.statusCode == 200 && response.data != null) {
@@ -290,5 +261,56 @@ class ModuleDRemoteDataSource {
       debugPrint('ModuleDRemoteDataSource.getNotifications error: $e');
     }
     return [];
+  }
+
+  Future<bool> markNotificationRead(String id) async {
+    try {
+      final response = await _dio.patch('/api/v1/notifications/$id/read');
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> markAllNotificationsRead() async {
+    try {
+      final response = await _dio.post('/api/v1/notifications/read-all');
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // 10. Collaboration Invitations / Requests Lifecycle (Section 5)
+  Future<CollaborationRequestModel?> getInvitation(String id) async {
+    try {
+      final response = await _dio.get('/api/v1/invitations/$id');
+      if (response.statusCode == 200 && response.data != null) {
+        return CollaborationRequestModel.fromJson(response.data as Map<String, dynamic>);
+      }
+    } catch (e) {
+      debugPrint('ModuleDRemoteDataSource.getInvitation error: $e');
+    }
+    return null;
+  }
+
+  Future<bool> acceptInvitation(String id) async {
+    try {
+      final response = await _dio.post('/api/v1/invitations/$id/accept');
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('ModuleDRemoteDataSource.acceptInvitation error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> declineInvitation(String id) async {
+    try {
+      final response = await _dio.post('/api/v1/invitations/$id/decline');
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('ModuleDRemoteDataSource.declineInvitation error: $e');
+      return false;
+    }
   }
 }

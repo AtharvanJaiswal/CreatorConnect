@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../profile/data/datasources/profile_local_datasource.dart';
+import '../../../profile/data/repositories/profile_repository_impl.dart';
 import '../../domain/entities/user_role.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_local_datasource.dart';
@@ -13,6 +16,40 @@ class AuthRepositoryImpl implements AuthRepository {
     AuthLocalDataSource? localDataSource,
   })  : _dataSource = dataSource ?? AuthRemoteDataSource(),
         _localDataSource = localDataSource ?? AuthLocalDataSource();
+
+  Future<void> _syncBackendBestEffort({
+    required String preferredRole,
+    String? customToken,
+  }) async {
+    try {
+      final syncData = await _dataSource.syncBackendUser(
+        preferredRole: preferredRole,
+        customToken: customToken,
+      );
+
+      final userObj = syncData['user'] as Map<String, dynamic>?;
+      if (userObj != null && userObj['id'] != null) {
+        await _localDataSource.saveCurrentUserId(userObj['id'].toString());
+      }
+      final rolesList = userObj?['roles'] as List<dynamic>?;
+      if (rolesList != null && rolesList.isNotEmpty) {
+        final dbRole = rolesList.first.toString().toUpperCase();
+        await _localDataSource.saveSelectedRole(dbRole);
+      }
+    } on IdentityConflictException {
+      rethrow;
+    } catch (e) {
+      // Allow authenticated Supabase session to proceed when local backend
+      // host (e.g. 10.0.2.2 on physical device) or DB pooler is unreachable.
+      debugPrint('Notice: Backend auth sync skipped/failed (proceeding locally): $e');
+    }
+  }
+
+  /// Synchronizes current active Supabase session with PostgreSQL database.
+  Future<void> syncSession([String? role]) async {
+    final effectiveRole = role ?? await _localDataSource.getSelectedRole() ?? 'CREATOR';
+    await _syncBackendBestEffort(preferredRole: effectiveRole);
+  }
 
   @override
   bool get isAuthenticated => _dataSource.hasActiveSession;
@@ -55,17 +92,16 @@ class AuthRepositoryImpl implements AuthRepository {
     await _localDataSource.setOnboardingCompleted(completed: true);
 
     // Synchronize persona role to backend PostgreSQL user model
-    final syncData = await _dataSource.syncBackendUser(
+    await _syncBackendBestEffort(
       preferredRole: selectedRole.apiValue,
       customToken: response.session?.accessToken,
     );
 
-    final userObj = syncData['user'] as Map<String, dynamic>?;
-    final rolesList = userObj?['roles'] as List<dynamic>?;
-    if (rolesList != null && rolesList.isNotEmpty) {
-      final dbRole = rolesList.first.toString().toUpperCase();
-      await _localDataSource.saveSelectedRole(dbRole);
-    }
+    // Invalidate in-memory singleton state and reload freshly for new user
+    ProfileRepositoryImpl.resetForTesting();
+    try {
+      await ProfileRepositoryImpl.instance.reloadFromBackend();
+    } catch (_) {}
 
     return response;
   }
@@ -88,18 +124,17 @@ class AuthRepositoryImpl implements AuthRepository {
 
     // If session returned immediately (auto-confirm or instant session), sync role
     if (response.session?.accessToken != null) {
-      final syncData = await _dataSource.syncBackendUser(
+      await _syncBackendBestEffort(
         preferredRole: selectedRole.apiValue,
         customToken: response.session?.accessToken,
       );
-
-      final userObj = syncData['user'] as Map<String, dynamic>?;
-      final rolesList = userObj?['roles'] as List<dynamic>?;
-      if (rolesList != null && rolesList.isNotEmpty) {
-        final dbRole = rolesList.first.toString().toUpperCase();
-        await _localDataSource.saveSelectedRole(dbRole);
-      }
     }
+
+    // Invalidate in-memory singleton state and reload freshly for new user
+    ProfileRepositoryImpl.resetForTesting();
+    try {
+      await ProfileRepositoryImpl.instance.reloadFromBackend();
+    } catch (_) {}
 
     return response;
   }
@@ -110,15 +145,14 @@ class AuthRepositoryImpl implements AuthRepository {
     if (success) {
       await _localDataSource.setOnboardingCompleted(completed: true);
       final savedRole = await _localDataSource.getSelectedRole();
-      final syncData = await _dataSource.syncBackendUser(
+      await _syncBackendBestEffort(
         preferredRole: savedRole ?? UserRole.creator.apiValue,
       );
-      final userObj = syncData['user'] as Map<String, dynamic>?;
-      final rolesList = userObj?['roles'] as List<dynamic>?;
-      if (rolesList != null && rolesList.isNotEmpty) {
-        final dbRole = rolesList.first.toString().toUpperCase();
-        await _localDataSource.saveSelectedRole(dbRole);
-      }
+
+      ProfileRepositoryImpl.resetForTesting();
+      try {
+        await ProfileRepositoryImpl.instance.reloadFromBackend();
+      } catch (_) {}
     }
     return success;
   }
@@ -136,21 +170,28 @@ class AuthRepositoryImpl implements AuthRepository {
     // Mark onboarding completed on successful login
     await _localDataSource.setOnboardingCompleted(completed: true);
 
-    // Synchronize persona role to backend PostgreSQL user model
     final savedRole = await _localDataSource.getSelectedRole();
+    final metaRole = response.user?.userMetadata?['role'] as String?;
+    final effectiveRole = (savedRole != null && savedRole.trim().isNotEmpty)
+        ? savedRole.trim().toUpperCase()
+        : ((metaRole != null && metaRole.trim().isNotEmpty)
+            ? metaRole.trim().toUpperCase()
+            : UserRole.creator.apiValue);
+    await _localDataSource.saveSelectedRole(effectiveRole);
+
+    // Best-effort sync with backend without blocking redirect on local timeout
     if (response.session?.accessToken != null) {
-      final syncData = await _dataSource.syncBackendUser(
-        preferredRole: savedRole ?? UserRole.creator.apiValue,
+      await _syncBackendBestEffort(
+        preferredRole: effectiveRole,
         customToken: response.session?.accessToken,
       );
-
-      final userObj = syncData['user'] as Map<String, dynamic>?;
-      final rolesList = userObj?['roles'] as List<dynamic>?;
-      if (rolesList != null && rolesList.isNotEmpty) {
-        final dbRole = rolesList.first.toString().toUpperCase();
-        await _localDataSource.saveSelectedRole(dbRole);
-      }
     }
+
+    // Invalidate in-memory singleton state and reload freshly for new user
+    ProfileRepositoryImpl.resetForTesting();
+    try {
+      await ProfileRepositoryImpl.instance.reloadFromBackend();
+    } catch (_) {}
 
     return response;
   }
@@ -166,8 +207,11 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> signOut() {
-    return _dataSource.signOut();
+  Future<void> signOut() async {
+    await _dataSource.signOut();
+    await _localDataSource.clearOnboarding();
+    await ProfileLocalDataSource().clearAll();
+    ProfileRepositoryImpl.resetForTesting();
   }
 }
 

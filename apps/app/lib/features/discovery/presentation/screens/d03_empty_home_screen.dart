@@ -1,19 +1,32 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../domain/entities/dashboard_category_config.dart';
+import '../widgets/dashboard_category_strip.dart';
 
 class D03EmptyHomeScreen extends StatelessWidget {
   final VoidCallback onContinueProfileSetup;
   final VoidCallback onExploreDiscovery;
+  final int completionPercentage;
+  final String roleKey;
+  final List<String> selectedCategories;
+  final VoidCallback? onPickCategories;
 
   const D03EmptyHomeScreen({
     super.key,
     required this.onContinueProfileSetup,
     required this.onExploreDiscovery,
+    this.completionPercentage = 40,
+    this.roleKey = 'EMPTY',
+    this.selectedCategories = const [],
+    this.onPickCategories,
   });
 
   @override
   Widget build(BuildContext context) {
+    final safePct = completionPercentage.clamp(0, 100);
+    final persona = DashboardCategoryCatalog.personaForRole(roleKey);
+
     return Scaffold(
       backgroundColor: AppColors.backgroundPrimary,
       body: SafeArea(
@@ -22,6 +35,8 @@ class D03EmptyHomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              DashboardRoleBadge(persona: persona),
+              const SizedBox(height: 12),
               Text('Welcome to CreatorConnect 👋', style: AppTypography.displayLarge().copyWith(fontSize: 24)),
               const SizedBox(height: 6),
               Text(
@@ -30,7 +45,7 @@ class D03EmptyHomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // 40% Completion Card
+              // Dynamic Completion Card
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -54,15 +69,15 @@ class D03EmptyHomeScreen extends StatelessWidget {
                           width: 64,
                           height: 64,
                           child: CircularProgressIndicator(
-                            value: 0.40,
+                            value: safePct / 100.0,
                             strokeWidth: 6,
                             backgroundColor: AppColors.backgroundSecondary,
                             valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
                           ),
                         ),
-                        const Text(
-                          '40%',
-                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                        Text(
+                          '$safePct%',
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
                         ),
                       ],
                     ),
@@ -71,9 +86,9 @@ class D03EmptyHomeScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Your profile is 40% complete',
-                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                          Text(
+                            'Your profile is $safePct% complete',
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
                           ),
                           const SizedBox(height: 4),
                           const Text(
@@ -99,7 +114,24 @@ class D03EmptyHomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 20),
+
+              if (selectedCategories.isNotEmpty) ...[
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: selectedCategories
+                      .map(
+                        (cat) => Chip(
+                          label: Text(cat, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                          backgroundColor: AppColors.surface,
+                          side: const BorderSide(color: AppColors.border),
+                        ),
+                      )
+                      .toList(),
+                ),
+                const SizedBox(height: 20),
+              ],
 
               // Dashed Empty Recommendation Card
               Text('Recommended Collaborators', style: AppTypography.headingLarge().copyWith(fontSize: 16)),
@@ -109,17 +141,17 @@ class D03EmptyHomeScreen extends StatelessWidget {
                 title: 'No recommendations yet',
                 subtitle: 'Once you select your primary niche and location, matched creators will appear here.',
                 buttonText: 'Set Preferences',
-                onAction: onContinueProfileSetup,
+                onAction: onPickCategories ?? onContinueProfileSetup,
               ),
               const SizedBox(height: 24),
 
               // Dashed Empty Opportunities Card
-              Text('Nearby Opportunities', style: AppTypography.headingLarge().copyWith(fontSize: 16)),
+              Text('Collabs & Opportunities Nearby', style: AppTypography.headingLarge().copyWith(fontSize: 16)),
               const SizedBox(height: 10),
               _buildDashedEmptyCard(
                 icon: Icons.work_outline_rounded,
-                title: 'No open briefs in your inbox',
-                subtitle: 'Browse all brand campaigns and pitch directly via Discovery.',
+                title: 'No collab calls in your inbox',
+                subtitle: 'Browse verified creators & podcasters and pitch collaborations via Discovery.',
                 buttonText: 'Explore Discover →',
                 onAction: onExploreDiscovery,
               ),
