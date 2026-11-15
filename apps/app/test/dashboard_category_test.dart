@@ -241,8 +241,8 @@ void main() {
 
       await tester.drag(find.byType(CustomScrollView), const Offset(0, 900));
       await tester.pumpAndSettle();
-      // Alert banner "View" button targets filtered opportunity
-      await tester.tap(find.text('View'));
+      // Alert banner "Review →" button targets filtered opportunity
+      await tester.tap(find.text('Review →'));
       expect(appliedOppId, 'opp-tech');
     });
 
@@ -298,7 +298,7 @@ void main() {
       container.read(homeDashboardProvider.notifier).switchRole('PODCASTER');
       await tester.pumpAndSettle();
 
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, 350));
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, 800));
       await tester.pumpAndSettle();
       expect(find.text('PODCASTER'), findsOneWidget);
       expect(find.textContaining('Podcast Show Cockpit'), findsOneWidget);
