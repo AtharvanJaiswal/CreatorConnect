@@ -146,12 +146,9 @@ class _SplashScreenState extends State<SplashScreen>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Squircle App Icon with Infinity / Link
+                      // Squircle App Icon
                       const BrandLogoMark(
-                        size: 82,
-                        borderRadius: 22,
-                        backgroundColor: AppColors.textPrimary,
-                        iconColor: AppColors.backgroundPrimary,
+                        size: 96,
                       ),
                       const SizedBox(height: 28),
 
