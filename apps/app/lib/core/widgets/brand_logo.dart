@@ -48,33 +48,33 @@ class BrandLogoMark extends StatelessWidget {
 class _CreatorPeepMarkPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. Draw Cream Squircle
+    // 1. Draw Cream Squircle filling the bounds
     final rrect = RRect.fromRectAndRadius(
       Rect.fromLTWH(
-        size.width * 0.05,
-        size.height * 0.05,
-        size.width * 0.9,
-        size.height * 0.9,
+        size.width * 0.02,
+        size.height * 0.02,
+        size.width * 0.96,
+        size.height * 0.96,
       ),
-      Radius.circular(size.width * 0.26),
+      Radius.circular(size.width * 0.28),
     );
-    final bgPaint = Paint()..color = const Color(0xFFFAF3E8);
+    final bgPaint = Paint()..color = const Color(0xFFFBF3E8);
     canvas.drawRRect(rrect, bgPaint);
 
     final center = Offset(size.width / 2, size.height / 2);
-    final ringRadius = size.width * 0.30;
+    final ringRadius = size.width * 0.35;
 
     // 2. Yellow Ring (#FDD24B)
     final ringPaint = Paint()
       ..color = const Color(0xFFFDD24B)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * 0.085;
+      ..strokeWidth = size.width * 0.10;
     canvas.drawCircle(center, ringRadius, ringPaint);
 
     // 3. Eye Lavender Outlines / Rings (#B8A2F8)
-    final eyeRadius = size.width * 0.095;
-    final leftEyeCenter = Offset(center.dx - size.width * 0.095, center.dy);
-    final rightEyeCenter = Offset(center.dx + size.width * 0.095, center.dy);
+    final eyeRadius = size.width * 0.11;
+    final leftEyeCenter = Offset(center.dx - size.width * 0.11, center.dy);
+    final rightEyeCenter = Offset(center.dx + size.width * 0.11, center.dy);
 
     final eyeRingPaint = Paint()
       ..color = const Color(0xFFB8A2F8)
@@ -84,7 +84,7 @@ class _CreatorPeepMarkPainter extends CustomPainter {
 
     // 4. Pupils (#0F0D0D)
     final pupilPaint = Paint()..color = const Color(0xFF0F0D0D);
-    final pupilRadius = eyeRadius * 0.76;
+    final pupilRadius = eyeRadius * 0.78;
     canvas.drawCircle(leftEyeCenter, pupilRadius, pupilPaint);
     canvas.drawCircle(rightEyeCenter, pupilRadius, pupilPaint);
 

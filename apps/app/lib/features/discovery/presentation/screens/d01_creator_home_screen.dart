@@ -446,7 +446,7 @@ class D01CreatorHomeScreen extends ConsumerWidget {
                         ),
                       )
                     : SizedBox(
-                        height: 215,
+                        height: 232,
                         child: ListView.separated(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           scrollDirection: Axis.horizontal,
@@ -761,7 +761,7 @@ class D01CreatorHomeScreen extends ConsumerWidget {
             const Spacer(),
             SizedBox(
               width: double.infinity,
-              height: 30,
+              height: 32,
               child: ElevatedButton(
                 onPressed: () =>
                     _handleConnect(context, ref, profile, remainingQuota),
