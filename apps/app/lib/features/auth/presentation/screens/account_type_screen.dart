@@ -79,7 +79,7 @@ class _AccountTypeScreenState extends State<AccountTypeScreen>
 
                   // Headline & Subtitle
                   Text(
-                    'How will you\nuse CreatorConnect?',
+                    'How will you\nuse CreatorPeep?',
                     style: AppTypography.headingLarge(
                       color: AppColors.textPrimary,
                     ).copyWith(

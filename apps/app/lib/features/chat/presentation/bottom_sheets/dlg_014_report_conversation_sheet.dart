@@ -59,7 +59,7 @@ class _Dlg014ReportConversationSheetState extends State<Dlg014ReportConversation
           ),
           const SizedBox(height: 6),
           const Text(
-            'Reports are reviewed by the CreatorConnect safety team within 24 hours under SOW §14.',
+            'Reports are reviewed by the CreatorPeep safety team within 24 hours under SOW §14.',
             style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, height: 1.35),
           ),
           const SizedBox(height: 16),

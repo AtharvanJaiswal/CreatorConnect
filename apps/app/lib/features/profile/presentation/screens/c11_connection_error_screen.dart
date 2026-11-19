@@ -28,7 +28,7 @@ class C11ConnectionErrorScreen extends StatelessWidget {
       case 'x':
       case 'twitter':
         return const [
-          'Authorize CreatorConnect read-only access during the X sign-in prompt.',
+          'Authorize CreatorPeep read-only access during the X sign-in prompt.',
           'Ensure your account is public and not temporarily locked.',
           'Confirm the handle matches your active X username without typos.',
         ];

@@ -200,7 +200,7 @@ class C14VerificationResultScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Your profile is now marked with the official CreatorConnect verified checkmark. Brand collaborations are fully unlocked.',
+              'Your profile is now marked with the official CreatorPeep verified checkmark. Brand collaborations are fully unlocked.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
             ),

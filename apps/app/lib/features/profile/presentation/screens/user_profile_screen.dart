@@ -1577,7 +1577,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
         content: const Text(
-          'Are you sure you want to log out of your CreatorConnect account?',
+          'Are you sure you want to log out of your CreatorPeep account?',
         ),
         actions: [
           TextButton(

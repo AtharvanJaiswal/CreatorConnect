@@ -75,7 +75,7 @@ class PermissionExplainerSheet extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           const Text(
-            'WHAT CREATORCONNECT WILL ACCESS',
+            'WHAT CREATORPEEP WILL ACCESS',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -99,7 +99,7 @@ class PermissionExplainerSheet extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           const Text(
-            'WHAT CREATORCONNECT WILL NEVER ACCESS',
+            'WHAT CREATORPEEP WILL NEVER ACCESS',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,

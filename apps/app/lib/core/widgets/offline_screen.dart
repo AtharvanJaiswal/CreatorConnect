@@ -49,7 +49,7 @@ class OfflineScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               const Text(
-                'CreatorConnect cannot reach the backend server. Your drafts, profile data, and cached feeds remain safely preserved.',
+                'CreatorPeep cannot reach the backend server. Your drafts, profile data, and cached feeds remain safely preserved.',
                 style: TextStyle(
                   fontSize: 14,
                   height: 1.5,

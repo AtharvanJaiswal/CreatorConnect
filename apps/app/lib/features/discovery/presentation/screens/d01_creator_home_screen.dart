@@ -1103,7 +1103,7 @@ class _StickyCreatorHeaderDelegate extends SliverPersistentHeaderDelegate {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'CreatorConnect',
+                'CreatorPeep',
                 style: AppTypography.headingLarge().copyWith(fontSize: 17, height: 1.1),
               ),
               const SizedBox(height: 2),

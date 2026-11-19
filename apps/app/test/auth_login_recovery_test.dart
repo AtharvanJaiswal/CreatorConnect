@@ -130,7 +130,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('Welcome back'), findsOneWidget);
-      expect(find.text('Log in to continue to CreatorConnect.'), findsOneWidget);
+      expect(find.text('Log in to continue to CreatorPeep.'), findsOneWidget);
       expect(find.text('EMAIL OR MOBILE'), findsOneWidget);
       expect(find.text('PASSWORD'), findsOneWidget);
       expect(find.text('Forgot password?'), findsOneWidget);

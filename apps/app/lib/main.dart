@@ -98,7 +98,7 @@ class _CreatorConnectAppState extends State<CreatorConnectApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'CreatorConnect',
+      title: 'CreatorPeep',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       home: const SplashScreen(),
@@ -385,7 +385,7 @@ class AppTemplateHomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('CreatorConnect'),
+        title: const Text('CreatorPeep'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8.0),

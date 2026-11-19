@@ -136,7 +136,7 @@ class _GoogleAuthScreenState extends State<GoogleAuthScreen> {
 
                   // Subtitle
                   Text(
-                    "You'll be returned to CreatorConnect\nonce you've signed in.",
+                    "You'll be returned to CreatorPeep\nonce you've signed in.",
                     style: AppTypography.bodyMedium(
                       color: AppColors.textSecondary,
                     ),

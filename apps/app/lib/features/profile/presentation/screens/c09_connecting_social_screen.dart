@@ -31,7 +31,7 @@ class _C09ConnectingSocialScreenState extends State<C09ConnectingSocialScreen> {
     'Opening secure OAuth session...',
     'Verifying account permissions...',
     'Syncing audience metrics & media reach...',
-    'Saving connection to CreatorConnect server...',
+    'Saving connection to CreatorPeep server...',
   ];
 
   @override
@@ -115,7 +115,7 @@ class _C09ConnectingSocialScreenState extends State<C09ConnectingSocialScreen> {
               const SizedBox(height: 8),
               Text(
                 _isSuccess
-                    ? 'Synced @${widget.handle} with CreatorConnect'
+                    ? 'Synced @${widget.handle} with CreatorPeep'
                     : 'Please wait while we establish a secure read-only handshake.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),

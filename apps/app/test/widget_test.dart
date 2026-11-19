@@ -90,7 +90,7 @@ void main() {
 
       // Verify Brand elements on Splash screen
       expect(find.byType(SplashScreen), findsOneWidget);
-      expect(find.text('CreatorConnect'), findsOneWidget);
+      expect(find.text('CreatorPeep'), findsOneWidget);
       expect(find.text('create together'), findsOneWidget);
 
       // Verify tap on splash screen navigates to OnboardingScreen for first-time user

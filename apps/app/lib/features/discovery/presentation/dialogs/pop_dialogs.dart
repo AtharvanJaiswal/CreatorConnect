@@ -30,7 +30,7 @@ class PopDialogs {
           ],
         ),
         content: Text(
-          'Allow CreatorConnect to access your approximate location to highlight local opportunities and nearby verified collaborators in your city.',
+          'Allow CreatorPeep to access your approximate location to highlight local opportunities and nearby verified collaborators in your city.',
           style: AppTypography.bodyMedium().copyWith(fontSize: 13),
         ),
         actions: [

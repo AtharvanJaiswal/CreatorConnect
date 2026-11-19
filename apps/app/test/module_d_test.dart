@@ -218,7 +218,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('CreatorConnect'), findsOneWidget);
+      expect(find.text('CreatorPeep'), findsOneWidget);
       expect(find.text('PROFILE VIEWS'), findsOneWidget);
       expect(find.text('AVG RATING'), findsOneWidget);
       expect(find.text('COLLAB CALLS'), findsOneWidget);

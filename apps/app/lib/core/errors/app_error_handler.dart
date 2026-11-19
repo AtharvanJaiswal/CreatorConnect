@@ -43,7 +43,7 @@ class AppErrorHandler {
 
         case DioExceptionType.connectionError:
           return OfflineException(
-            message: 'Unable to reach the CreatorConnect server. Please verify your internet connection.',
+            message: 'Unable to reach the CreatorPeep server. Please verify your internet connection.',
             originalError: error,
           );
 

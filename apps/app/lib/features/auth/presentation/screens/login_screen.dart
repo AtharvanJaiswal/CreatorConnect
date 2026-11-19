@@ -206,7 +206,7 @@ class _LoginScreenState extends State<LoginScreen>
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
-                        'Log in to continue to CreatorConnect.',
+                        'Log in to continue to CreatorPeep.',
                         style: AppTypography.bodyMedium(
                           color: AppColors.textSecondary,
                         ),

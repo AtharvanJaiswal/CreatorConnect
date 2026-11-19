@@ -207,7 +207,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Core header & KPI labels preserved
-      expect(find.text('CreatorConnect'), findsOneWidget);
+      expect(find.text('CreatorPeep'), findsOneWidget);
       expect(find.text('CREATOR'), findsOneWidget);
       expect(find.text('PROFILE VIEWS'), findsOneWidget);
       expect(find.text('AVG RATING'), findsOneWidget);

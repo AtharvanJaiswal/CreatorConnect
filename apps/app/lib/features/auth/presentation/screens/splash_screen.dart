@@ -157,7 +157,7 @@ class _SplashScreenState extends State<SplashScreen>
 
                       // Brand Title: Archivo 800
                       Text(
-                        'CreatorConnect',
+                        'CreatorPeep',
                         style: AppTypography.displayLarge(
                           color: AppColors.textPrimary,
                         ).copyWith(

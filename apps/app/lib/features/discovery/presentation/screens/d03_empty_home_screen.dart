@@ -37,7 +37,7 @@ class D03EmptyHomeScreen extends StatelessWidget {
             children: [
               DashboardRoleBadge(persona: persona),
               const SizedBox(height: 12),
-              Text('Welcome to CreatorConnect 👋', style: AppTypography.displayLarge().copyWith(fontSize: 24)),
+              Text('Welcome to CreatorPeep 👋', style: AppTypography.displayLarge().copyWith(fontSize: 24)),
               const SizedBox(height: 6),
               Text(
                 'Complete your profile setup to unlock direct collaborations and briefs.',
