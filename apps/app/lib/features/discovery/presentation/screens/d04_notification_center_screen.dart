@@ -1,0 +1,307 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
+import '../../domain/entities/discovery_entities.dart';
+import '../controllers/module_d_controllers.dart';
+import 'request_details_screen.dart';
+
+class D04NotificationCenterScreen extends ConsumerWidget {
+  const D04NotificationCenterScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(notificationCenterProvider);
+    final notifier = ref.read(notificationCenterProvider.notifier);
+
+    return Scaffold(
+      backgroundColor: AppColors.backgroundPrimary,
+      appBar: AppBar(
+        backgroundColor: AppColors.backgroundPrimary,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text('Notifications', style: AppTypography.headingLarge().copyWith(fontSize: 18)),
+        actions: [
+          if (state.unreadCount > 0)
+            TextButton(
+              onPressed: () => notifier.markAllAsRead(),
+              child: const Text('Mark all as read', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.textPrimary)),
+            ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Filter Tabs
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: Row(
+              children: [
+                _buildTabChip(
+                  label: 'All',
+                  isSelected: state.selectedTab == NotificationTab.all,
+                  onTap: () => notifier.setTab(NotificationTab.all),
+                ),
+                const SizedBox(width: 8),
+                _buildTabChip(
+                  label: 'Applications',
+                  isSelected: state.selectedTab == NotificationTab.applications,
+                  onTap: () => notifier.setTab(NotificationTab.applications),
+                ),
+                const SizedBox(width: 8),
+                _buildTabChip(
+                  label: 'System & Reviews',
+                  isSelected: state.selectedTab == NotificationTab.system,
+                  onTap: () => notifier.setTab(NotificationTab.system),
+                ),
+              ],
+            ),
+          ),
+
+          // Notification List
+          Expanded(
+            child: RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: () async {
+                await notifier.loadNotifications();
+              },
+              child: state.isLoading
+                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                  : state.filteredItems.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                            Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.notifications_off_outlined, size: 48, color: AppColors.textMuted),
+                                  const SizedBox(height: 12),
+                                  Text('No notifications yet', style: AppTypography.headingMedium().copyWith(fontSize: 16)),
+                                  const SizedBox(height: 4),
+                                  const Text('When someone accepts your brief or connects, it will show up here.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      : ListView.separated(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                          itemCount: state.filteredItems.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          itemBuilder: (context, idx) {
+                            final item = state.filteredItems[idx];
+                            return _buildNotificationItem(context, ref, item);
+                          },
+                        ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (_) => onTap(),
+      selectedColor: AppColors.textPrimary,
+      backgroundColor: AppColors.surface,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : AppColors.textPrimary,
+        fontWeight: FontWeight.w700,
+        fontSize: 12,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(999),
+        side: BorderSide(color: isSelected ? AppColors.textPrimary : AppColors.border),
+      ),
+    );
+  }
+
+  Widget _buildNotificationItem(BuildContext context, WidgetRef ref, NotificationItemModel item) {
+    return Dismissible(
+      key: ValueKey(item.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFBE9E7),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+      ),
+      onDismissed: (_) {
+        ref.read(notificationCenterProvider.notifier).markSingleAsRead(item.id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Notification dismissed'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      },
+      child: InkWell(
+        onTap: () {
+          ref.read(notificationCenterProvider.notifier).markSingleAsRead(item.id);
+          if (item.actionUrl != null && item.actionUrl!.isNotEmpty) {
+            final url = item.actionUrl!;
+            if (url.startsWith('/requests/') || url.startsWith('/invitations/')) {
+              final id = url.split('/').last;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RequestDetailsScreen(requestId: id),
+                ),
+              );
+            } else if (url.startsWith('/profile/')) {
+              final id = url.split('/').last;
+              Navigator.pushNamed(context, '/profile/detail', arguments: id);
+            } else if (url == '/conversations') {
+              Navigator.pushNamed(context, '/conversations');
+            }
+          }
+        },
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: item.isUnread ? const Color(0xFFFFFDF5) : AppColors.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: item.isUnread ? AppColors.primary : AppColors.border,
+              width: item.isUnread ? 1.8 : 1.2,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTypeIcon(item.type),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            item.title,
+                            style: TextStyle(
+                              fontWeight: item.isUnread ? FontWeight.w900 : FontWeight.w700,
+                              fontSize: 13.5,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          item.timeAgo,
+                          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.body,
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+                    ),
+                    if (item.actionUrl != null && item.actionUrl!.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: () {
+                              ref.read(notificationCenterProvider.notifier).markSingleAsRead(item.id);
+                              final url = item.actionUrl!;
+                              if (url.startsWith('/requests/') || url.startsWith('/invitations/')) {
+                                final id = url.split('/').last;
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => RequestDetailsScreen(requestId: id),
+                                  ),
+                                );
+                              } else {
+                                Navigator.pushNamed(context, '/conversations');
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.textPrimary,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              minimumSize: const Size(0, 28),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                            ),
+                            child: const Text('View Brief', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800)),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton(
+                            onPressed: () => Navigator.pushNamed(context, '/conversations'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.textPrimary,
+                              minimumSize: const Size(0, 28),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              side: const BorderSide(color: AppColors.border),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                            ),
+                            child: const Text('Open Chat', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTypeIcon(String type) {
+    Color bg;
+    IconData icon;
+    Color iconColor;
+
+    switch (type) {
+      case 'APPLICATION':
+        bg = const Color(0xFFE6F4EC);
+        icon = Icons.celebration_rounded;
+        iconColor = AppColors.success;
+        break;
+      case 'CONNECTION':
+        bg = const Color(0xFFFFF2D6);
+        icon = Icons.person_add_rounded;
+        iconColor = const Color(0xFFC98A16);
+        break;
+      case 'REVIEW':
+        bg = const Color(0xFFFFF9E6);
+        icon = Icons.star_rounded;
+        iconColor = const Color(0xFFFFB800);
+        break;
+      default:
+        bg = AppColors.backgroundSecondary;
+        icon = Icons.info_outline_rounded;
+        iconColor = AppColors.textSecondary;
+    }
+
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+      child: Icon(icon, size: 20, color: iconColor),
+    );
+  }
+}

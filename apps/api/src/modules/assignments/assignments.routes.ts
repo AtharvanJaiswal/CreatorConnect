@@ -56,6 +56,40 @@ export const assignmentsRoutes: FastifyPluginAsync<AssignmentsRoutesOptions> = a
     },
   );
 
+  // GET /api/v1/assignments
+  fastify.get<{
+    Querystring: { status?: string; category?: string; q?: string; brandOnly?: string };
+  }>(
+    '/api/v1/assignments',
+    {
+      schema: {
+        description: 'Lists published assignments or brand owned assignments',
+        tags: ['Assignments'],
+        response: {
+          200: Type.Array(AssignmentResponseSchema),
+          401: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      if (request.query.brandOnly === 'true') {
+        if (!request.headers.authorization) {
+          return reply
+            .status(401)
+            .send({ message: 'Authentication required for brandOnly assignments' });
+        }
+        await fastify.authenticate(request, reply);
+        const result = await service.getBrandAssignments(request.user.id);
+        return reply.status(200).send(result);
+      }
+      const filters: { status?: string; category?: string } = {};
+      if (request.query.status) filters.status = request.query.status;
+      if (request.query.category) filters.category = request.query.category;
+      const result = await service.listAssignments(filters);
+      return reply.status(200).send(result);
+    },
+  );
+
   // GET /api/v1/assignments/mine
   fastify.get(
     '/api/v1/assignments/mine',
