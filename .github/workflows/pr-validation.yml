@@ -167,7 +167,7 @@ jobs:
 
       - name: Start Ephemeral Application Stack
         run: |
-          docker compose up -d postgres redis minio minio-create-buckets migration-seed jwks-stub api web-shell
+          docker compose up -d postgres redis minio minio-create-buckets migration-seed jwks-stub api realtime web-shell
           # Wait for services to be ready
           echo "Waiting for API service to be healthy (http://127.0.0.1:3000/health)..."
           timeout 60 bash -c 'until docker compose exec -T api wget -qO- http://127.0.0.1:3000/health > /dev/null 2>&1; do sleep 2; done' || {
@@ -221,6 +221,10 @@ jobs:
           echo "API CONTAINER LOGS"
           echo "=================================================="
           docker compose logs --tail 200 api
+          echo "=================================================="
+          echo "REALTIME CONTAINER LOGS"
+          echo "=================================================="
+          docker compose logs --tail 200 realtime
           echo "=================================================="
           echo "MIGRATION SEED LOGS"
           echo "=================================================="

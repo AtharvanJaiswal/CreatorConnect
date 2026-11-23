@@ -181,7 +181,7 @@ export interface IMessagingRepository {
     sequence: string | bigint,
   ): Promise<MarkDeliveredResponse>;
 
-  getDeliveredSequence(conversationId: string, userId: string): string;
+  getDeliveredSequence(conversationId: string, userId: string): Promise<string>;
 
   searchRecipients(
     viewerUserId: string,
@@ -240,15 +240,17 @@ export interface IMessagingRepository {
 
 export class MessagingRepository implements IMessagingRepository {
   private prisma: PrismaClient;
-  private deliveredStore: Map<string, string> = new Map();
 
   constructor(prismaClient?: PrismaClient) {
     this.prisma = prismaClient || getPrismaClient();
   }
 
-  public getDeliveredSequence(conversationId: string, userId: string): string {
-    const key = `${conversationId}:${userId}`;
-    return this.deliveredStore.get(key) || '0';
+  public async getDeliveredSequence(conversationId: string, userId: string): Promise<string> {
+    const participant = await this.prisma.conversationParticipant.findFirst({
+      where: { conversationId, userId, leftAt: null },
+      select: { lastDeliveredSequence: true },
+    });
+    return (participant?.lastDeliveredSequence ?? 0n).toString();
   }
 
   /**
@@ -951,10 +953,6 @@ export class MessagingRepository implements IMessagingRepository {
       },
     });
 
-    // Advance delivered sequence in fallback store
-    const key = `${conversationId}:${userId}`;
-    this.deliveredStore.set(key, updated.lastDeliveredSequence.toString());
-
     return {
       conversationId: updated.conversationId,
       lastReadSequence: updated.lastReadSequence.toString(),
@@ -1007,9 +1005,6 @@ export class MessagingRepository implements IMessagingRepository {
         lastDeliveredSequence: newDelivered,
       },
     });
-
-    const key = `${conversationId}:${userId}`;
-    this.deliveredStore.set(key, updated.lastDeliveredSequence.toString());
 
     return {
       conversationId,
