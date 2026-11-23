@@ -94,4 +94,27 @@ describe('SupabaseAdminService — Identity Cleanup & Idempotent Retry', () => {
 
     vi.unstubAllGlobals();
   });
+
+  it('fails definitively with retry exhaustion when server returns persistent 500 errors', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      text: async () => 'Service Unavailable',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const service = new SupabaseAdminService({
+      supabaseUrl: 'https://test.supabase.co',
+      serviceRoleKey: 'test-key',
+      baseDelayMs: 5,
+      maxRetries: 2,
+    });
+
+    await expect(service.deleteUserIdentity('sub_exhausted')).rejects.toThrow(
+      /Failed to delete Supabase identity sub_exhausted after 2 retries/,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(3); // Initial attempt + 2 retries
+
+    vi.unstubAllGlobals();
+  });
 });

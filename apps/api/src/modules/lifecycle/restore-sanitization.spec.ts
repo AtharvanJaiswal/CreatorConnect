@@ -4,6 +4,7 @@ import { generateUuidV7 } from '@creatorconnect/utils';
 import { RestoreSanitizerService } from './restore-sanitizer.js';
 import { PrivacyAuditService } from './privacy-audit.service.js';
 import { MockStoragePurgeService } from './external-storage-purge.service.js';
+import { redisCache } from '../../services/redis-cache.js';
 
 describe('RestoreSanitizerService — Backup Restoration & Re-Sanitization Harness', () => {
   const prisma = getPrismaClient();
@@ -85,5 +86,81 @@ describe('RestoreSanitizerService — Backup Restoration & Re-Sanitization Harne
     expect(sanitizedUser?.firstName).toBe('Deleted');
     expect(sanitizedUser?.lastName).toBe('User');
     expect(sanitizedUser?.status).toBe(UserStatus.DEACTIVATED);
+  });
+
+  it('preserves unrelated Redis keys (queues, rate-limits, sessions) and invalidates only user cache namespaces', async () => {
+    // In-memory Redis mock implementing the exact scan / del contract
+    const store = new Map<string, string>();
+    store.set('bull:queue:transcode:101', 'job-data');
+    store.set('session:token_live_user', 'session-data');
+    store.set('ratelimit:ip:192.168.1.1', '5');
+    store.set('user:id:sample_test_user', 'user-data');
+    store.set('user:sub:sample_test_sub', 'sub-data');
+    store.set('user:roles:sample_test_user', 'roles-data');
+
+    const mockRedisClient = {
+      scan: async (_cursor: string, _match: string, pattern: string) => {
+        // Simple glob prefix matcher (e.g. "user:id:*")
+        const prefix = pattern.replace('*', '');
+        const matched = Array.from(store.keys()).filter((k) => k.startsWith(prefix));
+        return ['0', matched];
+      },
+      del: async (...keys: string[]) => {
+        for (const k of keys) {
+          store.delete(k);
+        }
+        return keys.length;
+      },
+    };
+
+    const mockCacheService = {
+      getClient: () => mockRedisClient,
+      invalidateUser: async () => true,
+    };
+
+    const mockStorage = new MockStoragePurgeService();
+    const sanitizer = new RestoreSanitizerService({
+      prismaClient: prisma,
+      storagePurge: mockStorage,
+      cacheSvc: mockCacheService as any,
+    });
+
+    const report = await sanitizer.sanitizeRestoredDatabase();
+    expect(report.redisFlushed).toBe(true);
+
+    // Assert: Unrelated keys are strictly preserved
+    expect(store.has('bull:queue:transcode:101')).toBe(true);
+    expect(store.has('session:token_live_user')).toBe(true);
+    expect(store.has('ratelimit:ip:192.168.1.1')).toBe(true);
+
+    // Assert: Targeted user identity cache keys are cleared
+    expect(store.has('user:id:sample_test_user')).toBe(false);
+    expect(store.has('user:sub:sample_test_sub')).toBe(false);
+    expect(store.has('user:roles:sample_test_user')).toBe(false);
+  });
+
+  it('fails closed and blocks execution in production context without explicit confirmation', async () => {
+    const originalEnv = process.env.NODE_ENV;
+    const originalConfirm = process.env.CONFIRM_RESTORE_SANITIZATION;
+
+    try {
+      process.env.NODE_ENV = 'production';
+      delete process.env.CONFIRM_RESTORE_SANITIZATION;
+
+      const mockStorage = new MockStoragePurgeService();
+      const sanitizer = new RestoreSanitizerService({
+        prismaClient: prisma,
+        storagePurge: mockStorage,
+      });
+
+      await expect(sanitizer.sanitizeRestoredDatabase()).rejects.toThrow(
+        /RESTORE SANITIZATION GUARD/,
+      );
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      if (originalConfirm !== undefined) {
+        process.env.CONFIRM_RESTORE_SANITIZATION = originalConfirm;
+      }
+    }
   });
 });

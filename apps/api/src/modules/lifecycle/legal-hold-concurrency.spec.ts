@@ -6,7 +6,12 @@ import { PrivacyRequestService } from './privacy-request.service.js';
 import { DataErasureOrchestrator } from './data-erasure-orchestrator.js';
 import { MockStoragePurgeService } from './external-storage-purge.service.js';
 import { MockSupabaseAdminService } from './supabase-admin.service.js';
-import { LegalHoldActiveError, ConflictError, NotFoundError } from '../../errors/app-error.js';
+import {
+  LegalHoldActiveError,
+  ConflictError,
+  NotFoundError,
+  PrivacyRequestInvalidStateError,
+} from '../../errors/app-error.js';
 
 describe('LegalHoldService & Erasure Concurrency — Parent-Row Locking Protocol', () => {
   const prisma = getPrismaClient();
@@ -271,5 +276,130 @@ describe('LegalHoldService & Erasure Concurrency — Parent-Row Locking Protocol
         appliedById: generateUuidV7(),
       }),
     ).rejects.toThrow(NotFoundError);
+  });
+
+  it('Scenario 9: Rejects erasure execution on CANCELLED or UNCONFIRMED requests', async () => {
+    const { userId: user1 } = await createTestUser('scen9_unconfirmed');
+    const { userId: user2 } = await createTestUser('scen9_cancelled');
+    const privacyService = new PrivacyRequestService(prisma);
+    const mockStorage = new MockStoragePurgeService();
+    const mockSupabase = new MockSupabaseAdminService();
+
+    const orchestrator = new DataErasureOrchestrator({
+      prismaClient: prisma,
+      storagePurge: mockStorage,
+      supabase: mockSupabase,
+    });
+
+    // 1. Unconfirmed request
+    const { request: unconfirmedReq } = await privacyService.requestErasure(user1);
+    await expect(orchestrator.executeErasure(unconfirmedReq.id)).rejects.toThrow(
+      PrivacyRequestInvalidStateError,
+    );
+
+    // 2. Cancelled request
+    const { request: toCancelReq, rawConfirmationCode } =
+      await privacyService.requestErasure(user2);
+    await privacyService.confirmErasure(user2, rawConfirmationCode);
+    await privacyService.cancelErasure(user2, 'Changed my mind');
+
+    await expect(orchestrator.executeErasure(toCancelReq.id)).rejects.toThrow(
+      PrivacyRequestInvalidStateError,
+    );
+  });
+
+  it('Scenario 10: Worker crash after DB commit recovers idempotently and completes remaining stages', async () => {
+    const { userId } = await createTestUser('scen10');
+    const privacyService = new PrivacyRequestService(prisma);
+    const mockStorage = new MockStoragePurgeService();
+    const mockSupabase = new MockSupabaseAdminService();
+
+    // Setup an asset for this user in mock storage
+    mockStorage.storedObjects.set(`users/${userId}/doc.pdf`, {
+      buffer: Buffer.from('data'),
+    });
+    mockSupabase.users.add(`sub_scen10_${userId}`);
+
+    const { request, rawConfirmationCode } = await privacyService.requestErasure(userId);
+    await privacyService.confirmErasure(userId, rawConfirmationCode);
+
+    // Run 1: Simulate crash during storage purge
+    let storagePurgeAttempted = false;
+    const crashingStorage = {
+      purgeUserAssets: async () => {
+        storagePurgeAttempted = true;
+        throw new Error('SIMULATED_NETWORK_PARTITION_DURING_S3_PURGE');
+      },
+    };
+
+    const crashingOrchestrator = new DataErasureOrchestrator({
+      prismaClient: prisma,
+      storagePurge: crashingStorage as any,
+      supabase: mockSupabase,
+    });
+
+    await expect(crashingOrchestrator.executeErasure(request.id)).rejects.toThrow(
+      /SIMULATED_NETWORK_PARTITION_DURING_S3_PURGE/,
+    );
+    expect(storagePurgeAttempted).toBe(true);
+
+    // Assert that DB pseudonymization committed successfully before the crash
+    const postCrashUser = await prisma.user.findUnique({ where: { id: userId } });
+    expect(postCrashUser?.email).toBe(`deleted-${userId}@deleted.invalid`);
+
+    // Run 2: Worker restart / retry with recovered storage
+    const recoveryOrchestrator = new DataErasureOrchestrator({
+      prismaClient: prisma,
+      storagePurge: mockStorage,
+      supabase: mockSupabase,
+    });
+
+    const recoveryResult = await recoveryOrchestrator.executeErasure(request.id);
+    expect(recoveryResult.status).toBe('COMPLETED');
+    expect(recoveryResult.stagesCompleted).toContain('MEDIA_PURGE_COMPLETED');
+    expect(recoveryResult.stagesCompleted).toContain('SUPABASE_IDENTITY_PURGE_COMPLETED');
+    expect(recoveryResult.stagesCompleted).toContain('ERASURE_COMPLETED');
+
+    // Storage and Supabase are now purged
+    expect(mockStorage.storedObjects.has(`users/${userId}/doc.pdf`)).toBe(false);
+  });
+
+  it('Scenario 11: Concurrent release of the same hold serializes cleanly without double-release', async () => {
+    const { userId, adminId } = await createTestUser('scen11');
+    const holdService = new LegalHoldService(prisma);
+
+    const hold = await holdService.applyHold({
+      userId,
+      reason: 'ACTIVE_DISPUTE',
+      caseReference: 'CASE-CONCURRENT-RELEASE',
+      notes: 'Testing concurrent release serialization',
+      appliedById: adminId,
+    });
+
+    // Two admin workers attempt to release the same hold concurrently
+    const [rel1, rel2] = await Promise.allSettled([
+      holdService.releaseHold({
+        holdId: hold.id,
+        releasedById: adminId,
+        releaseNotes: 'Release attempt 1',
+      }),
+      holdService.releaseHold({
+        holdId: hold.id,
+        releasedById: adminId,
+        releaseNotes: 'Release attempt 2',
+      }),
+    ]);
+
+    // Exactly one must succeed and one must be rejected with ConflictError
+    const successes = [rel1, rel2].filter((r) => r.status === 'fulfilled');
+    const rejections = [rel1, rel2].filter((r) => r.status === 'rejected');
+
+    expect(successes).toHaveLength(1);
+    expect(rejections).toHaveLength(1);
+    expect((rejections[0] as PromiseRejectedResult).reason).toBeInstanceOf(ConflictError);
+
+    // Active holds is now 0
+    const active = await holdService.getActiveHolds(userId);
+    expect(active).toHaveLength(0);
   });
 });

@@ -1,8 +1,8 @@
 # CreatorConnect — Account Erasure & Privacy Governance Operational Runbook
 
-> **Document Status**: `OPERATIONAL RUNBOOK SPECIFICATION (IMPLEMENTATION VERIFIED — PHASE 3B.8.3)`  
+> **Document Status**: `OPERATIONAL RUNBOOK SPECIFICATION (AUDITED IMPLEMENTATION — PHASE 3B.8.4)`  
 > **Target Audience**: SREs, DevOps Engineers, Staging Operators, Security Incident Responders  
-> **Related Phase**: Phase 3B.8 / Phase 3B.8.1 / Phase 3B.8.2 / Phase 3B.8.3  
+> **Related Phase**: Phase 3B.8 / Phase 3B.8.1 / Phase 3B.8.2 / Phase 3B.8.3 / Phase 3B.8.4  
 > **Security Mandate**: Never execute commands against production without verified Change Management approval. Never echo credentials, tokens, or personal identifiers in command outputs or log records.
 
 ---
@@ -250,14 +250,15 @@ psql "$DATABASE_URL" -c "SELECT id, email, status FROM users WHERE id = '<TARGET
 1. Do **NOT** route live user traffic to the restored database.
 2. Execute the automated Re-Erasure Recovery Harness (`RestoreSanitizer`):
    ```bash
-   pnpm --filter @creatorconnect/api exec tsx scripts/sanitize-restored-database.ts
+   CONFIRM_RESTORE_SANITIZATION=true pnpm --filter @creatorconnect/api exec tsx scripts/sanitize-restored-database.ts
    ```
+   _(Note: In production, `CONFIRM_RESTORE_SANITIZATION=true` is strictly required to prevent inadvertent runs.)_
 3. **Harness Mechanics (`RestoreSanitizer` in `apps/api/src/modules/lifecycle/restore-sanitizer.ts`)**:
    - Queries `AuditLog` / compliance certificates to identify all historical completed erasure requests.
    - Detects any user records where `status != 'DEACTIVATED'` or email does not match `deleted-${userId}@deleted.invalid`.
    - Re-applies in-place pseudonymization atomically under parent row lock (`SELECT id FROM users FOR UPDATE`).
    - Reconciles and purges external object storage keys and versions.
-   - Flushes Redis cache completely (`client.flushall()`).
+   - Invalidates Redis caches via scoped pattern scanning (`scan`) targeted strictly to user identity keys (`user:sub:*`, `user:id:*`, `user:profile:*`, `user:roles:*`, `auth:*`) and explicit `invalidateUser` calls—**never** issuing a global `FLUSHALL` to ensure background queues, rate limits, and sessions are preserved.
    - Emits a structured `RestoreSanitizationReport` documenting all sanitized users, purged keys, and verification status.
 4. SRE signs off sanitization report before opening DNS / load balancer traffic to the restored cluster. Verified by `restore-sanitization.spec.ts`.
 

@@ -87,12 +87,13 @@ export class S3StoragePurgeAdapter implements IExternalStoragePurgeService {
     }
 
     // 2. Enumerate versioned objects and delete markers under the user prefix
-    try {
-      let keyMarker: string | undefined = undefined;
-      let versionIdMarker: string | undefined = undefined;
-      let isTruncated = true;
+    let keyMarker: string | undefined = undefined;
+    let versionIdMarker: string | undefined = undefined;
+    let isTruncated = true;
 
-      while (isTruncated) {
+    while (isTruncated) {
+      let listRes: any;
+      try {
         const listCmd: ListObjectVersionsCommand = new ListObjectVersionsCommand({
           Bucket: this.bucket,
           Prefix: userPrefix,
@@ -101,53 +102,73 @@ export class S3StoragePurgeAdapter implements IExternalStoragePurgeService {
           MaxKeys: 1000,
         });
 
-        const listRes: any = await this.client.send(listCmd);
-        const objectsToDelete: Array<{ Key: string; VersionId?: string }> = [];
-
-        if (listRes.Versions) {
-          for (const ver of listRes.Versions) {
-            if (ver.Key) {
-              objectsToDelete.push({ Key: ver.Key, VersionId: ver.VersionId });
-              candidateKeys.add(ver.Key);
-            }
-          }
-        }
-
-        if (listRes.DeleteMarkers) {
-          for (const marker of listRes.DeleteMarkers) {
-            if (marker.Key) {
-              objectsToDelete.push({ Key: marker.Key, VersionId: marker.VersionId });
-              candidateKeys.add(marker.Key);
-            }
-          }
-        }
-
-        if (objectsToDelete.length > 0) {
-          const deleteCmd = new DeleteObjectsCommand({
-            Bucket: this.bucket,
-            Delete: {
-              Objects: objectsToDelete,
-              Quiet: true,
-            },
-          });
-          await this.client.send(deleteCmd);
-          purgedKeys.push(...objectsToDelete.map((o) => `${o.Key} (v:${o.VersionId || 'latest'})`));
-        }
-
-        isTruncated = listRes.IsTruncated ?? false;
-        keyMarker = listRes.NextKeyMarker;
-        versionIdMarker = listRes.NextVersionIdMarker;
+        listRes = await this.client.send(listCmd);
+      } catch (err: any) {
+        // In non-versioned buckets, ListObjectVersions may fail; fall back to individual delete
+        logger.warn(
+          { err: err.message, userId },
+          'ListObjectVersions unavailable or failed; proceeding with candidate key purge.',
+        );
+        break;
       }
-    } catch (err: any) {
-      // In non-versioned buckets, ListObjectVersions may fail; fall back to individual delete
-      logger.warn(
-        { err: err.message, userId },
-        'ListObjectVersions unavailable or failed; proceeding with candidate key purge.',
-      );
+
+      const objectsToDelete: Array<{ Key: string; VersionId?: string }> = [];
+
+      if (listRes.Versions) {
+        for (const ver of listRes.Versions) {
+          if (ver.Key) {
+            objectsToDelete.push({ Key: ver.Key, VersionId: ver.VersionId });
+            candidateKeys.add(ver.Key);
+          }
+        }
+      }
+
+      if (listRes.DeleteMarkers) {
+        for (const marker of listRes.DeleteMarkers) {
+          if (marker.Key) {
+            objectsToDelete.push({ Key: marker.Key, VersionId: marker.VersionId });
+            candidateKeys.add(marker.Key);
+          }
+        }
+      }
+
+      if (objectsToDelete.length > 0) {
+        const deleteCmd = new DeleteObjectsCommand({
+          Bucket: this.bucket,
+          Delete: {
+            Objects: objectsToDelete,
+            Quiet: true,
+          },
+        });
+        const deleteRes: any = await this.client.send(deleteCmd);
+
+        // Partial Batch Failure Guard: Detect individual key failures from S3/R2
+        if (deleteRes.Errors && deleteRes.Errors.length > 0) {
+          const errorSummary = deleteRes.Errors.map(
+            (e: any) => `${e.Key}: ${e.Message || e.Code || 'Failed to delete'}`,
+          ).join(', ');
+          throw new Error(`S3 batch delete encountered partial failure: ${errorSummary}`);
+        }
+
+        purgedKeys.push(...objectsToDelete.map((o) => `${o.Key} (v:${o.VersionId || 'latest'})`));
+      }
+
+      isTruncated = listRes.IsTruncated ?? false;
+      keyMarker = listRes.NextKeyMarker;
+      versionIdMarker = listRes.NextVersionIdMarker;
     }
 
     // 3. Purge candidate keys directly to ensure deletion regardless of versioning support
     for (const key of candidateKeys) {
+      // Path traversal and cross-user isolation guard
+      if (key.includes('..') || key.startsWith('/')) {
+        logger.warn(
+          { key, userId },
+          'Skipping suspicious or malformed storage key with traversal characters during purge.',
+        );
+        continue;
+      }
+
       // Security Check: Key MUST start with userPrefix OR match database ownership
       const isOwnerPrefix = key.startsWith(userPrefix);
       const isDbOwnerKey = dbAssets.some((a) => key.startsWith(a.storageKey));

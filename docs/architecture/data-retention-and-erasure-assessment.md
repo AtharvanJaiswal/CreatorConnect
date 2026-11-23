@@ -2,10 +2,10 @@
 
 ## Comprehensive Technical Assessment & Architecture Specification
 
-> **Document Status**: `ENGINEERING & ARCHITECTURAL IMPLEMENTATION SPECIFICATION (PHASE 3B.8.3)`  
-> **Release Gate Status**: `IMPLEMENTATION COMPLETE — PENDING FORMAL LEGAL, DPO & CFO APPROVALS (MIGRATION 0014 NOT APPLIED)`  
-> **Related Phase**: Phase 3B.8 / Phase 3B.8.1 / Phase 3B.8.2 / Phase 3B.8.3  
-> **Strict Change Control**: This document records the Phase 3B.8.3 implementation. **Migration 0014 has NOT been executed.** The architecture executes all business logic, parent locking, and privacy receipts against schema 0001-0013 via an AuditLog metadata adapter architecture until migration 0014 receives executive approval.
+> **Document Status**: `ENGINEERING & ARCHITECTURAL IMPLEMENTATION SPECIFICATION (PHASE 3B.8.4 AUDITED)`  
+> **Release Gate Status**: `IMPLEMENTATION BLOCKED — REQUIRES APPROVAL OR INFRASTRUCTURE (MIGRATION 0014 NOT APPLIED)`  
+> **Related Phase**: Phase 3B.8 / Phase 3B.8.1 / Phase 3B.8.2 / Phase 3B.8.3 / Phase 3B.8.4  
+> **Strict Change Control**: This document records the Phase 3B.8.4 security-audited implementation. **Migration 0014 has NOT been executed.** The architecture executes all business logic, parent locking, and privacy receipts against schema 0001-0013 via an AuditLog metadata adapter architecture until migration 0014 receives executive approval.
 
 ---
 
@@ -29,7 +29,7 @@ This assessment has been synthesized by a coordinated team of specialists operat
 ### 2.1 Repository & Branch Verification
 
 - **Current Git Branch**: `dev`
-- **Current HEAD Commit**: `e3c826b01389352a9307d9e13f4789d9d56c5d0a`
+- **Audited Commit SHA**: `a350bf21db2d773d23a994b7c82d59c03dd7763d` (Phase 3B.8.3) / Remediation Head (Phase 3B.8.4)
 - **Active Migration History**: `0001` through `0013` (Migration `0013_add_support_ticketing` applied locally).
 - **Prisma Schema Consistency**: Validated cleanly via `prisma validate` (0 syntax errors, 0 schema drift).
 - **TypeScript Baseline**: Validated cleanly via `tsc --noEmit` across `@creatorconnect/contracts`, `@creatorconnect/database`, and `@creatorconnect/api` (0 type errors).
@@ -214,14 +214,33 @@ CRUD tests (testing create, read, or update on live records) must **never** be c
 - **`fast-check` (`^3.21.0`)**: Evaluated strictly as a **development dependency** for property-based state transition testing in Vitest. It has zero production runtime footprint.
 - **Zero New Production Dependencies**: All proposed runtime capabilities are implemented using existing workspace dependencies (`@sinclair/typebox`, `@casl/ability`, `ioredis`, `bullmq`, `pino`, `jose`).
 
-## 9.3 Phase 3B.8.3 Implementation & Automated Test Verification Suite
+## 9.3 Phase 3B.8.4 Implementation & Automated Test Verification Suite
 
-The account lifecycle, parent-row locking, cryptographic receipts, and erasure workflows are implemented and verified by 29 automated test cases across 7 dedicated test files (100% passing):
+The account lifecycle, parent-row locking, cryptographic receipts, and erasure workflows are implemented and verified by 41 automated test cases across 7 dedicated test files in `apps/api/src/modules/lifecycle` (100% passing):
 
-1. **`account-lifecycle.spec.ts`** (6 tests): Validates state machine rules (`ACTIVE` <-> `SUSPENDED`, `ACTIVE` <-> `DEACTIVATED`, illegal transitions), pessimistic row locking (`SELECT id, status FROM users FOR UPDATE`), last-admin lockout prevention, and audit outbox event emission.
-2. **`legal-hold-concurrency.spec.ts`** (8 tests): Validates the parent-row locking protocol across all 7 concurrency scenarios (pre-erasure hold, cooling-off hold, concurrent hold win/loss, multiple holds, concurrent hold release, transaction rollback on crash).
-3. **`privacy-audit.spec.ts`** (4 tests): Validates 256-bit CSPRNG token generation (`crypto.randomBytes(32)`), constant-time token verification (`crypto.timingSafeEqual`), and proof-of-compliance certificate lifecycle.
-4. **`external-storage-purge.spec.ts`** (2 tests): Validates S3/R2 version enumeration, bulk version deletes, delete marker purging, multipart upload abortion, and derivative asset cleanup (`thumbnailKey`, `previewKey`).
-5. **`supabase-admin.spec.ts`** (5 tests): Validates Supabase Auth identity deletion, idempotent 404 handling, exponential backoff with jitter on 5xx/429 errors, and fail-fast behavior on client errors.
-6. **`restore-sanitization.spec.ts`** (1 test): Validates backup restore protection harness, re-pseudonymization of resurrected personal data, and Redis cache invalidation.
-7. **`lifecycle.routes.spec.ts`** (4 tests): Validates Fastify HTTP routes, authentication guards, input validation, and RFC 7807 error responses for lifecycle transitions.
+1. **`account-lifecycle.spec.ts`** (8 tests): Validates state machine rules (`ACTIVE` <-> `SUSPENDED`, `ACTIVE` <-> `DEACTIVATED`, illegal transitions), pessimistic row locking (`SELECT id, status FROM users FOR UPDATE`), last-admin lockout prevention, audit outbox event emission, rejection of erased accounts attempting reactivation (`AccountAlreadyDeletedError`), IDOR prevention, and self-suspension blocking.
+2. **`legal-hold-concurrency.spec.ts`** (11 tests): Validates the parent-row locking protocol across all 11 concurrency scenarios (pre-erasure hold, cooling-off hold, concurrent hold win/loss, multiple holds, concurrent hold release, transaction rollback on crash, cancellation rejection, post-DB crash recovery, concurrent release serialization).
+3. **`privacy-audit.spec.ts`** (6 tests): Validates 256-bit CSPRNG token generation (`crypto.randomBytes(32)`), constant-time token verification (`crypto.timingSafeEqual`) including length-mismatch protection, uniform enumeration resistance, and proof-of-compliance certificate lifecycle.
+4. **`external-storage-purge.spec.ts`** (4 tests): Validates S3/R2 version enumeration, bulk version deletes, delete marker purging, multipart upload abortion, derivative asset cleanup (`thumbnailKey`, `previewKey`), partial batch delete error detection (`DeleteObjectsCommand` errors), and path traversal protection against `..` keys.
+5. **`supabase-admin.spec.ts`** (6 tests): Validates Supabase Auth identity deletion, idempotent 404 handling, exponential backoff with jitter on 5xx/429 errors, 10-second timeout guard via `AbortSignal`, and fail-fast behavior on client errors.
+6. **`restore-sanitization.spec.ts`** (3 tests): Validates backup restore protection harness, re-pseudonymization of resurrected personal data, scoped Redis identity namespace pattern scanning (`scan`) preventing global flush, and production execution confirmation guard.
+7. **`lifecycle.routes.spec.ts`** (3 tests): Validates Fastify HTTP routes, authentication guards, input validation, route-level rate limiting on receipt verification, and RFC 7807 error responses for lifecycle transitions.
+
+---
+
+# 10. PHASE 3B.8.4 INDEPENDENT SECURITY AUDIT REMEDIATION SUMMARY
+
+An independent security and implementation audit of Phase 3B.8.3 verified the system against 10 critical operational areas and resolved 8 specific defects:
+
+1. **DEF-01 (Account Resurrection Prevention)**: `account-lifecycle.service.ts` blocks reactivation of users whose email matches tombstone patterns (`@deleted.invalid`).
+2. **DEF-02 (Orchestrator Request State Validation)**: `data-erasure-orchestrator.ts` strictly validates that `PrivacyRequest` is in `COOLING_OFF` or `PROCESSING` before scrubbing PII.
+3. **DEF-03 (Redis Scoped Invalidation)**: `restore-sanitizer.ts` replaces `redisClient.flushall()` with non-blocking pattern scanning of CreatorConnect keys (`user:sub:*`, `user:id:*`, etc.).
+4. **DEF-04 (Restore Sanitization Production Guard)**: `restore-sanitizer.ts` requires `CONFIRM_RESTORE_SANITIZATION === 'true'` when `NODE_ENV === 'production'`.
+5. **DEF-05 (S3 Partial Batch Error & Traversal Guard)**: `external-storage-purge.service.ts` verifies `deleteRes.Errors` and skips keys with `..` or leading `/`.
+6. **DEF-06 (Supabase Admin Fetch Timeout)**: `supabase-admin.service.ts` adds a 10s `AbortSignal.timeout` to prevent worker thread starvation.
+7. **DEF-07 (Legal Hold Lookup Optimization)**: `legal-hold.service.ts` replaces full table scans with indexed `$executeRawUnsafe`/`findUnique` lookups.
+8. **DEF-08 (Receipt Endpoint Rate Limiting)**: `lifecycle.routes.ts` adds Fastify rate limiting (10 req/min) to `/api/v1/privacy/verify-receipt`.
+
+**Release Gate Determination**: The platform code is hardened and passes all automated tests. However, the release gate remains:
+`IMPLEMENTATION BLOCKED — REQUIRES APPROVAL OR INFRASTRUCTURE`
+pending formal determination of all 12 items in the Legal Decision Register and executive sign-off for Migration 0014.

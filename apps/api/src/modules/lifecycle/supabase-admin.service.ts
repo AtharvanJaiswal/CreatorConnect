@@ -57,6 +57,7 @@ export class SupabaseAdminService implements ISupabaseAdminService {
             Authorization: `Bearer ${this.serviceRoleKey}`,
             'Content-Type': 'application/json',
           },
+          signal: AbortSignal.timeout(10000), // 10s request safety timeout
         });
 
         if (response.ok) {

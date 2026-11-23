@@ -44,6 +44,16 @@ export class RestoreSanitizerService {
    * MUST be executed pre-traffic after any database snapshot restore.
    */
   public async sanitizeRestoredDatabase(): Promise<SanitizationReport> {
+    // Production Safety Guard: prevent accidental invocation against live production traffic
+    if (
+      process.env.NODE_ENV === 'production' &&
+      process.env.CONFIRM_RESTORE_SANITIZATION !== 'true'
+    ) {
+      throw new Error(
+        'RESTORE SANITIZATION GUARD: Cannot run restore sanitization on production without explicit CONFIRM_RESTORE_SANITIZATION=true.',
+      );
+    }
+
     logger.info('Starting backup restore re-sanitization procedure.');
 
     // 1. Identify all historically completed erasure requests from the compliance audit ledger
@@ -113,14 +123,46 @@ export class RestoreSanitizerService {
       }
     }
 
-    // 3. Flush Redis cache to ensure no resurrected records linger in memory
+    // 3. Narrowly scoped cache invalidation of CreatorConnect identity namespaces
+    // Do NOT flushall() — preserve queues (bull:*), socket.io adapters, rate-limits, and unrelated tenant keys
+    let redisFlushed = false;
     try {
       const redisClient = this.cache.getClient();
       if (redisClient) {
-        await redisClient.flushall();
+        for (const userId of erasedUserIds) {
+          const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { supabaseAuthId: true },
+          });
+          if (user?.supabaseAuthId) {
+            await this.cache.invalidateUser(userId, user.supabaseAuthId);
+          }
+        }
+
+        const namespaces = ['user:sub:*', 'user:id:*', 'user:profile:*', 'user:roles:*', 'auth:*'];
+        for (const pattern of namespaces) {
+          let cursor = '0';
+          do {
+            const [nextCursor, keys] = await redisClient.scan(
+              cursor,
+              'MATCH',
+              pattern,
+              'COUNT',
+              100,
+            );
+            cursor = nextCursor;
+            if (keys && keys.length > 0) {
+              await redisClient.del(...keys);
+            }
+          } while (cursor !== '0');
+        }
+        redisFlushed = true;
       }
     } catch (err: any) {
-      logger.warn({ err: err.message }, 'Redis flush warning during restore sanitization.');
+      logger.warn(
+        { err: err.message },
+        'Redis namespace invalidation warning during restore sanitization.',
+      );
     }
 
     const report: SanitizationReport = {
@@ -128,7 +170,7 @@ export class RestoreSanitizerService {
       usersEvaluated: erasedUserIds.size,
       resurrectedAccountsSanitized: resurrectedCount,
       mediaAssetsPurged: totalMediaPurged,
-      redisFlushed: true,
+      redisFlushed,
       operatorSignOffRequired: true,
       sanitizedUserIds,
     };

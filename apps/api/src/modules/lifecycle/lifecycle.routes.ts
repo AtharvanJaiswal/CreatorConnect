@@ -297,6 +297,15 @@ export const lifecycleRoutes: FastifyPluginAsync<LifecycleRoutesOptions> = async
   fastify.post<{ Body: VerifyPrivacyReceiptRequest }>(
     '/api/v1/privacy/verify-receipt',
     {
+      preHandler: [
+        fastify.rateLimit({
+          endpoint: 'privacy-verify-receipt',
+          max: 10,
+          windowSeconds: 60,
+          onRedisFailure: 'bounded-fallback',
+          fallbackMax: 5,
+        }),
+      ],
       schema: {
         description: 'Verify compliance audit certificate token (Public/Auditor endpoint)',
         tags: ['Privacy'],

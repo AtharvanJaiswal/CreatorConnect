@@ -190,6 +190,51 @@ export class AuditLogLegalHoldRepository implements ILegalHoldRepository {
     tx: Prisma.TransactionClient,
     holdId: string,
   ): Promise<LegalHoldRecord | null> {
+    // 1. Direct O(1) indexed lookup on primary key id
+    const applyLog = await tx.auditLog.findUnique({
+      where: { id: holdId },
+    });
+
+    if (applyLog && applyLog.action === 'LEGAL_HOLD_APPLIED') {
+      const meta = applyLog.metadata as any;
+      if (!meta) return null;
+
+      const currentHold: LegalHoldRecord = {
+        id: meta.holdId || applyLog.id,
+        userId: meta.userId || applyLog.entityId,
+        reason: meta.reason,
+        caseReference: meta.caseReference,
+        status: 'ACTIVE',
+        notes: meta.notes,
+        appliedById: meta.appliedById || applyLog.userId || 'system',
+        appliedAt: new Date(meta.appliedAt || applyLog.createdAt),
+      };
+
+      // Check for corresponding release entry
+      const releaseLogs = await tx.auditLog.findMany({
+        where: {
+          entity: 'User',
+          entityId: currentHold.userId,
+          action: 'LEGAL_HOLD_RELEASED',
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      for (const rLog of releaseLogs) {
+        const rMeta = rLog.metadata as any;
+        if (rMeta && rMeta.holdId === holdId) {
+          currentHold.status = 'RELEASED';
+          currentHold.releaseNotes = rMeta.releaseNotes;
+          currentHold.releasedById = rMeta.releasedById;
+          currentHold.releasedAt = new Date(rMeta.releasedAt || rLog.createdAt);
+          break;
+        }
+      }
+
+      return currentHold;
+    }
+
+    // Fallback: If holdId was in metadata but id differed
     const logs = await tx.auditLog.findMany({
       where: {
         action: { in: ['LEGAL_HOLD_APPLIED', 'LEGAL_HOLD_RELEASED'] },

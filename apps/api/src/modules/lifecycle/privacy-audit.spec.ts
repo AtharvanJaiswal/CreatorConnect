@@ -83,4 +83,30 @@ describe('PrivacyAuditService — Cryptographic Verification & Receipts', () => 
       privacyAuditService.verifyReceiptToken('tampered-token-that-does-not-exist'),
     ).rejects.toThrow(PrivacyReceiptInvalidError);
   });
+
+  it('safely rejects tokens with mismatched lengths or invalid formats without timing leakage', () => {
+    const validHash = privacyAuditService.hashToken('valid-token-example');
+
+    // Shorter token
+    expect(privacyAuditService.verifyToken('short', validHash)).toBe(false);
+    // Longer token
+    expect(
+      privacyAuditService.verifyToken(
+        'very-long-token-that-exceeds-standard-thirty-two-bytes-encoding',
+        validHash,
+      ),
+    ).toBe(false);
+    // Empty token
+    expect(privacyAuditService.verifyToken('', validHash)).toBe(false);
+  });
+
+  it('guarantees enumeration resistance by throwing uniform error on invalid receipts', async () => {
+    // Both malformed tokens and non-existent validly-formatted tokens must throw identical PrivacyReceiptInvalidError
+    await expect(privacyAuditService.verifyReceiptToken('invalid_token_123')).rejects.toThrow(
+      PrivacyReceiptInvalidError,
+    );
+    await expect(
+      privacyAuditService.verifyReceiptToken(privacyAuditService.generateReceiptToken()),
+    ).rejects.toThrow(PrivacyReceiptInvalidError);
+  });
 });

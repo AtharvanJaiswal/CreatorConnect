@@ -11,6 +11,7 @@ import type {
 import {
   LegalHoldActiveError,
   PrivacyRequestNotFoundError,
+  PrivacyRequestInvalidStateError,
   NotFoundError,
 } from '../../errors/app-error.js';
 import { LegalHoldService } from './legal-hold.service.js';
@@ -97,6 +98,24 @@ export class DataErasureOrchestrator {
         recordsScrubbed: 0,
         mediaFilesPurged: 0,
       };
+    }
+
+    if (request.status === 'CANCELLED') {
+      throw new PrivacyRequestInvalidStateError(
+        `Cannot execute erasure: privacy request ${requestId} was cancelled by user.`,
+      );
+    }
+
+    if (request.status === 'PENDING_CONFIRMATION') {
+      throw new PrivacyRequestInvalidStateError(
+        `Cannot execute erasure: privacy request ${requestId} has not been confirmed with verification code.`,
+      );
+    }
+
+    if (request.status === 'REJECTED_LEGAL_HOLD') {
+      throw new LegalHoldActiveError(
+        `Cannot execute erasure: privacy request ${requestId} is currently blocked by an active legal hold.`,
+      );
     }
 
     const userId = request.userId;

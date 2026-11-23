@@ -12,6 +12,7 @@ import {
   InvalidLifecycleTransitionError,
   ForbiddenError,
   NotFoundError,
+  AccountAlreadyDeletedError,
 } from '../../errors/app-error.js';
 import { redisCache, RedisCacheService } from '../../services/redis-cache.js';
 import { loggerConfig } from '../../plugins/logger.js';
@@ -113,6 +114,16 @@ export class AccountLifecycleService {
           throw new NotFoundError(`User with ID ${targetUserId} was not found.`);
         }
         const previousStatus = currentRecord.status;
+
+        // Prevent resurrecting permanently erased / pseudonymized accounts
+        if (
+          currentRecord.email.endsWith('@deleted.invalid') ||
+          currentRecord.email.startsWith(`deleted-${targetUserId}`)
+        ) {
+          throw new AccountAlreadyDeletedError(
+            `Account ${targetUserId} has completed Right to Erasure and cannot undergo lifecycle transitions.`,
+          );
+        }
 
         // 2. Validate lifecycle transition
         if (!this.isValidTransition(previousStatus, newStatus)) {

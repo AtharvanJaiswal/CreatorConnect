@@ -2,10 +2,10 @@
 
 ## Formal Legal & Compliance Decision Register
 
-> **Document Status**: `PENDING FORMAL APPROVAL (IMPLEMENTATION STAGED — PHASE 3B.8.3)`  
+> **Document Status**: `PENDING FORMAL APPROVAL (AUDITED IMPLEMENTATION — PHASE 3B.8.4)`  
 > **Target Directorate**: Legal Counsel, Regulatory Compliance, Data Protection Officer (DPO)  
-> **Related Architecture Phase**: Phase 3B.8 / Phase 3B.8.1 / Phase 3B.8.2 / Phase 3B.8.3  
-> **Disclaimer**: This document is an engineering assessment prepared by the technical team. It does **not** constitute legal advice, a statutory determination, or a platform compliance certification. All legal questions, retention durations, and statutory exemptions remain strictly `PENDING_LEGAL_APPROVAL`.
+> **Related Architecture Phase**: Phase 3B.8 / Phase 3B.8.1 / Phase 3B.8.2 / Phase 3B.8.3 / Phase 3B.8.4  
+> **Disclaimer**: This document is an engineering assessment prepared by the technical team. It does **not** constitute legal advice, a statutory determination, or a platform compliance certification. All 12 legal questions, retention durations, and statutory exemptions remain strictly `PENDING_LEGAL_APPROVAL`.
 
 ---
 

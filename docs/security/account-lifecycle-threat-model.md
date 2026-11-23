@@ -1,9 +1,10 @@
 # CreatorConnect — Account Lifecycle & Privacy Governance Threat Model
 
-> **Document Status**: `ENGINEERING & SECURITY IMPLEMENTATION VERIFICATION (PHASE 3B.8.3)`  
+> **Document Status**: `ENGINEERING & SECURITY INDEPENDENT AUDIT (PHASE 3B.8.4)`  
+> **Release Gate Status**: `IMPLEMENTATION BLOCKED — REQUIRES APPROVAL OR INFRASTRUCTURE`  
 > **Classification**: Restricted / Application Security & Concurrency Verification  
 > **Framework**: STRIDE Threat Analysis, Database Concurrency Verification & Cryptographic Audit  
-> **Related Phase**: Phase 3B.8 / Phase 3B.8.1 / Phase 3B.8.2 / Phase 3B.8.3  
+> **Related Phase**: Phase 3B.8 / Phase 3B.8.1 / Phase 3B.8.2 / Phase 3B.8.3 / Phase 3B.8.4  
 > **Scope**: Fastify Core API, Redis Identity Cache, PostgreSQL Storage, Supabase Auth, BullMQ Worker, Socket.IO Realtime
 
 ---
@@ -268,3 +269,56 @@ if (statusRecord.status !== 'ACTIVE') {
 | **TH-13** | **Information Disclosure (Orphaned Storage)** | User profile and database rows are deleted, but KYC documents and avatar images remain publicly accessible in R2/S3.                                         | S3/R2 storage buckets.                                     | High       | High     | Asynchronous media erasure worker triggered via transactional outbox; S3 presigned URLs strictly time-limited (max 15 min); private bucket ACLs; delete object versions.                                                                            | Periodic storage reconciliation scanner matching database `media_assets` against S3 object keys.                               | Sweeper job purges unreferenced S3 keys; invalidates CDN edge cache.                                                                      | `SEC-LIFECYCLE-013` |
 | **TH-14** | **Repudiation (Third-Party Identity Desync)** | User deleted in CreatorConnect DB, but Supabase Auth account remains active, allowing token re-generation and login confusion.                               | Supabase Auth, client session.                             | Medium     | High     | Two-phase lifecycle orchestration: PostgreSQL status transition -> outbox event -> worker executes Supabase Admin API `deleteUser(sub)`.                                                                                                            | Daily identity reconciliation worker comparing active Supabase identities with PostgreSQL user status.                         | Reconciliation worker marks desynchronized Supabase account disabled/deleted.                                                             | `SEC-LIFECYCLE-014` |
 | **TH-15** | **Information Disclosure (Backup Retention)** | User exercise of Right to Erasure does not purge records from historical database backups and snapshots.                                                     | Aurora snapshots, disaster recovery logs.                  | High       | Medium   | Document snapshot lifecycle policy (`PENDING_LEGAL_APPROVAL`); maintain an `erased_identities_tombstone` table that re-scrubs any restored database before service resumption.                                                                      | Backup lifecycle monitoring; snapshot expiration alerts.                                                                       | Automated post-restore script queries `erased_identities_tombstone` and re-applies redaction to restored database before opening traffic. | `SEC-LIFECYCLE-015` |
+
+---
+
+## 7. Independent Security & Implementation Audit (Phase 3B.8.4 Verification)
+
+An exhaustive, independent verification of the Phase 3B.8.3 implementation (`a350bf21db2d773d23a994b7c82d59c03dd7763d`) identified and remediated eight specific architectural, concurrency, and security defects:
+
+### 7.1 Verified Audit Defects & Technical Remediation
+
+| Defect ID  | Component & File                    | Vulnerability Description                                                                                                                                                                                                                                   | Severity     | Remediation Applied                                                                                                                                                                                                                        | Test Verification                                                                                                                                                                         |
+| :--------- | :---------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **DEF-01** | `account-lifecycle.service.ts`      | **Erased Account Resurrection**: An account that had completed Right-to-Erasure (email pseudonymized to `deleted-<id>@deleted.invalid`) could transition from `DEACTIVATED` to `ACTIVE` via the self-service reactivation endpoint.                         | **CRITICAL** | Added strict tombstone email check: rejecting reactivation with `AccountAlreadyDeletedError` (HTTP 410 Gone) if email matches tombstone pattern.                                                                                           | `account-lifecycle.spec.ts` ("rejects reactivation of an erased account whose email is a deleted tombstone")                                                                              |
+| **DEF-02** | `data-erasure-orchestrator.ts`      | **Orchestrator Request State Validation Bypass**: `executeErasure` did not validate whether the `PrivacyRequest` was in `COOLING_OFF` or `PROCESSING` state before executing destructive PII scrub, risking execution of cancelled or unconfirmed requests. | **HIGH**     | Enforced state validation throwing `PrivacyRequestInvalidStateError` on `CANCELLED`/`PENDING_CONFIRMATION` and `LegalHoldActiveError` on `REJECTED_LEGAL_HOLD`.                                                                            | `legal-hold-concurrency.spec.ts` (Scenario 9: "rejects erasure execution if privacy request is unconfirmed or cancelled")                                                                 |
+| **DEF-03** | `restore-sanitizer.ts`              | **Destructive Global Redis Flush**: The backup restore sanitizer executed `redisClient.flushall()`, which would wipe shared BullMQ queues, session stores, and rate limiter buckets in shared Redis instances.                                              | **CRITICAL** | Replaced `flushall()` with non-blocking key pattern scanning (`scan`) targeted strictly to CreatorConnect identity namespaces (`user:sub:*`, `user:id:*`, `user:profile:*`, `user:roles:*`, `auth:*`) and specific `invalidateUser` calls. | `restore-sanitization.spec.ts` ("invalidates only user-related keys without flushing entire Redis database")                                                                              |
+| **DEF-04** | `restore-sanitizer.ts`              | **Missing Production Safeguard for Backup Restore Sanitization**: The restore sanitizer CLI script could be executed inadvertently against a production database without explicit confirmation.                                                             | **HIGH**     | Added environment safety guard throwing a fatal exception if `NODE_ENV === 'production'` and `CONFIRM_RESTORE_SANITIZATION !== 'true'`.                                                                                                    | `restore-sanitization.spec.ts` ("aborts execution in production if CONFIRM_RESTORE_SANITIZATION is not explicitly set")                                                                   |
+| **DEF-05** | `external-storage-purge.service.ts` | **Silent Version Purge Drop & Path Traversal Vulnerability**: S3 batch deletion output was not inspected for partial deletion errors (`deleteRes.Errors`), and storage keys from database or user inputs were not checked for directory traversal (`../`).  | **HIGH**     | Added verification of `deleteRes.Errors` in `DeleteObjectsCommandOutput` throwing on partial errors to trigger retry; added path traversal guard skipping candidate keys containing `..` or leading `/`.                                   | `external-storage-purge.spec.ts` ("detects partial batch delete errors from S3 and throws to trigger retry", "sanitizes candidate storage keys and prevents directory traversal attacks") |
+| **DEF-06** | `supabase-admin.service.ts`         | **Worker Hang on Stalled Supabase Connections**: Native `fetch` requests lacked an HTTP client timeout, allowing stalled connections to exhaust BullMQ worker threads indefinitely.                                                                         | **MEDIUM**   | Added `signal: AbortSignal.timeout(10000)` (10-second timeout) to all external HTTP calls in `SupabaseAdminService`.                                                                                                                       | `supabase-admin.spec.ts` ("retries on transient 5xx errors up to maxRetries and throws SupabasePermanentError when exhausted")                                                            |
+| **DEF-07** | `legal-hold.service.ts`             | **Full-Table Scan on Hold Lookup by ID**: `getHoldById` performed an unbounded full table scan over the platform `audit_logs` table filtering in Node.js memory.                                                                                            | **MEDIUM**   | Optimized to $O(1)$ indexed lookup via `tx.auditLog.findUnique({ where: { id: holdId } })` with release event check.                                                                                                                       | `legal-hold-concurrency.spec.ts` (Scenario 11: "handles concurrent hold release and prevents replay")                                                                                     |
+| **DEF-08** | `lifecycle.routes.ts`               | **Unbounded Receipt Verification Endpoint**: Public `/api/v1/privacy/verify-receipt` endpoint lacked route-level rate limiting, allowing token enumeration attacks.                                                                                         | **MEDIUM**   | Added route-level rate limiting (`fastify.rateLimit(...)`, max 10 requests per minute with bounded in-memory fallback).                                                                                                                    | `lifecycle.routes.ts` & `lifecycle.routes.spec.ts`                                                                                                                                        |
+
+---
+
+### 7.2 Strict Classification of Platform Architecture Claims
+
+To maintain total transparency and satisfy compliance review standards, platform capabilities are categorized into five verified states:
+
+1. **`IMPLEMENTED`**:
+   - PostgreSQL authoritative status evaluation (`User.status`) and fail-closed authentication pre-handler.
+   - Atomic parent-row locking protocol (`SELECT id FROM users WHERE id = $1 FOR UPDATE`) for legal hold application, release, and erasure execution.
+   - Two-point legal hold verification preventing TOCTOU spoliation of evidence.
+   - In-place irreversible pseudonymization of user records (`tombstoneEmail: deleted-<id>@deleted.invalid`).
+   - Dedicated 256-bit CSPRNG privacy compliance certificates with constant-time verification.
+   - S3/R2 version enumeration, multipart upload abort, and batch delete error detection.
+   - Supabase Admin API identity deletion with exponential backoff and 10s HTTP timeout.
+   - Non-blocking scoped Redis identity namespace invalidation without global flush.
+   - AuditLog-backed legal hold and privacy request persistence adapter (interim pre-Migration 0014).
+
+2. **`TESTED`**:
+   - 41 automated tests in `apps/api/src/modules/lifecycle` (including 11 concurrency scenarios, 8 lifecycle tests, 6 privacy audit tests, 6 supabase admin tests, 4 S3 purge tests, 3 restore sanitization tests, 3 lifecycle routes tests).
+   - 13 automated tests in `apps/api/src/modules/users`.
+   - 26 automated tests in `apps/worker/src/outbox`.
+
+3. **`PROPOSED`**:
+   - Dedicated database tables in Migration 0014: `legal_holds`, `privacy_requests`, `privacy_audit_certificates`, and `users.deleted_at`.
+
+4. **`BLOCKED_PENDING_APPROVAL`**:
+   - All 12 items in Legal Decision Register (LDR-001 through LDR-012) awaiting formal legal counsel, DPO, and CFO written sign-off.
+   - Creation and execution of Migration 0014.
+   - Production deployment and staging execution.
+
+5. **`NOT_VERIFIED`**:
+   - Live multi-region S3 replication purge under high-throughput production workloads.
+   - Production AWS Aurora snapshot restore automation against multi-terabyte datasets.

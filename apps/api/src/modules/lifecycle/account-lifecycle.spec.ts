@@ -6,6 +6,7 @@ import {
   InvalidLifecycleTransitionError,
   LastAdminLockoutError,
   ForbiddenError,
+  AccountAlreadyDeletedError,
 } from '../../errors/app-error.js';
 
 describe('AccountLifecycleService — Formal State Machine & Invariants', () => {
@@ -251,5 +252,88 @@ describe('AccountLifecycleService — Formal State Machine & Invariants', () => 
         reason: 'Solo admin deactivation attempt',
       }),
     ).rejects.toThrow(LastAdminLockoutError);
+  });
+
+  it('strictly prohibits reactivation of permanently erased (pseudonymized) accounts', async () => {
+    const creatorRole = await prisma.role.findUniqueOrThrow({ where: { name: 'CREATOR' } });
+    const erasedUserId = generateUuidV7();
+
+    // Create a user that has undergone in-place pseudonymization
+    await prisma.user.create({
+      data: {
+        id: erasedUserId,
+        supabaseAuthId: `sub_erased_${Date.now()}`,
+        email: `deleted-${erasedUserId}@deleted.invalid`,
+        firstName: 'Deleted',
+        lastName: 'User',
+        status: UserStatus.DEACTIVATED,
+        userRoles: { create: { id: generateUuidV7(), roleId: creatorRole.id } },
+      },
+    });
+
+    // Attempting self-reactivation must fail with AccountAlreadyDeletedError
+    await expect(accountLifecycleService.selfReactivate(erasedUserId)).rejects.toThrow(
+      AccountAlreadyDeletedError,
+    );
+
+    // Attempting admin reactivation must also fail with AccountAlreadyDeletedError
+    const adminId = generateUuidV7();
+    await expect(
+      accountLifecycleService.transitionStatus({
+        targetUserId: erasedUserId,
+        newStatus: UserStatus.ACTIVE,
+        actorUserId: adminId,
+        actorRoles: ['ADMIN'],
+        reason: 'Admin attempted resurrecting erased account',
+      }),
+    ).rejects.toThrow(AccountAlreadyDeletedError);
+  });
+
+  it('rejects unauthorized lifecycle operations', async () => {
+    const creatorRole = await prisma.role.findUniqueOrThrow({ where: { name: 'CREATOR' } });
+    const userA = generateUuidV7();
+    const userB = generateUuidV7();
+
+    await prisma.user.create({
+      data: {
+        id: userA,
+        supabaseAuthId: `sub_a_${Date.now()}`,
+        email: `user_a_${Date.now()}@test.invalid`,
+        status: UserStatus.ACTIVE,
+        userRoles: { create: { id: generateUuidV7(), roleId: creatorRole.id } },
+      },
+    });
+
+    await prisma.user.create({
+      data: {
+        id: userB,
+        supabaseAuthId: `sub_b_${Date.now()}`,
+        email: `user_b_${Date.now()}@test.invalid`,
+        status: UserStatus.ACTIVE,
+        userRoles: { create: { id: generateUuidV7(), roleId: creatorRole.id } },
+      },
+    });
+
+    // User A attempts to modify User B's status (IDOR)
+    await expect(
+      accountLifecycleService.transitionStatus({
+        targetUserId: userB,
+        newStatus: UserStatus.DEACTIVATED,
+        actorUserId: userA,
+        actorRoles: ['CREATOR'],
+        reason: 'Malicious modification of another user',
+      }),
+    ).rejects.toThrow(ForbiddenError);
+
+    // User A attempts to self-suspend
+    await expect(
+      accountLifecycleService.transitionStatus({
+        targetUserId: userA,
+        newStatus: UserStatus.SUSPENDED,
+        actorUserId: userA,
+        actorRoles: ['CREATOR'],
+        reason: 'User self-suspend attempt',
+      }),
+    ).rejects.toThrow(ForbiddenError);
   });
 });

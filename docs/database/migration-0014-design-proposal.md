@@ -2,9 +2,10 @@
 
 ## Data Retention, Account Erasure & Privacy Schema Architecture
 
-> **Document Status**: `DESIGN SPECIFICATION ONLY — NOT APPLIED (PHASE 3B.8.3)`  
+> **Document Status**: `DESIGN SPECIFICATION ONLY — NOT APPLIED (PHASE 3B.8.4 AUDITED)`  
 > **Target Release**: Future Phase 3B.9 (Post Legal & Security Approval)  
-> **Strict Change Control**: This document represents a technical proposal. **Migration 0014 has NOT been created, generated, or executed.** Applying this migration remains strictly blocked until formal written sign-offs are obtained from Legal & Compliance, Information Security, and Engineering Leadership.
+> **Related Phase**: Phase 3B.8 / Phase 3B.8.1 / Phase 3B.8.2 / Phase 3B.8.3 / Phase 3B.8.4  
+> **Strict Change Control**: This document represents a technical proposal. **Migration 0014 has NOT been created, generated, or executed.** Applying this migration remains strictly blocked until formal written sign-offs are obtained from Legal & Compliance, Information Security, and Engineering Leadership. All 18 `ON DELETE RESTRICT` foreign key constraints remain active in production.
 
 ---
 
