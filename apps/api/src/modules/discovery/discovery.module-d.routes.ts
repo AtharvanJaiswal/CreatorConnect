@@ -10,12 +10,10 @@ import {
   ConnectionRequestInputSchema,
   ConnectionRequestResponseSchema,
   BlockUserInputSchema,
-  CreateReportInputSchema,
   type DiscoverQuery,
   type AutocompleteQuery,
   type ConnectionRequestInput,
   type BlockUserInput,
-  type CreateReportInput,
 } from '@creatorconnect/contracts';
 import { Type } from '@sinclair/typebox';
 import { ProblemDetailsSchema } from '@creatorconnect/validation';

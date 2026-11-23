@@ -57,6 +57,15 @@ import 'features/chat/presentation/screens/e01_conversations_list_screen.dart';
 import 'features/chat/presentation/screens/e04_chat_thread_screen.dart';
 import 'features/campaigns/domain/entities/campaign_entities.dart';
 
+// Module H: Applications & Direct Invites (Screens H01-H07 & Dialogs DLG-48-DLG-55)
+import 'features/applications_invites/presentation/screens/h01_apply_assignment_screen.dart';
+import 'features/applications_invites/presentation/screens/h02_my_applications_screen.dart';
+import 'features/applications_invites/presentation/screens/h03_application_detail_screen.dart';
+import 'features/applications_invites/presentation/screens/h04_send_invite_screen.dart';
+import 'features/applications_invites/presentation/screens/h05_invites_inbox_screen.dart';
+import 'features/applications_invites/presentation/screens/h06_invite_detail_screen.dart';
+import 'features/applications_invites/presentation/screens/h07_sent_invites_screen.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -153,6 +162,11 @@ class _CreatorConnectAppState extends State<CreatorConnectApp> {
         '/recommendations': (context) => D12RecommendationsScreen(
               onOpenProfile: (id) => Navigator.pushNamed(context, '/profile/detail', arguments: id),
             ),
+
+        // Module H: Applications & Direct Invites
+        '/applications/my': (context) => const H02MyApplicationsScreen(),
+        '/invites/inbox': (context) => const H05InvitesInboxScreen(),
+        '/invites/sent': (context) => const H07SentInvitesScreen(),
       },
       onGenerateRoute: (settings) {
         UserRole? extractRole(Object? rawArgs) {
@@ -349,6 +363,44 @@ class _CreatorConnectAppState extends State<CreatorConnectApp> {
           }
           return MaterialPageRoute(
             builder: (_) => E14AcceptApplicantScreen(applicant: applicant),
+          );
+        }
+
+        // Module H: Applications & Direct Invites Dynamic Routes
+        if (settings.name == '/applications/apply') {
+          final args = settings.arguments as Map<String, dynamic>?;
+          return MaterialPageRoute(
+            builder: (_) => H01ApplyAssignmentScreen(
+              assignmentId: args?['assignmentId'] ?? 'asg-demo-101',
+              assignmentTitle: args?['assignmentTitle'] ?? 'Summer Festive Lookbook Reels',
+              brandName: args?['brandName'] ?? 'Zara India',
+              location: args?['location'] ?? 'Mumbai',
+              assignmentBudget: args?['assignmentBudget'] ?? 15000,
+            ),
+          );
+        }
+        if (settings.name == '/applications/detail') {
+          final appId = settings.arguments as String? ?? 'app-001';
+          return MaterialPageRoute(
+            builder: (_) => H03ApplicationDetailScreen(applicationId: appId),
+          );
+        }
+        if (settings.name == '/invites/send') {
+          final args = settings.arguments as Map<String, dynamic>?;
+          return MaterialPageRoute(
+            builder: (_) => H04SendInviteScreen(
+              recipientId: args?['recipientId'] ?? 'usr-priya',
+              recipientName: args?['recipientName'] ?? 'Priya Patel',
+              recipientRole: args?['recipientRole'] ?? 'Fashion Creator',
+              recipientAvatarUrl: args?['recipientAvatarUrl'],
+              followerCount: args?['followerCount'] ?? '185K followers',
+            ),
+          );
+        }
+        if (settings.name == '/invites/detail') {
+          final invId = settings.arguments as String? ?? 'inv-001';
+          return MaterialPageRoute(
+            builder: (_) => H06InviteDetailScreen(inviteId: invId),
           );
         }
         return null;
@@ -695,6 +747,130 @@ class AppTemplateHomeScreen extends StatelessWidget {
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                     ),
                   ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Module H: Applications & Direct Invites Feature Card
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFDF5),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFFFD64A), width: 2),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Module H: Applications & Invites',
+                        style: TextStyle(
+                          fontFamily: 'Archivo',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF121212),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF9E6),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0xFFFFD64A)),
+                      ),
+                      child: const Text(
+                        '7 SCREENS · 8 DIALOGS',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF8C6A0A),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'H01–H07 & DLG-48–DLG-55: Proposals, Rate Quotes, 4-Tab Dashboard, Status Stepper Timeline, Direct Invites with 7-Day Auto-Expiry & Escrow Binding.',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF6E685F), height: 1.3),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFFD64A),
+                          foregroundColor: const Color(0xFF1A1815),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                        ),
+                        onPressed: () => Navigator.pushNamed(context, '/applications/my'),
+                        child: const Text(
+                          'My Applications (H02)',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF14110F),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                        ),
+                        onPressed: () => Navigator.pushNamed(context, '/invites/inbox'),
+                        child: const Text(
+                          'Invites Inbox (H05)',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF14110F),
+                          side: const BorderSide(color: Color(0xFFE7E0D5)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                        ),
+                        onPressed: () => Navigator.pushNamed(context, '/applications/apply'),
+                        child: const Text(
+                          'Apply (H01)',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF14110F),
+                          side: const BorderSide(color: Color(0xFFE7E0D5)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                        ),
+                        onPressed: () => Navigator.pushNamed(context, '/invites/send'),
+                        child: const Text(
+                          'Send Invite (H04)',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
