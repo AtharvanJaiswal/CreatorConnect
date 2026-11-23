@@ -18,6 +18,10 @@ import type {
   MessageResponse,
   MarkReadInput,
   MarkReadResponse,
+  MarkDeliveredInput,
+  MarkDeliveredResponse,
+  RecipientSearchQuery,
+  RecipientSearchResponse,
   CreateBlockInput,
   UserBlockResponse,
   ListBlocksQuery,
@@ -167,6 +171,29 @@ export class MessagingService {
   ): Promise<MarkReadResponse> {
     await this.authService.assertCanMarkConversationRead(conversationId, userId);
     return await this.repo.markConversationRead(conversationId, userId, input.sequence);
+  }
+
+  /**
+   * Updates the delivery receipt pointer for an active conversation participant.
+   */
+  public async markConversationDelivered(
+    conversationId: string,
+    userId: string,
+    input: MarkDeliveredInput,
+  ): Promise<MarkDeliveredResponse> {
+    await this.authService.assertCanMarkConversationDelivered(conversationId, userId);
+    return await this.repo.markConversationDelivered(conversationId, userId, input.sequence);
+  }
+
+  /**
+   * Searches discoverable recipients for messaging with privacy and block exclusion.
+   */
+  public async searchRecipients(
+    viewerUserId: string,
+    query?: RecipientSearchQuery,
+  ): Promise<RecipientSearchResponse> {
+    const items = await this.repo.searchRecipients(viewerUserId, query?.query || '', query?.limit);
+    return { items };
   }
 
   /**

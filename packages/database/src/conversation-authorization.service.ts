@@ -71,6 +71,14 @@ export interface IConversationAuthorizationService {
   ): Promise<ConversationParticipant>;
 
   /**
+   * Asserts that a user can acknowledge delivery in a conversation.
+   */
+  assertCanMarkConversationDelivered(
+    conversationId: string,
+    userId: string,
+  ): Promise<ConversationParticipant>;
+
+  /**
    * Asserts that a user can access an attachment.
    * Verifies attachment exists, message and conversation are active, user is an active participant,
    * and media asset status is ACTIVE (not quarantined or pending).
@@ -340,6 +348,14 @@ export class ConversationAuthorizationService implements IConversationAuthorizat
   }
 
   public async assertCanMarkConversationRead(
+    conversationId: string,
+    userId: string,
+  ): Promise<ConversationParticipant> {
+    const { participant } = await this.assertCanAccessConversation(conversationId, userId);
+    return participant;
+  }
+
+  public async assertCanMarkConversationDelivered(
     conversationId: string,
     userId: string,
   ): Promise<ConversationParticipant> {

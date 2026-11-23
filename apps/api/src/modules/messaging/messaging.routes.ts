@@ -10,6 +10,10 @@ import {
   MessageResponseSchema,
   MarkReadInputSchema,
   MarkReadResponseSchema,
+  MarkDeliveredInputSchema,
+  MarkDeliveredResponseSchema,
+  RecipientSearchQuerySchema,
+  RecipientSearchResponseSchema,
   CreateBlockInputSchema,
   UserBlockResponseSchema,
   ListBlocksQuerySchema,
@@ -24,6 +28,8 @@ import {
   type ListMessagesQuery,
   type SendMessageInput,
   type MarkReadInput,
+  type MarkDeliveredInput,
+  type RecipientSearchQuery,
   type CreateBlockInput,
   type ListBlocksQuery,
   type CreateReportInput,
@@ -297,6 +303,105 @@ export const messagingRoutes: FastifyPluginAsync<MessagingRoutesOptions> = async
         request.user.id,
         request.body,
       );
+      return reply.status(200).send(result);
+    },
+  );
+
+  // ==============================================================================
+  // 6b. POST /api/v1/conversations/:id/delivered — Mark Conversation as Delivered
+  // ==============================================================================
+  fastify.post<{ Params: IdParam; Body: MarkDeliveredInput }>(
+    '/api/v1/conversations/:id/delivered',
+    {
+      preHandler: [fastify.authenticate],
+      schema: {
+        description:
+          'Updates the last delivered sequence pointer for the authenticated participant',
+        tags: ['Messaging'],
+        security: [{ bearerAuth: [] }],
+        params: IdParamSchema,
+        body: MarkDeliveredInputSchema,
+        response: {
+          200: MarkDeliveredResponseSchema,
+          400: ProblemDetailsSchema,
+          401: ProblemDetailsSchema,
+          404: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = await service.markConversationDelivered(
+        request.params.id,
+        request.user.id,
+        request.body,
+      );
+      return reply.status(200).send(result);
+    },
+  );
+
+  // ==============================================================================
+  // 6c. GET /api/v1/conversations/recipients — Search Discoverable Recipients
+  // ==============================================================================
+  fastify.get<{ Querystring: RecipientSearchQuery }>(
+    '/api/v1/conversations/recipients',
+    {
+      preHandler: [
+        fastify.authenticate,
+        fastify.rateLimit({
+          endpoint: 'search-recipients',
+          max: 60,
+          windowSeconds: 60,
+          onRedisFailure: 'bounded-fallback',
+        }),
+      ],
+      schema: {
+        description:
+          'Searches discoverable recipients for messaging with privacy and block exclusion',
+        tags: ['Messaging'],
+        security: [{ bearerAuth: [] }],
+        querystring: RecipientSearchQuerySchema,
+        response: {
+          200: RecipientSearchResponseSchema,
+          401: ProblemDetailsSchema,
+          429: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = await service.searchRecipients(request.user.id, request.query);
+      return reply.status(200).send(result);
+    },
+  );
+
+  // ==============================================================================
+  // 6d. GET /api/v1/chat/recipients — Recipient Discovery Alias
+  // ==============================================================================
+  fastify.get<{ Querystring: RecipientSearchQuery }>(
+    '/api/v1/chat/recipients',
+    {
+      preHandler: [
+        fastify.authenticate,
+        fastify.rateLimit({
+          endpoint: 'search-recipients-chat',
+          max: 60,
+          windowSeconds: 60,
+          onRedisFailure: 'bounded-fallback',
+        }),
+      ],
+      schema: {
+        description: 'Searches discoverable recipients for messaging (chat alias)',
+        tags: ['Messaging'],
+        security: [{ bearerAuth: [] }],
+        querystring: RecipientSearchQuerySchema,
+        response: {
+          200: RecipientSearchResponseSchema,
+          401: ProblemDetailsSchema,
+          429: ProblemDetailsSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = await service.searchRecipients(request.user.id, request.query);
       return reply.status(200).send(result);
     },
   );

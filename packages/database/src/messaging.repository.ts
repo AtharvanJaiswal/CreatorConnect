@@ -18,6 +18,8 @@ import {
   type ListMessagesResponse,
   type ListConversationsResponse,
   type MarkReadResponse,
+  type MarkDeliveredResponse,
+  type RecipientProfile,
   type UserBlockResponse,
   type ListBlocksResponse,
   type CreateReportInput,
@@ -173,6 +175,22 @@ export interface IMessagingRepository {
     sequence: string | bigint,
   ): Promise<MarkReadResponse>;
 
+  markConversationDelivered(
+    conversationId: string,
+    userId: string,
+    sequence: string | bigint,
+  ): Promise<MarkDeliveredResponse>;
+
+  getDeliveredSequence(conversationId: string, userId: string): string;
+
+  searchRecipients(
+    viewerUserId: string,
+    query: string,
+    limit?: number,
+  ): Promise<RecipientProfile[]>;
+
+  getUnreadCount(conversationId: string, userId: string, lastReadSequence: bigint): Promise<number>;
+
   blockUser(blockerId: string, blockedId: string, reason?: string): Promise<UserBlockResponse>;
   unblockUser(blockerId: string, blockedId: string): Promise<void>;
   listBlocks(
@@ -222,9 +240,15 @@ export interface IMessagingRepository {
 
 export class MessagingRepository implements IMessagingRepository {
   private prisma: PrismaClient;
+  private deliveredStore: Map<string, string> = new Map();
 
   constructor(prismaClient?: PrismaClient) {
     this.prisma = prismaClient || getPrismaClient();
+  }
+
+  public getDeliveredSequence(conversationId: string, userId: string): string {
+    const key = `${conversationId}:${userId}`;
+    return this.deliveredStore.get(key) || '0';
   }
 
   /**
@@ -805,12 +829,32 @@ export class MessagingRepository implements IMessagingRepository {
       throw new ConversationNotFoundError();
     }
 
-    const unreadCount = Math.max(
-      0,
-      Number(conversation.currentSequence - participant.lastReadSequence),
+    const unreadCount = await this.getUnreadCount(
+      conversation.id,
+      userId,
+      participant.lastReadSequence,
     );
 
     return this.formatDirectConversation(conversation as any, unreadCount);
+  }
+
+  /**
+   * Calculates the unread count for a participant in a conversation,
+   * excluding messages sent by the participant themselves and soft-deleted messages.
+   */
+  public async getUnreadCount(
+    conversationId: string,
+    userId: string,
+    lastReadSequence: bigint,
+  ): Promise<number> {
+    return await this.prisma.message.count({
+      where: {
+        conversationId,
+        sequence: { gt: lastReadSequence },
+        senderId: { not: userId },
+        deletedAt: null,
+      },
+    });
   }
 
   /**
@@ -854,9 +898,13 @@ export class MessagingRepository implements IMessagingRepository {
     const hasMore = participantRecords.length > limit;
     const records = hasMore ? participantRecords.slice(0, limit) : participantRecords;
 
-    const items = records.map((record) => {
+    const unreadCounts = await Promise.all(
+      records.map((r) => this.getUnreadCount(r.conversationId, userId, r.lastReadSequence)),
+    );
+
+    const items = records.map((record, index) => {
       const conv = record.conversation;
-      const unreadCount = Math.max(0, Number(conv.currentSequence - record.lastReadSequence));
+      const unreadCount = unreadCounts[index] ?? 0;
       return this.formatDirectConversation(conv as any, unreadCount);
     });
 
@@ -899,11 +947,141 @@ export class MessagingRepository implements IMessagingRepository {
       },
     });
 
+    // Advance delivered sequence if read sequence exceeds stored delivered sequence
+    const key = `${conversationId}:${userId}`;
+    const currentDelivered = BigInt(this.getDeliveredSequence(conversationId, userId));
+    if (seq > currentDelivered) {
+      this.deliveredStore.set(key, seq.toString());
+    }
+
     return {
       conversationId: updated.conversationId,
       lastReadSequence: updated.lastReadSequence.toString(),
       updatedAt: updated.updatedAt.toISOString(),
     };
+  }
+
+  /**
+   * Updates a participant's lastDeliveredSequence pointer monotonically.
+   */
+  public async markConversationDelivered(
+    conversationId: string,
+    userId: string,
+    sequence: string | bigint,
+  ): Promise<MarkDeliveredResponse> {
+    const participant = await this.prisma.conversationParticipant.findFirst({
+      where: { conversationId, userId, leftAt: null },
+      include: {
+        conversation: {
+          select: {
+            id: true,
+            deletedAt: true,
+            currentSequence: true,
+          },
+        },
+      },
+    });
+
+    if (!participant || !participant.conversation || participant.conversation.deletedAt !== null) {
+      throw new ConversationNotFoundError();
+    }
+
+    const seq = typeof sequence === 'bigint' ? sequence : BigInt(sequence);
+    const cappedSeq =
+      seq > participant.conversation.currentSequence
+        ? participant.conversation.currentSequence
+        : seq;
+
+    const key = `${conversationId}:${userId}`;
+    const currentDelivered = BigInt(this.getDeliveredSequence(conversationId, userId));
+    const newDelivered = cappedSeq > currentDelivered ? cappedSeq : currentDelivered;
+
+    this.deliveredStore.set(key, newDelivered.toString());
+
+    return {
+      conversationId,
+      lastDeliveredSequence: newDelivered.toString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Searches discoverable recipients for messaging, strictly enforcing bidirectional block
+   * exclusion, self-exclusion, and returning only safe public profile data.
+   */
+  public async searchRecipients(
+    viewerUserId: string,
+    query: string,
+    limit: number = 20,
+  ): Promise<RecipientProfile[]> {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      return [];
+    }
+    const take = Math.min(Math.max(limit, 1), 50);
+
+    // 1. Get blocked user IDs bidirectionally
+    const blocks = await this.prisma.userBlock.findMany({
+      where: {
+        OR: [{ blockerId: viewerUserId }, { blockedId: viewerUserId }],
+      },
+      select: {
+        blockerId: true,
+        blockedId: true,
+      },
+    });
+
+    const blockedUserIds = new Set<string>();
+    for (const b of blocks) {
+      if (b.blockerId === viewerUserId) blockedUserIds.add(b.blockedId);
+      if (b.blockedId === viewerUserId) blockedUserIds.add(b.blockerId);
+    }
+    blockedUserIds.add(viewerUserId); // Exclude self
+
+    // 2. Query users by name/profiles with status ACTIVE
+    const users = await this.prisma.user.findMany({
+      where: {
+        id: { notIn: Array.from(blockedUserIds) },
+        status: 'ACTIVE',
+        OR: [
+          { firstName: { contains: trimmed, mode: 'insensitive' } },
+          { lastName: { contains: trimmed, mode: 'insensitive' } },
+          { creatorProfile: { locationCity: { contains: trimmed, mode: 'insensitive' } } },
+          { brandProfile: { companyName: { contains: trimmed, mode: 'insensitive' } } },
+          { podcasterProfile: { podcastName: { contains: trimmed, mode: 'insensitive' } } },
+        ],
+      },
+      take,
+      select: PARTICIPANT_USER_SELECT,
+    });
+
+    return users.map((u) => {
+      let displayName = [u.firstName, u.lastName].filter(Boolean).join(' ') || 'User';
+      let role = u.userRoles?.[0]?.role?.name || undefined;
+      let isVerified = false;
+
+      if (u.brandProfile) {
+        if (u.brandProfile.companyName) displayName = u.brandProfile.companyName;
+        isVerified = u.brandProfile.isVerified ?? false;
+        role = 'BRAND';
+      } else if (u.creatorProfile) {
+        isVerified = u.creatorProfile.isVerified ?? false;
+        role = 'CREATOR';
+      } else if (u.podcasterProfile) {
+        if (u.podcasterProfile.podcastName) displayName = u.podcasterProfile.podcastName;
+        role = 'PODCASTER';
+      } else if (u.professionalProfile) {
+        role = 'PROFESSIONAL';
+      }
+
+      return {
+        id: u.id,
+        displayName,
+        avatarUrl: u.avatarUrl,
+        ...(role !== undefined ? { role } : {}),
+        isVerified,
+      };
+    });
   }
 
   /**
@@ -1260,12 +1438,19 @@ export class MessagingRepository implements IMessagingRepository {
       currentSequence: c.currentSequence.toString(),
       participants: c.participants.map((p) => {
         const profile = this.formatParticipantProfile(p.user);
+        const storedDelivered = this.getDeliveredSequence(p.conversationId, p.userId);
+        const deliveredSeq =
+          BigInt(storedDelivered) > p.lastReadSequence
+            ? storedDelivered
+            : p.lastReadSequence.toString();
+
         return {
           id: p.id,
           conversationId: p.conversationId,
           userId: p.userId,
           role: p.role,
           lastReadSequence: p.lastReadSequence.toString(),
+          lastDeliveredSequence: deliveredSeq,
           mutedUntil: p.mutedUntil ? p.mutedUntil.toISOString() : null,
           leftAt: p.leftAt ? p.leftAt.toISOString() : null,
           joinedAt: p.joinedAt.toISOString(),

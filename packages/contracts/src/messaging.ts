@@ -148,6 +148,7 @@ export const ConversationParticipantResponseSchema = Type.Object({
   userId: UuidSchema,
   role: ParticipantRoleSchema,
   lastReadSequence: SequenceStringSchema,
+  lastDeliveredSequence: Type.Optional(SequenceStringSchema),
   mutedUntil: Type.Union([IsoDateTimeSchema, Type.Null()]),
   leftAt: Type.Union([IsoDateTimeSchema, Type.Null()]),
   joinedAt: IsoDateTimeSchema,
@@ -249,6 +250,96 @@ export const MarkReadResponseSchema = Type.Object({
   updatedAt: IsoDateTimeSchema,
 });
 export type MarkReadResponse = Static<typeof MarkReadResponseSchema>;
+
+export const MarkDeliveredInputSchema = Type.Object({
+  sequence: SequenceStringSchema,
+});
+export type MarkDeliveredInput = Static<typeof MarkDeliveredInputSchema>;
+
+export const MarkDeliveredResponseSchema = Type.Object({
+  conversationId: UuidSchema,
+  lastDeliveredSequence: SequenceStringSchema,
+  updatedAt: IsoDateTimeSchema,
+});
+export type MarkDeliveredResponse = Static<typeof MarkDeliveredResponseSchema>;
+
+// ==============================================================================
+// Recipient Discovery
+// ==============================================================================
+
+export const RecipientSearchQuerySchema = Type.Object({
+  query: Type.String({ minLength: 1, maxLength: 100 }),
+  limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 50, default: 20 })),
+});
+export type RecipientSearchQuery = Static<typeof RecipientSearchQuerySchema>;
+
+export const RecipientProfileSchema = Type.Object({
+  id: UuidSchema,
+  displayName: Type.String(),
+  avatarUrl: Type.Union([Type.String(), Type.Null()]),
+  role: Type.Optional(Type.String()),
+  isVerified: Type.Boolean(),
+});
+export type RecipientProfile = Static<typeof RecipientProfileSchema>;
+
+export const RecipientSearchResponseSchema = Type.Object({
+  items: Type.Array(RecipientProfileSchema),
+});
+export type RecipientSearchResponse = Static<typeof RecipientSearchResponseSchema>;
+
+// ==============================================================================
+// Socket.IO Real-time Messaging Payloads
+// ==============================================================================
+
+export const SocketMessageSendPayloadSchema = Type.Object({
+  conversationId: UuidSchema,
+  clientMessageId: UuidSchema,
+  content: Type.String({ minLength: 1, maxLength: 5000 }),
+  mediaAssetIds: Type.Optional(Type.Array(UuidSchema, { maxItems: 10 })),
+});
+export type SocketMessageSendPayload = Static<typeof SocketMessageSendPayloadSchema>;
+
+export const SocketMessageDeliveredPayloadSchema = Type.Object({
+  conversationId: UuidSchema,
+  sequence: SequenceStringSchema,
+});
+export type SocketMessageDeliveredPayload = Static<typeof SocketMessageDeliveredPayloadSchema>;
+
+export const SocketMessageReadPayloadSchema = Type.Object({
+  conversationId: UuidSchema,
+  sequence: SequenceStringSchema,
+});
+export type SocketMessageReadPayload = Static<typeof SocketMessageReadPayloadSchema>;
+
+export const SocketTypingPayloadSchema = Type.Object({
+  conversationId: UuidSchema,
+  isTyping: Type.Boolean(),
+});
+export type SocketTypingPayload = Static<typeof SocketTypingPayloadSchema>;
+
+export const SocketDeliveryReceiptBroadcastSchema = Type.Object({
+  conversationId: UuidSchema,
+  userId: UuidSchema,
+  sequence: SequenceStringSchema,
+  deliveredAt: IsoDateTimeSchema,
+});
+export type SocketDeliveryReceiptBroadcast = Static<typeof SocketDeliveryReceiptBroadcastSchema>;
+
+export const SocketReadReceiptBroadcastSchema = Type.Object({
+  conversationId: UuidSchema,
+  userId: UuidSchema,
+  sequence: SequenceStringSchema,
+  readAt: IsoDateTimeSchema,
+});
+export type SocketReadReceiptBroadcast = Static<typeof SocketReadReceiptBroadcastSchema>;
+
+export const SocketTypingBroadcastSchema = Type.Object({
+  conversationId: UuidSchema,
+  userId: UuidSchema,
+  isTyping: Type.Boolean(),
+  timestamp: IsoDateTimeSchema,
+});
+export type SocketTypingBroadcast = Static<typeof SocketTypingBroadcastSchema>;
 
 // ==============================================================================
 // User Blocks

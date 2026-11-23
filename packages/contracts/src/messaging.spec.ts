@@ -24,6 +24,17 @@ import {
   MessageResponseSchema,
   ListMessagesQuerySchema,
   MarkReadInputSchema,
+  MarkDeliveredInputSchema,
+  MarkDeliveredResponseSchema,
+  RecipientSearchQuerySchema,
+  RecipientSearchResponseSchema,
+  SocketMessageSendPayloadSchema,
+  SocketMessageDeliveredPayloadSchema,
+  SocketMessageReadPayloadSchema,
+  SocketTypingPayloadSchema,
+  SocketDeliveryReceiptBroadcastSchema,
+  SocketReadReceiptBroadcastSchema,
+  SocketTypingBroadcastSchema,
   // Blocks
   CreateBlockInputSchema,
   UserBlockResponseSchema,
@@ -662,6 +673,101 @@ describe('Phase 5 Messaging Contracts & Validation', () => {
           senderId: ANOTHER_UUID,
           recipientId: THIRD_UUID,
           expiredAt: '2026-10-24T12:00:00.000Z',
+        }),
+      ).toBe(true);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 10. Delivery Receipts, Recipient Search & Socket Payloads
+  // --------------------------------------------------------------------------
+  describe('Delivery Receipts, Recipient Search & Socket Contracts', () => {
+    it('validates delivery receipt schemas', () => {
+      expect(Value.Check(MarkDeliveredInputSchema, { sequence: '42' })).toBe(true);
+      expect(Value.Check(MarkDeliveredInputSchema, { sequence: -1 })).toBe(false);
+
+      expect(
+        Value.Check(MarkDeliveredResponseSchema, {
+          conversationId: VALID_UUID,
+          lastDeliveredSequence: '42',
+          updatedAt: '2026-10-24T12:00:00.000Z',
+        }),
+      ).toBe(true);
+    });
+
+    it('validates recipient search schemas', () => {
+      expect(Value.Check(RecipientSearchQuerySchema, { query: 'alice', limit: 10 })).toBe(true);
+      expect(Value.Check(RecipientSearchQuerySchema, { query: '' })).toBe(false);
+
+      expect(
+        Value.Check(RecipientSearchResponseSchema, {
+          items: [
+            {
+              id: VALID_UUID,
+              displayName: 'Alice Smith',
+              avatarUrl: 'https://example.com/avatar.jpg',
+              role: 'CREATOR',
+              isVerified: true,
+            },
+          ],
+        }),
+      ).toBe(true);
+    });
+
+    it('validates socket real-time schemas', () => {
+      expect(
+        Value.Check(SocketMessageSendPayloadSchema, {
+          conversationId: VALID_UUID,
+          clientMessageId: ANOTHER_UUID,
+          content: 'Hello via socket',
+        }),
+      ).toBe(true);
+
+      expect(
+        Value.Check(SocketMessageDeliveredPayloadSchema, {
+          conversationId: VALID_UUID,
+          sequence: '5',
+        }),
+      ).toBe(true);
+
+      expect(
+        Value.Check(SocketMessageReadPayloadSchema, {
+          conversationId: VALID_UUID,
+          sequence: '5',
+        }),
+      ).toBe(true);
+
+      expect(
+        Value.Check(SocketTypingPayloadSchema, {
+          conversationId: VALID_UUID,
+          isTyping: true,
+        }),
+      ).toBe(true);
+
+      expect(
+        Value.Check(SocketDeliveryReceiptBroadcastSchema, {
+          conversationId: VALID_UUID,
+          userId: ANOTHER_UUID,
+          sequence: '5',
+          deliveredAt: '2026-10-24T12:00:00.000Z',
+        }),
+      ).toBe(true);
+
+      expect(
+        Value.Check(SocketReadReceiptBroadcastSchema, {
+          conversationId: VALID_UUID,
+          userId: ANOTHER_UUID,
+          sequence: '5',
+          readAt: '2026-10-24T12:00:00.000Z',
+        }),
+      ).toBe(true);
+
+      expect(
+        Value.Check(SocketTypingBroadcastSchema, {
+          conversationId: VALID_UUID,
+          userId: ANOTHER_UUID,
+          isTyping: true,
+          timestamp: '2026-10-24T12:00:00.000Z',
         }),
       ).toBe(true);
     });
