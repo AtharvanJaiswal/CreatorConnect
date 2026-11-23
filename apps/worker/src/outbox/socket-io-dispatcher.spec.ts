@@ -684,5 +684,48 @@ describe('SocketIoEventDispatcher (Increment 8)', () => {
       expect(result.error).toContain('Unsupported outbox event type: totally.unknown.event.v99');
       expect(emitSpy).not.toHaveBeenCalled();
     });
+
+    it('passes through all support domain events without emitting to client socket rooms (Phase 3B.6.3)', async () => {
+      const emitSpy = vi.fn();
+      const fakeEmitter: SocketIoRoomEmitter = {
+        to: () => ({ emit: emitSpy }),
+      };
+
+      const dispatcher = new SocketIoEventDispatcher({ emitter: fakeEmitter });
+
+      const supportEventTypes = [
+        'support.ticket.created.v1',
+        'support.ticket.assigned.v1',
+        'support.ticket.message.created.v1',
+        'support.ticket.internal_note.created.v1',
+        'support.ticket.status.changed.v1',
+        'support.ticket.resolved.v1',
+      ];
+
+      for (const eventType of supportEventTypes) {
+        const event: ClaimedOutboxEvent = {
+          id: '01912952-4a00-7000-8000-000000000101',
+          eventType,
+          aggregateType: 'SupportTicket',
+          aggregateId: '01912952-4a00-7000-8000-000000000102',
+          payload: {
+            ticketId: '01912952-4a00-7000-8000-000000000102',
+            messageId: '01912952-4a00-7000-8000-000000000103',
+            authorId: '01912952-4a00-7000-8000-000000000104',
+            authorRole: 'STAFF',
+            isInternal: eventType.includes('internal_note'),
+          },
+          attempts: 1,
+          createdAt: new Date(),
+          claimToken: createOutboxClaimToken('01912952-4a00-7000-8000-000000000101', 1),
+        };
+
+        const result = await dispatcher.dispatch(event);
+
+        expect(result.success).toBe(true);
+        // CRITICAL PRIVACY: Support events (and especially internal notes) must NEVER emit to client socket rooms
+        expect(emitSpy).not.toHaveBeenCalled();
+      }
+    });
   });
 });

@@ -1,5 +1,16 @@
 export * from '@prisma/client';
-export { InvitationStatus, MessageRequestStatus } from '@prisma/client';
+export {
+  InvitationStatus,
+  MessageRequestStatus,
+  CommunityPostType,
+  CommunityPostStatus,
+  CommunityEventStatus,
+  EventRsvpStatus,
+  SupportTicketCategory,
+  SupportTicketPriority,
+  SupportTicketStatus,
+  SupportMessageAuthorRole,
+} from '@prisma/client';
 import { PrismaClient } from '@prisma/client';
 
 var globalPrisma: PrismaClient | undefined;

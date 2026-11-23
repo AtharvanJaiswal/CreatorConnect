@@ -539,3 +539,79 @@ export class DuplicateActiveInvitationError extends AppError {
     super(409, 'DUPLICATE_ACTIVE_INVITATION', 'Active Invitation Exists', detail);
   }
 }
+
+// ==============================================================================
+// Phase 3A: Community Errors
+// ==============================================================================
+
+export class CommunityPostNotFoundError extends AppError {
+  constructor(detail = 'Community post not found.') {
+    super(404, 'COMMUNITY_POST_NOT_FOUND', 'Community Post Not Found', detail);
+  }
+}
+
+export class CommunityPostForbiddenError extends AppError {
+  constructor(detail = 'You do not have permission to modify or delete this community post.') {
+    super(403, 'COMMUNITY_POST_FORBIDDEN', 'Community Post Forbidden', detail);
+  }
+}
+
+export class CommunityEventNotFoundError extends AppError {
+  constructor(detail = 'Community event not found.') {
+    super(404, 'COMMUNITY_EVENT_NOT_FOUND', 'Community Event Not Found', detail);
+  }
+}
+
+export class CommunityEventCapacityExceededError extends AppError {
+  constructor(detail = 'This event has reached maximum RSVP capacity.') {
+    super(400, 'COMMUNITY_EVENT_CAPACITY_EXCEEDED', 'Event Capacity Exceeded', detail);
+  }
+}
+
+export class CommunityModerationUnauthorizedError extends AppError {
+  constructor(detail = 'You must be an administrator or moderator to perform this action.') {
+    super(403, 'COMMUNITY_MODERATION_UNAUTHORIZED', 'Moderation Unauthorized', detail);
+  }
+}
+
+// ==============================================================================
+// Phase 3B: Support Ticketing Errors
+// ==============================================================================
+
+export class SupportTicketNotFoundError extends AppError {
+  constructor(detail = 'Support ticket not found.') {
+    super(404, 'SUPPORT_TICKET_NOT_FOUND', 'Support Ticket Not Found', detail);
+  }
+}
+
+export class SupportTicketForbiddenError extends AppError {
+  constructor(detail = 'You do not have permission to access or modify this support ticket.') {
+    super(403, 'SUPPORT_TICKET_FORBIDDEN', 'Support Ticket Forbidden', detail);
+  }
+}
+
+export class SupportTicketClosedError extends AppError {
+  constructor(detail = 'This support ticket has been closed and cannot receive further replies.') {
+    super(400, 'SUPPORT_TICKET_CLOSED', 'Support Ticket Closed', detail);
+  }
+}
+
+export class SupportTicketInvalidTransitionError extends AppError {
+  constructor(detail = 'The requested support ticket status transition is invalid.') {
+    super(400, 'SUPPORT_TICKET_INVALID_TRANSITION', 'Invalid Ticket Status Transition', detail);
+  }
+}
+
+export class SupportTicketConflictError extends AppError {
+  constructor(
+    detail = 'Support ticket has been modified by another actor. Please refresh and retry.',
+  ) {
+    super(409, 'SUPPORT_TICKET_CONFLICT', 'Support Ticket Version Conflict', detail);
+  }
+}
+
+export class SupportStaffUnauthorizedError extends AppError {
+  constructor(detail = 'Access restricted: Support staff authorization required.') {
+    super(403, 'SUPPORT_STAFF_UNAUTHORIZED', 'Staff Authorization Required', detail);
+  }
+}

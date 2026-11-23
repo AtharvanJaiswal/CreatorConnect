@@ -2,7 +2,6 @@ import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { getPrismaClient, type PrismaClient } from '@creatorconnect/database';
 import { generateUuidV7 } from '@creatorconnect/utils';
-import { encodeMessageCursor } from '@creatorconnect/contracts';
 import { buildApp } from '../../app.js';
 import { defaultJwtVerifier } from '../../services/jwt-verifier.js';
 import { createTestJwt, createTestKeySet } from '../../../../../tests/fixtures/auth-test-helper.js';

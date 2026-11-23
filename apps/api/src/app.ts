@@ -28,6 +28,8 @@ import { paymentsRoutes } from './modules/payments/payments.routes.js';
 import { disputesRoutes, cancellationsRoutes } from './modules/disputes/index.js';
 import { reviewsRoutes } from './modules/reviews/index.js';
 import { collaborationRoutes } from './modules/collaboration/index.js';
+import { communityRoutes } from './modules/community/index.js';
+import { supportRoutes } from './modules/support/index.js';
 import { lifecycleRoutes } from './modules/lifecycle/lifecycle.routes.js';
 
 export async function buildApp(opts: FastifyServerOptions = {}): Promise<FastifyInstance> {
@@ -207,6 +209,8 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
   await app.register(cancellationsRoutes);
   await app.register(reviewsRoutes);
   await app.register(collaborationRoutes);
+  await app.register(communityRoutes);
+  await app.register(supportRoutes);
   await app.register(lifecycleRoutes);
 
   return app;

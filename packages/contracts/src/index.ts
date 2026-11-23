@@ -14,5 +14,7 @@ export * from './notifications.js';
 export * from './disputes.js';
 export * from './reviews.js';
 export * from './collaboration.js';
+export * from './community.js';
+export * from './support.js';
 export * from './lifecycle.js';
 export * from '@creatorconnect/validation';
