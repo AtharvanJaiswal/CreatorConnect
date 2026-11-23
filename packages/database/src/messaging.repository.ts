@@ -934,6 +934,9 @@ export class MessagingRepository implements IMessagingRepository {
     }
 
     const seq = typeof sequence === 'bigint' ? sequence : BigInt(sequence);
+    const newRead = seq > participant.lastReadSequence ? seq : participant.lastReadSequence;
+    const currentDelivered = participant.lastDeliveredSequence ?? 0n;
+    const newDelivered = newRead > currentDelivered ? newRead : currentDelivered;
 
     const updated = await this.prisma.conversationParticipant.update({
       where: {
@@ -943,16 +946,14 @@ export class MessagingRepository implements IMessagingRepository {
         },
       },
       data: {
-        lastReadSequence: seq,
+        lastReadSequence: newRead,
+        lastDeliveredSequence: newDelivered,
       },
     });
 
-    // Advance delivered sequence if read sequence exceeds stored delivered sequence
+    // Advance delivered sequence in fallback store
     const key = `${conversationId}:${userId}`;
-    const currentDelivered = BigInt(this.getDeliveredSequence(conversationId, userId));
-    if (seq > currentDelivered) {
-      this.deliveredStore.set(key, seq.toString());
-    }
+    this.deliveredStore.set(key, updated.lastDeliveredSequence.toString());
 
     return {
       conversationId: updated.conversationId,
@@ -992,16 +993,28 @@ export class MessagingRepository implements IMessagingRepository {
         ? participant.conversation.currentSequence
         : seq;
 
-    const key = `${conversationId}:${userId}`;
-    const currentDelivered = BigInt(this.getDeliveredSequence(conversationId, userId));
+    const currentDelivered = participant.lastDeliveredSequence ?? 0n;
     const newDelivered = cappedSeq > currentDelivered ? cappedSeq : currentDelivered;
 
-    this.deliveredStore.set(key, newDelivered.toString());
+    const updated = await this.prisma.conversationParticipant.update({
+      where: {
+        conversationId_userId: {
+          conversationId,
+          userId,
+        },
+      },
+      data: {
+        lastDeliveredSequence: newDelivered,
+      },
+    });
+
+    const key = `${conversationId}:${userId}`;
+    this.deliveredStore.set(key, updated.lastDeliveredSequence.toString());
 
     return {
       conversationId,
-      lastDeliveredSequence: newDelivered.toString(),
-      updatedAt: new Date().toISOString(),
+      lastDeliveredSequence: updated.lastDeliveredSequence.toString(),
+      updatedAt: updated.updatedAt.toISOString(),
     };
   }
 
@@ -1438,11 +1451,9 @@ export class MessagingRepository implements IMessagingRepository {
       currentSequence: c.currentSequence.toString(),
       participants: c.participants.map((p) => {
         const profile = this.formatParticipantProfile(p.user);
-        const storedDelivered = this.getDeliveredSequence(p.conversationId, p.userId);
+        const pDelivered = p.lastDeliveredSequence ?? 0n;
         const deliveredSeq =
-          BigInt(storedDelivered) > p.lastReadSequence
-            ? storedDelivered
-            : p.lastReadSequence.toString();
+          pDelivered > p.lastReadSequence ? pDelivered.toString() : p.lastReadSequence.toString();
 
         return {
           id: p.id,

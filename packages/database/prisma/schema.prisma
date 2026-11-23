@@ -679,12 +679,13 @@ model ConversationParticipant {
   id               String          @id @db.Uuid
   conversationId   String          @map("conversation_id") @db.Uuid
   userId           String          @map("user_id") @db.Uuid
-  role             ParticipantRole @default(MEMBER)
-  lastReadSequence BigInt          @default(0) @map("last_read_sequence")
-  mutedUntil       DateTime?       @map("muted_until")
-  leftAt           DateTime?       @map("left_at")
-  joinedAt         DateTime        @default(now()) @map("joined_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
+  role                  ParticipantRole @default(MEMBER)
+  lastReadSequence      BigInt          @default(0) @map("last_read_sequence")
+  lastDeliveredSequence BigInt          @default(0) @map("last_delivered_sequence")
+  mutedUntil            DateTime?       @map("muted_until")
+  leftAt                DateTime?       @map("left_at")
+  joinedAt              DateTime        @default(now()) @map("joined_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -692,6 +693,7 @@ model ConversationParticipant {
   @@unique([conversationId, userId])
   @@index([userId, leftAt])
   @@index([conversationId, lastReadSequence])
+  @@index([conversationId, lastDeliveredSequence])
   @@map("conversation_participants")
 }
 

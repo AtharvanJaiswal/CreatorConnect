@@ -95,6 +95,29 @@ Never upload large binary media files through the backend API.
 - Pass token in handshake: `{ auth: { token: '<access_token>' } }`.
 - Support background app states: disconnect cleanly when app goes into background; reconnect and synchronize unread messages upon returning to foreground.
 
+### 2.9.1 Mobile Delivery & Read Receipt Acknowledgment Protocol
+
+Mobile clients participate in a strict 3-state delivery lifecycle: `SENT` ≠ `DELIVERED` ≠ `READ`.
+
+1. **Delivery Acknowledgment (`DELIVERED`)**:
+   - As soon as a message is received by the mobile device (either via foreground Socket.IO `message:created` or background push notification processing), the client MUST send an acknowledgment:
+     - **Via HTTP REST**: `POST /api/v1/conversations/{id}/delivered` with body `{ "sequence": "<message_sequence>" }`.
+     - **Via Socket.IO**: Emit `message:delivered` with payload `{ "conversationId": "{id}", "sequence": "<message_sequence>" }`.
+   - The backend durably persists `last_delivered_sequence` in PostgreSQL (`conversation_participants`) and broadcasts `message:delivered` to all devices in the room.
+   - Delivery pointers advance strictly monotonically; replayed or out-of-order sequence acknowledgments are harmlessly ignored without regressions.
+
+2. **Read Acknowledgment (`READ`)**:
+   - When the user opens or focuses the conversation view, the mobile app sends read acknowledgment:
+     - **Via HTTP REST**: `POST /api/v1/conversations/{id}/read` with body `{ "sequence": "<message_sequence>" }`.
+     - **Via Socket.IO**: Emit `message:read` with payload `{ "conversationId": "{id}", "sequence": "<message_sequence>" }`.
+   - Reading automatically advances the delivered sequence in PostgreSQL if it had not already reached `sequence`.
+
+3. **Offline Sync & Reconnection**:
+   - Upon reconnecting to the network or resuming from background, the client retrieves missed messages:
+     - **Via HTTP REST Keyset Pagination**: `GET /api/v1/conversations/{id}/messages?cursor=<base64url_cursor>&direction=next` (where cursor is generated from `lastSeenSequence` using `encodeMessageCursor(lastSeenSeq)`).
+     - **Via Socket.IO Event**: Emit `conversation:sync` with `{ "conversationId": "{id}", "sinceSequence": "<lastSeenSequence>" }`.
+   - After processing sync delta messages, acknowledge delivery of the latest sequence received.
+
 ### 2.10 Push Notifications (FCM & APNs)
 
 - Register device token on app launch via Firebase Cloud Messaging SDK.

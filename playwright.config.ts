@@ -13,6 +13,20 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'on-first-retry',
   },
+  webServer: [
+    {
+      command: 'pnpm.cmd --filter @creatorconnect/api dev',
+      url: 'http://127.0.0.1:3000/health',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120000,
+    },
+    {
+      command: 'pnpm.cmd --filter @creatorconnect/web-shell dev',
+      url: 'http://127.0.0.1:3002',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120000,
+    },
+  ],
   projects: [
     {
       name: 'chromium',

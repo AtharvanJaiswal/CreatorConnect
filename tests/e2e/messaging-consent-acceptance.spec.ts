@@ -2,14 +2,26 @@ import { test, expect } from '@playwright/test';
 import { getPrismaClient, type PrismaClient } from '@creatorconnect/database';
 import { generateUuidV7 } from '@creatorconnect/utils';
 import { createTestJwt } from '../fixtures/auth-test-helper.js';
+import Redis from 'ioredis';
 
 test.describe('Phase 19F Consent-Gated Messaging End-to-End Acceptance (Milestone 2D.2)', () => {
   test.describe.configure({ mode: 'serial' });
   const prisma: PrismaClient = getPrismaClient();
+  const API_URL = process.env.API_URL || 'http://127.0.0.1:3000';
 
   const createdUserIds: string[] = [];
   const createdConversationIds: string[] = [];
   const createdRequestIds: string[] = [];
+
+  test.beforeAll(async () => {
+    try {
+      const redis = new Redis(
+        process.env.REDIS_URL || 'redis://:redis_local_password@localhost:6379/0',
+      );
+      await redis.del('rl:s:chat_request_create:127.0.0.1');
+      await redis.quit();
+    } catch {}
+  });
 
   test.afterAll(async () => {
     // Clean up created resources in reverse foreign-key order
@@ -124,7 +136,7 @@ test.describe('Phase 19F Consent-Gated Messaging End-to-End Acceptance (Mileston
       (window as any).__TEST_ACCESS_TOKEN__ = token;
     }, sender.token);
 
-    await page.goto('/messages', { waitUntil: 'domcontentloaded' });
+    await page.goto('/messages', { waitUntil: 'networkidle' });
 
     // Open Start Conversation Modal
     const startConvoBtn = page.getByRole('button', { name: /Start Conversation/i });
@@ -132,7 +144,7 @@ test.describe('Phase 19F Consent-Gated Messaging End-to-End Acceptance (Mileston
     await startConvoBtn.click();
 
     // Verify Compose Modal appears
-    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole('heading', { name: /Start Message Request/i })).toBeVisible();
 
     // Fill Recipient and Initial Message
@@ -191,7 +203,7 @@ test.describe('Phase 19F Consent-Gated Messaging End-to-End Acceptance (Mileston
       (window as any).__TEST_ACCESS_TOKEN__ = token;
     }, recipient.token);
 
-    await recipientPage.goto('/messages', { waitUntil: 'domcontentloaded' });
+    await recipientPage.goto('/messages', { waitUntil: 'networkidle' });
 
     // Switch to Requests tab
     const recipientRequestsTab = recipientPage.getByRole('button', { name: /Requests/i });
@@ -240,7 +252,7 @@ test.describe('Phase 19F Consent-Gated Messaging End-to-End Acceptance (Mileston
       (window as any).__TEST_ACCESS_TOKEN__ = token;
     }, recipient.token);
 
-    await page.goto('/messages', { waitUntil: 'domcontentloaded' });
+    await page.goto('/messages', { waitUntil: 'networkidle' });
 
     // Navigate to Requests
     await page.getByRole('button', { name: /Requests/i }).click();
@@ -303,7 +315,7 @@ test.describe('Phase 19F Consent-Gated Messaging End-to-End Acceptance (Mileston
       (window as any).__TEST_ACCESS_TOKEN__ = token;
     }, sender.token);
 
-    await senderPage.goto(`/messages/${conversation!.id}`, { waitUntil: 'domcontentloaded' });
+    await senderPage.goto(`/messages/${conversation!.id}`, { waitUntil: 'networkidle' });
 
     // Verify initial message visible to sender in conversation view
     await expect(senderPage.locator(`text=${initialPitch}`).first()).toBeVisible({
@@ -334,32 +346,26 @@ test.describe('Phase 19F Consent-Gated Messaging End-to-End Acceptance (Mileston
     createdRequestIds.push(request.id);
 
     // First acceptance via direct API call
-    const acceptRes1 = await fetch(
-      `http://127.0.0.1:3003/api/v1/chat/requests/${request.id}/accept`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${recipient.token}`,
-          'Content-Type': 'application/json',
-        },
+    const acceptRes1 = await fetch(`${API_URL}/api/v1/chat/requests/${request.id}/accept`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${recipient.token}`,
+        'Content-Type': 'application/json',
       },
-    );
+    });
     expect(acceptRes1.status).toBe(200);
     const body1 = await acceptRes1.json();
     const convoId = body1.conversation.id;
     createdConversationIds.push(convoId);
 
     // Second acceptance (simulating network retry / duplicate click)
-    const acceptRes2 = await fetch(
-      `http://127.0.0.1:3003/api/v1/chat/requests/${request.id}/accept`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${recipient.token}`,
-          'Content-Type': 'application/json',
-        },
+    const acceptRes2 = await fetch(`${API_URL}/api/v1/chat/requests/${request.id}/accept`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${recipient.token}`,
+        'Content-Type': 'application/json',
       },
-    );
+    });
     // Expected: 200 idempotent response returning the exact same conversation
     expect(acceptRes2.status).toBe(200);
     const body2 = await acceptRes2.json();
@@ -404,17 +410,14 @@ test.describe('Phase 19F Consent-Gated Messaging End-to-End Acceptance (Mileston
     createdRequestIds.push(request.id);
 
     // Recipient declines proposal
-    const declineRes = await fetch(
-      `http://127.0.0.1:3003/api/v1/chat/requests/${request.id}/decline`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${recipient.token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ reason: 'Not accepting commercial partnerships this quarter' }),
+    const declineRes = await fetch(`${API_URL}/api/v1/chat/requests/${request.id}/decline`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${recipient.token}`,
+        'Content-Type': 'application/json',
       },
-    );
+      body: JSON.stringify({ reason: 'Not accepting commercial partnerships this quarter' }),
+    });
     expect(declineRes.status).toBe(200);
 
     // Verify DB status is DECLINED
@@ -428,7 +431,7 @@ test.describe('Phase 19F Consent-Gated Messaging End-to-End Acceptance (Mileston
     expect(convos).toHaveLength(0);
 
     // Sender immediately attempts to resend a new request -> Rejected by 30-day cooldown
-    const retryRes = await fetch('http://127.0.0.1:3003/api/v1/chat/requests', {
+    const retryRes = await fetch(`${API_URL}/api/v1/chat/requests`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${sender.token}`,
@@ -465,31 +468,25 @@ test.describe('Phase 19F Consent-Gated Messaging End-to-End Acceptance (Mileston
     createdRequestIds.push(request.id);
 
     // Sender cancels request
-    const cancelRes = await fetch(
-      `http://127.0.0.1:3003/api/v1/chat/requests/${request.id}/cancel`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${sender.token}`,
-        },
+    const cancelRes = await fetch(`${API_URL}/api/v1/chat/requests/${request.id}/cancel`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${sender.token}`,
       },
-    );
+    });
     expect(cancelRes.status).toBe(200);
 
     // Recipient attempts to accept cancelled request -> Fails with 409
-    const acceptRes = await fetch(
-      `http://127.0.0.1:3003/api/v1/chat/requests/${request.id}/accept`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${recipient.token}`,
-        },
+    const acceptRes = await fetch(`${API_URL}/api/v1/chat/requests/${request.id}/accept`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${recipient.token}`,
       },
-    );
+    });
     expect(acceptRes.status).toBe(409);
 
     // Sender attempts to immediately recreate request -> Rejected by 24-hour cancellation cooldown
-    const retryRes = await fetch('http://127.0.0.1:3003/api/v1/chat/requests', {
+    const retryRes = await fetch(`${API_URL}/api/v1/chat/requests`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${sender.token}`,
@@ -515,7 +512,7 @@ test.describe('Phase 19F Consent-Gated Messaging End-to-End Acceptance (Mileston
     const intruder = await provisionUser('CREATOR', { first: 'Mallory', last: 'Intruder' });
 
     // 1. Direct conversation creation without accepted request or commercial relationship must be forbidden
-    const directConvoRes = await fetch('http://127.0.0.1:3003/api/v1/conversations', {
+    const directConvoRes = await fetch(`${API_URL}/api/v1/conversations`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${sender.token}`,
@@ -542,22 +539,19 @@ test.describe('Phase 19F Consent-Gated Messaging End-to-End Acceptance (Mileston
     });
     createdRequestIds.push(request.id);
 
-    const intruderGetRes = await fetch(`http://127.0.0.1:3003/api/v1/chat/requests/${request.id}`, {
+    const intruderGetRes = await fetch(`${API_URL}/api/v1/chat/requests/${request.id}`, {
       headers: { Authorization: `Bearer ${intruder.token}` },
     });
     expect(intruderGetRes.status).toBe(404);
 
-    const intruderAcceptRes = await fetch(
-      `http://127.0.0.1:3003/api/v1/chat/requests/${request.id}/accept`,
-      {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${intruder.token}` },
-      },
-    );
+    const intruderAcceptRes = await fetch(`${API_URL}/api/v1/chat/requests/${request.id}/accept`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${intruder.token}` },
+    });
     expect(intruderAcceptRes.status).toBe(404);
 
     // 3. User attempting to send message request to self
-    const selfRes = await fetch('http://127.0.0.1:3003/api/v1/chat/requests', {
+    const selfRes = await fetch(`${API_URL}/api/v1/chat/requests`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${sender.token}`,
