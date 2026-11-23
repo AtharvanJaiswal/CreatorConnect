@@ -16,6 +16,13 @@ import {
   MessageRequestDeclinedV1PayloadSchema,
   MessageRequestCancelledV1PayloadSchema,
   MessageRequestExpiredV1PayloadSchema,
+  UserLifecycleTransitionedV1PayloadSchema,
+  UserErasureRequestedV1PayloadSchema,
+  UserErasureConfirmedV1PayloadSchema,
+  UserErasureStageCompletedV1PayloadSchema,
+  UserErasureCompletedV1PayloadSchema,
+  UserLegalHoldAppliedV1PayloadSchema,
+  UserLegalHoldReleasedV1PayloadSchema,
 } from '@creatorconnect/contracts';
 import { type IEventDispatcher, NoOpEventDispatcher } from './event-dispatcher.js';
 
@@ -30,6 +37,13 @@ export const OUTBOX_PAYLOAD_SCHEMAS: Record<string, Parameters<typeof Value.Chec
   'message_request.declined.v1': MessageRequestDeclinedV1PayloadSchema,
   'message_request.cancelled.v1': MessageRequestCancelledV1PayloadSchema,
   'message_request.expired.v1': MessageRequestExpiredV1PayloadSchema,
+  'user.lifecycle.transitioned.v1': UserLifecycleTransitionedV1PayloadSchema,
+  'user.erasure.requested.v1': UserErasureRequestedV1PayloadSchema,
+  'user.erasure.confirmed.v1': UserErasureConfirmedV1PayloadSchema,
+  'user.erasure.stage_completed.v1': UserErasureStageCompletedV1PayloadSchema,
+  'user.erasure.completed.v1': UserErasureCompletedV1PayloadSchema,
+  'user.legal_hold.applied.v1': UserLegalHoldAppliedV1PayloadSchema,
+  'user.legal_hold.released.v1': UserLegalHoldReleasedV1PayloadSchema,
 };
 
 export const NOTIFICATION_ONLY_EVENT_TYPES = new Set([

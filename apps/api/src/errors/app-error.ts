@@ -59,6 +59,60 @@ export class LastAdminLockoutError extends AppError {
 }
 
 // ==============================================================================
+// Phase 3B.8 Account Lifecycle & Privacy Governance Domain Errors
+// ==============================================================================
+
+export class InvalidLifecycleTransitionError extends AppError {
+  constructor(detail = 'Requested account lifecycle transition is not permitted.') {
+    super(400, 'INVALID_LIFECYCLE_TRANSITION', 'Invalid Lifecycle Transition', detail);
+  }
+}
+
+export class LegalHoldActiveError extends AppError {
+  constructor(
+    detail = 'Account is subject to an active legal or compliance hold. Erasure is blocked.',
+  ) {
+    super(409, 'LEGAL_HOLD_ACTIVE', 'Legal Hold Active', detail);
+  }
+}
+
+export class LegalHoldNotFoundError extends AppError {
+  constructor(detail = 'The specified legal hold was not found.') {
+    super(404, 'LEGAL_HOLD_NOT_FOUND', 'Legal Hold Not Found', detail);
+  }
+}
+
+export class PrivacyRequestNotFoundError extends AppError {
+  constructor(detail = 'No active privacy or erasure request was found for this account.') {
+    super(404, 'PRIVACY_REQUEST_NOT_FOUND', 'Privacy Request Not Found', detail);
+  }
+}
+
+export class PrivacyRequestInvalidStateError extends AppError {
+  constructor(detail = 'The privacy request is not in an eligible state for this operation.') {
+    super(409, 'PRIVACY_REQUEST_INVALID_STATE', 'Invalid Privacy Request State', detail);
+  }
+}
+
+export class PrivacyConfirmationCodeInvalidError extends AppError {
+  constructor(detail = 'The confirmation code provided is invalid or has expired.') {
+    super(400, 'PRIVACY_CONFIRMATION_CODE_INVALID', 'Invalid Confirmation Code', detail);
+  }
+}
+
+export class PrivacyReceiptInvalidError extends AppError {
+  constructor(detail = 'The compliance certificate token could not be verified.') {
+    super(400, 'PRIVACY_RECEIPT_INVALID', 'Invalid Privacy Receipt Token', detail);
+  }
+}
+
+export class AccountAlreadyDeletedError extends AppError {
+  constructor(detail = 'This account has already completed erasure and cannot be modified.') {
+    super(410, 'ACCOUNT_ALREADY_DELETED', 'Account Already Deleted', detail);
+  }
+}
+
+// ==============================================================================
 // Phase 4 Domain Errors
 // ==============================================================================
 
