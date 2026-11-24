@@ -22,6 +22,7 @@ import {
   Loader2,
   ShieldCheck,
   Building2,
+  Share2,
 } from 'lucide-react';
 import type {
   UpdateCreatorProfileInput,
@@ -31,6 +32,8 @@ import type {
 } from '@creatorconnect/contracts';
 import { useAuth } from '../../../providers/auth-provider';
 import { BrandProfileForm } from '../../../components/brand-profile-form';
+import { SocialAccountsPanel } from '../../../components/profile/social-accounts-panel';
+import { VerificationCentrePanel } from '../../../components/profile/verification-centre-panel';
 
 export default function MyProfilePage() {
   const { user, accessToken } = useAuth();
@@ -38,9 +41,16 @@ export default function MyProfilePage() {
   const isBrandOnly =
     hasBrandRole && !user?.roles?.includes('CREATOR') && !user?.roles?.includes('PROFESSIONAL');
 
-  const [activeTab, setActiveTab] = useState<'creator' | 'professional' | 'brand' | 'media'>(
-    'creator',
-  );
+  const [activeTab, setActiveTab] = useState<
+    'creator' | 'professional' | 'brand' | 'media' | 'socials' | 'verification'
+  >('creator');
+
+  // Creator social links and verification state
+  const [creatorSocialLinks, setCreatorSocialLinks] = useState<Array<{
+    platform: string;
+    url: string;
+  }> | null>(null);
+  const [creatorIsVerified, setCreatorIsVerified] = useState<boolean>(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -50,9 +60,11 @@ export default function MyProfilePage() {
         tabParam === 'brand' ||
         tabParam === 'creator' ||
         tabParam === 'professional' ||
-        tabParam === 'media'
+        tabParam === 'media' ||
+        tabParam === 'socials' ||
+        tabParam === 'verification'
       ) {
-        setActiveTab(tabParam);
+        setActiveTab(tabParam as any);
         return;
       }
     }
@@ -143,7 +155,7 @@ export default function MyProfilePage() {
           }
         })
         .catch(() => {});
-    } else if (activeTab === 'creator') {
+    } else if (activeTab === 'creator' || activeTab === 'socials' || activeTab === 'verification') {
       fetch(`/api/v1/profiles/creator/${user.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -158,11 +170,31 @@ export default function MyProfilePage() {
               setStartingRate(String(data.startingRate));
             if (data.visibility) setCreatorVisibility(data.visibility);
             if (data.isRemote !== undefined) setIsRemote(data.isRemote);
+            if (data.socialLinks) setCreatorSocialLinks(data.socialLinks);
+            if (data.isVerified !== undefined) setCreatorIsVerified(data.isVerified);
           }
         })
         .catch(() => {});
     }
   }, [user?.id, activeTab]);
+
+  const handleSaveSocialLinks = async (links: Array<{ platform: string; url: string }>) => {
+    const token = getAuthToken();
+    if (!token) return;
+    setCreatorSocialLinks(links);
+    try {
+      await fetch('/api/v1/profiles/creator', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ socialLinks: links }),
+      });
+    } catch {
+      // Handled upstream
+    }
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -396,6 +428,22 @@ export default function MyProfilePage() {
               <span>Brand Profile</span>
             </TabsTrigger>
           )}
+          <TabsTrigger
+            value="socials"
+            className="gap-2 rounded-lg text-xs font-semibold"
+            data-testid="tab-socials"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            <span>Connected Socials (C08-11)</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="verification"
+            className="gap-2 rounded-lg text-xs font-semibold"
+            data-testid="tab-verification"
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span>Verification Centre (C12-14)</span>
+          </TabsTrigger>
           <TabsTrigger value="media" className="gap-2 rounded-lg text-xs font-semibold">
             <Upload className="h-3.5 w-3.5" />
             <span>Media & Portfolio</span>
@@ -724,6 +772,25 @@ export default function MyProfilePage() {
               </div>
             )}
           </Card>
+        </TabsContent>
+
+        {/* Connected Socials Tab (C08, C09, C10, C11) */}
+        <TabsContent value="socials">
+          <SocialAccountsPanel
+            initialSocialLinks={creatorSocialLinks}
+            onSaveLinks={handleSaveSocialLinks}
+            onNavigateNext={() => setActiveTab('verification')}
+            onNavigateBack={() => setActiveTab('creator')}
+          />
+        </TabsContent>
+
+        {/* Verification Centre Tab (C12, C13, C14) */}
+        <TabsContent value="verification">
+          <VerificationCentrePanel
+            initialIsVerified={creatorIsVerified}
+            onNavigateOverview={() => setActiveTab('creator')}
+            onNavigateBack={() => setActiveTab('socials')}
+          />
         </TabsContent>
       </Tabs>
     </div>

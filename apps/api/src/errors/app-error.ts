@@ -59,6 +59,60 @@ export class LastAdminLockoutError extends AppError {
 }
 
 // ==============================================================================
+// Phase 3B.8 Account Lifecycle & Privacy Governance Domain Errors
+// ==============================================================================
+
+export class InvalidLifecycleTransitionError extends AppError {
+  constructor(detail = 'Requested account lifecycle transition is not permitted.') {
+    super(400, 'INVALID_LIFECYCLE_TRANSITION', 'Invalid Lifecycle Transition', detail);
+  }
+}
+
+export class LegalHoldActiveError extends AppError {
+  constructor(
+    detail = 'Account is subject to an active legal or compliance hold. Erasure is blocked.',
+  ) {
+    super(409, 'LEGAL_HOLD_ACTIVE', 'Legal Hold Active', detail);
+  }
+}
+
+export class LegalHoldNotFoundError extends AppError {
+  constructor(detail = 'The specified legal hold was not found.') {
+    super(404, 'LEGAL_HOLD_NOT_FOUND', 'Legal Hold Not Found', detail);
+  }
+}
+
+export class PrivacyRequestNotFoundError extends AppError {
+  constructor(detail = 'No active privacy or erasure request was found for this account.') {
+    super(404, 'PRIVACY_REQUEST_NOT_FOUND', 'Privacy Request Not Found', detail);
+  }
+}
+
+export class PrivacyRequestInvalidStateError extends AppError {
+  constructor(detail = 'The privacy request is not in an eligible state for this operation.') {
+    super(409, 'PRIVACY_REQUEST_INVALID_STATE', 'Invalid Privacy Request State', detail);
+  }
+}
+
+export class PrivacyConfirmationCodeInvalidError extends AppError {
+  constructor(detail = 'The confirmation code provided is invalid or has expired.') {
+    super(400, 'PRIVACY_CONFIRMATION_CODE_INVALID', 'Invalid Confirmation Code', detail);
+  }
+}
+
+export class PrivacyReceiptInvalidError extends AppError {
+  constructor(detail = 'The compliance certificate token could not be verified.') {
+    super(400, 'PRIVACY_RECEIPT_INVALID', 'Invalid Privacy Receipt Token', detail);
+  }
+}
+
+export class AccountAlreadyDeletedError extends AppError {
+  constructor(detail = 'This account has already completed erasure and cannot be modified.') {
+    super(410, 'ACCOUNT_ALREADY_DELETED', 'Account Already Deleted', detail);
+  }
+}
+
+// ==============================================================================
 // Phase 4 Domain Errors
 // ==============================================================================
 
@@ -154,6 +208,14 @@ export {
   SelfBlockNotAllowedError,
   InvalidMessageCursorError,
   UserNotFoundError,
+  MessageRequestNotFoundError,
+  DuplicateMessageRequestError,
+  MessageRequestCooldownActiveError,
+  MessageRequestInvalidStateError,
+  SelfMessageRequestNotAllowedError,
+  MessageRequestLimitExceededError,
+  InvalidMessageRequestInputError,
+  MessageRequestRequiredError,
 } from '@creatorconnect/database';
 
 export class SelfReportNotAllowedError extends AppError {
@@ -475,5 +537,81 @@ export class DuplicateActiveInvitationError extends AppError {
     detail = 'An active pending invitation already exists for this creator on this project.',
   ) {
     super(409, 'DUPLICATE_ACTIVE_INVITATION', 'Active Invitation Exists', detail);
+  }
+}
+
+// ==============================================================================
+// Phase 3A: Community Errors
+// ==============================================================================
+
+export class CommunityPostNotFoundError extends AppError {
+  constructor(detail = 'Community post not found.') {
+    super(404, 'COMMUNITY_POST_NOT_FOUND', 'Community Post Not Found', detail);
+  }
+}
+
+export class CommunityPostForbiddenError extends AppError {
+  constructor(detail = 'You do not have permission to modify or delete this community post.') {
+    super(403, 'COMMUNITY_POST_FORBIDDEN', 'Community Post Forbidden', detail);
+  }
+}
+
+export class CommunityEventNotFoundError extends AppError {
+  constructor(detail = 'Community event not found.') {
+    super(404, 'COMMUNITY_EVENT_NOT_FOUND', 'Community Event Not Found', detail);
+  }
+}
+
+export class CommunityEventCapacityExceededError extends AppError {
+  constructor(detail = 'This event has reached maximum RSVP capacity.') {
+    super(400, 'COMMUNITY_EVENT_CAPACITY_EXCEEDED', 'Event Capacity Exceeded', detail);
+  }
+}
+
+export class CommunityModerationUnauthorizedError extends AppError {
+  constructor(detail = 'You must be an administrator or moderator to perform this action.') {
+    super(403, 'COMMUNITY_MODERATION_UNAUTHORIZED', 'Moderation Unauthorized', detail);
+  }
+}
+
+// ==============================================================================
+// Phase 3B: Support Ticketing Errors
+// ==============================================================================
+
+export class SupportTicketNotFoundError extends AppError {
+  constructor(detail = 'Support ticket not found.') {
+    super(404, 'SUPPORT_TICKET_NOT_FOUND', 'Support Ticket Not Found', detail);
+  }
+}
+
+export class SupportTicketForbiddenError extends AppError {
+  constructor(detail = 'You do not have permission to access or modify this support ticket.') {
+    super(403, 'SUPPORT_TICKET_FORBIDDEN', 'Support Ticket Forbidden', detail);
+  }
+}
+
+export class SupportTicketClosedError extends AppError {
+  constructor(detail = 'This support ticket has been closed and cannot receive further replies.') {
+    super(400, 'SUPPORT_TICKET_CLOSED', 'Support Ticket Closed', detail);
+  }
+}
+
+export class SupportTicketInvalidTransitionError extends AppError {
+  constructor(detail = 'The requested support ticket status transition is invalid.') {
+    super(400, 'SUPPORT_TICKET_INVALID_TRANSITION', 'Invalid Ticket Status Transition', detail);
+  }
+}
+
+export class SupportTicketConflictError extends AppError {
+  constructor(
+    detail = 'Support ticket has been modified by another actor. Please refresh and retry.',
+  ) {
+    super(409, 'SUPPORT_TICKET_CONFLICT', 'Support Ticket Version Conflict', detail);
+  }
+}
+
+export class SupportStaffUnauthorizedError extends AppError {
+  constructor(detail = 'Access restricted: Support staff authorization required.') {
+    super(403, 'SUPPORT_STAFF_UNAUTHORIZED', 'Staff Authorization Required', detail);
   }
 }

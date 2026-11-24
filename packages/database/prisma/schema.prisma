@@ -165,6 +165,11 @@ enum NotificationType {
   INVITATION_ACCEPTED
   INVITATION_DECLINED
   INVITATION_WITHDRAWN
+
+  // Phase 19F Notification Types
+  MESSAGE_REQUEST_RECEIVED
+  MESSAGE_REQUEST_ACCEPTED
+  MESSAGE_REQUEST_DECLINED
 }
 
 // ==============================================================================
@@ -254,6 +259,24 @@ model User {
   shortlistMemberships      ShortlistMember[]
   invitationsSent           ProjectInvitation[]       @relation("InvitationsSent")
   invitationsReceived       ProjectInvitation[]       @relation("InvitationsReceived")
+
+  // Phase 19F Relations
+  messageRequestsSent       MessageRequest[]          @relation("MessageRequestsSent")
+  messageRequestsReceived   MessageRequest[]          @relation("MessageRequestsReceived")
+
+  // Phase 3A: Community Hub Relations
+  communityPosts            CommunityPost[]
+  communityComments         CommunityComment[]
+  communityPostApplauds     CommunityPostApplaud[]
+  communityEventsOrganized  CommunityEvent[]
+  communityEventRsvps       CommunityEventRsvp[]
+  communityHubFollows       CommunityHubFollow[]
+
+  // Phase 3B: Support Ticketing Relations
+  supportTicketsRequested   SupportTicket[]           @relation("RequesterTickets")
+  supportTicketsAssigned    SupportTicket[]           @relation("AssignedTickets")
+  supportTicketMessages     SupportTicketMessage[]
+  supportTicketAudits       SupportTicketAudit[]
 
   @@index([email])
   @@index([supabaseAuthId])
@@ -520,6 +543,7 @@ model MediaAsset {
   deliverables           ProjectDeliverable[]
   deliverableSubmissions ProjectDeliverableSubmission[]
   disputeEvidence        DisputeEvidence[]
+  supportTicketMessages  SupportTicketMessage[]
 
   @@index([userId])
   @@index([status])
@@ -555,6 +579,8 @@ model Assignment {
   applications  Application[]
   conversations Conversation[]
   projects      Project[]
+  communityPosts CommunityPost[]
+  supportTickets SupportTicket[]
 
   @@index([status, deletedAt, createdAt])
   @@index([brandId])
@@ -641,6 +667,7 @@ model Conversation {
   application  Application?              @relation(fields: [applicationId], references: [id], onDelete: SetNull)
   participants ConversationParticipant[]
   messages     Message[]
+  messageRequests MessageRequest[]
 
   @@index([deletedAt, createdAt])
   @@index([assignmentId])
@@ -652,12 +679,13 @@ model ConversationParticipant {
   id               String          @id @db.Uuid
   conversationId   String          @map("conversation_id") @db.Uuid
   userId           String          @map("user_id") @db.Uuid
-  role             ParticipantRole @default(MEMBER)
-  lastReadSequence BigInt          @default(0) @map("last_read_sequence")
-  mutedUntil       DateTime?       @map("muted_until")
-  leftAt           DateTime?       @map("left_at")
-  joinedAt         DateTime        @default(now()) @map("joined_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
+  role                  ParticipantRole @default(MEMBER)
+  lastReadSequence      BigInt          @default(0) @map("last_read_sequence")
+  lastDeliveredSequence BigInt          @default(0) @map("last_delivered_sequence")
+  mutedUntil            DateTime?       @map("muted_until")
+  leftAt                DateTime?       @map("left_at")
+  joinedAt              DateTime        @default(now()) @map("joined_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -665,6 +693,7 @@ model ConversationParticipant {
   @@unique([conversationId, userId])
   @@index([userId, leftAt])
   @@index([conversationId, lastReadSequence])
+  @@index([conversationId, lastDeliveredSequence])
   @@map("conversation_participants")
 }
 
@@ -870,6 +899,7 @@ model Project {
   reviews        Review[]
   invitations    ProjectInvitation[]
   shortlists     Shortlist[]
+  supportTickets SupportTicket[]
 
   @@index([clientId, status])
   @@index([talentId, status])
@@ -1458,5 +1488,299 @@ model ProjectInvitation {
   @@index([status, expiresAt])
   @@map("project_invitations")
 }
+
+// ==============================================================================
+// Phase 19F Enums & Models: Peer-to-Peer Message Requests
+// ==============================================================================
+
+enum MessageRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  CANCELLED
+}
+
+model MessageRequest {
+  id             String               @id @db.Uuid
+  senderId       String               @map("sender_id") @db.Uuid
+  recipientId    String               @map("recipient_id") @db.Uuid
+  conversationId String?              @map("conversation_id") @db.Uuid
+  initialMessage String               @map("initial_message") @db.VarChar(500)
+  status         MessageRequestStatus @default(PENDING)
+  declinedReason String?              @map("declined_reason") @db.VarChar(255)
+  expiresAt      DateTime             @map("expires_at")
+  respondedAt    DateTime?            @map("responded_at")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  sender       User          @relation("MessageRequestsSent", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient    User          @relation("MessageRequestsReceived", fields: [recipientId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  @@index([recipientId, status, createdAt(sort: Desc)])
+  @@index([senderId, status, createdAt(sort: Desc)])
+  @@index([status, expiresAt])
+  @@map("message_requests")
+}
+
+// ==============================================================================
+// Phase 3A Enums & Models: Community Hub, Events & Moderation
+// ==============================================================================
+
+enum CommunityPostType {
+  ANNOUNCEMENT
+  OPPORTUNITY
+  DISCUSSION
+  EVENT
+  QUESTION
+}
+
+enum CommunityPostStatus {
+  ACTIVE
+  HIDDEN
+  DELETED
+}
+
+enum CommunityEventStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum EventRsvpStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+model CommunityPost {
+  id                 String              @id @db.Uuid
+  authorId           String              @map("author_id") @db.Uuid
+  type               CommunityPostType   @default(DISCUSSION)
+  title              String              @db.VarChar(200)
+  body               String              @db.Text
+  city               String              @default("Mumbai") @db.VarChar(50)
+  tags               String[]            @default([])
+  isPinned           Boolean             @default(false) @map("is_pinned")
+  status             CommunityPostStatus @default(ACTIVE)
+  linkedAssignmentId String?             @map("linked_assignment_id") @db.Uuid
+  linkedEventId      String?             @map("linked_event_id") @db.Uuid
+  applaudsCount      Int                 @default(0) @map("applauds_count")
+  commentsCount      Int                 @default(0) @map("comments_count")
+  deletedAt          DateTime?           @map("deleted_at")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  author           User                   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  linkedAssignment Assignment?            @relation(fields: [linkedAssignmentId], references: [id], onDelete: SetNull)
+  linkedEvent      CommunityEvent?        @relation(fields: [linkedEventId], references: [id], onDelete: SetNull)
+  comments         CommunityComment[]
+  applauds         CommunityPostApplaud[]
+
+  @@index([city, status, isPinned, createdAt(sort: Desc)])
+  @@index([authorId, status, createdAt(sort: Desc)])
+  @@index([type, city, status])
+  @@map("community_posts")
+}
+
+model CommunityComment {
+  id            String    @id @db.Uuid
+  postId        String    @map("post_id") @db.Uuid
+  authorId      String    @map("author_id") @db.Uuid
+  content       String    @db.Text
+  applaudsCount Int       @default(0) @map("applauds_count")
+  deletedAt     DateTime? @map("deleted_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  post   CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt(sort: Asc)])
+  @@index([authorId])
+  @@map("community_comments")
+}
+
+model CommunityPostApplaud {
+  id        String   @id @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([userId])
+  @@map("community_post_applauds")
+}
+
+model CommunityEvent {
+  id          String               @id @db.Uuid
+  organizerId String               @map("organizer_id") @db.Uuid
+  title       String               @db.VarChar(200)
+  description String               @db.Text
+  city        String               @default("Mumbai") @db.VarChar(50)
+  venue       String               @db.VarChar(255)
+  eventDate   DateTime             @map("event_date")
+  endDate     DateTime?            @map("end_date")
+  isOfficial  Boolean              @default(false) @map("is_official")
+  capacity    Int?
+  rsvpCount   Int                  @default(0) @map("rsvp_count")
+  status      CommunityEventStatus @default(UPCOMING)
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  organizer User                 @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  rsvps     CommunityEventRsvp[]
+  posts     CommunityPost[]
+
+  @@index([city, status, eventDate(sort: Asc)])
+  @@index([organizerId])
+  @@map("community_events")
+}
+
+model CommunityEventRsvp {
+  id        String          @id @db.Uuid
+  eventId   String          @map("event_id") @db.Uuid
+  userId    String          @map("user_id") @db.Uuid
+  status    EventRsvpStatus @default(CONFIRMED)
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+
+  event CommunityEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([userId, status])
+  @@map("community_event_rsvps")
+}
+
+model CommunityHubFollow {
+  id        String   @id @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  city      String   @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, city])
+  @@index([city])
+  @@map("community_hub_follows")
+}
+
+// ==============================================================================
+// Phase 3B: Support Ticketing & Trust Desk Enums
+// ==============================================================================
+
+enum SupportTicketCategory {
+  ESCROW_RECONCILIATION
+  PAYMENT_DISPUTE
+  CONTRACT_VALIDATION
+  ACCOUNT_ACCESS
+  TRUST_SAFETY
+  OTHER
+}
+
+enum SupportTicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_FOR_CUSTOMER
+  RESOLVED
+  CLOSED
+}
+
+enum SupportMessageAuthorRole {
+  CUSTOMER
+  STAFF
+  SYSTEM
+}
+
+// ==============================================================================
+// Phase 3B: Support Ticketing & Trust Desk Models
+// ==============================================================================
+
+model SupportTicket {
+  id                 String                @id @db.Uuid
+  ticketNumber       String                @unique @map("ticket_number") @db.VarChar(32)
+  requesterId        String                @map("requester_id") @db.Uuid
+  assignedToId       String?               @map("assigned_to_id") @db.Uuid
+  category           SupportTicketCategory @default(OTHER)
+  priority           SupportTicketPriority @default(NORMAL)
+  status             SupportTicketStatus   @default(OPEN)
+  subject            String                @db.VarChar(200)
+  description        String                @db.Text
+  linkedAssignmentId String?               @map("linked_assignment_id") @db.Uuid
+  linkedProjectId    String?               @map("linked_project_id") @db.Uuid
+  escrowAmount       Int?                  @map("escrow_amount")
+  resolutionSummary  String?               @map("resolution_summary") @db.Text
+  version            Int                   @default(1)
+  resolvedAt         DateTime?             @map("resolved_at")
+  closedAt           DateTime?             @map("closed_at")
+  createdAt          DateTime              @default(now()) @map("created_at")
+  updatedAt          DateTime              @updatedAt @map("updated_at")
+
+  requester          User                  @relation("RequesterTickets", fields: [requesterId], references: [id], onDelete: Cascade)
+  assignedTo         User?                 @relation("AssignedTickets", fields: [assignedToId], references: [id], onDelete: SetNull)
+  linkedAssignment   Assignment?           @relation(fields: [linkedAssignmentId], references: [id], onDelete: SetNull)
+  linkedProject      Project?              @relation(fields: [linkedProjectId], references: [id], onDelete: SetNull)
+  messages           SupportTicketMessage[]
+  audits             SupportTicketAudit[]
+
+  @@index([requesterId, status, createdAt(sort: Desc)])
+  @@index([assignedToId, status, createdAt(sort: Desc)])
+  @@index([status, priority, createdAt(sort: Desc)])
+  @@index([ticketNumber])
+  @@map("support_tickets")
+}
+
+model SupportTicketMessage {
+  id             String                   @id @db.Uuid
+  ticketId       String                   @map("ticket_id") @db.Uuid
+  authorId       String                   @map("author_id") @db.Uuid
+  authorRole     SupportMessageAuthorRole @default(CUSTOMER) @map("author_role")
+  body           String                   @db.Text
+  isInternal     Boolean                  @default(false) @map("is_internal")
+  mediaAssetId   String?                  @map("media_asset_id") @db.Uuid
+  attachmentName String?                  @map("attachment_name") @db.VarChar(255)
+  attachmentSize String?                  @map("attachment_size") @db.VarChar(64)
+  attachmentType String?                  @map("attachment_type") @db.VarChar(64)
+  createdAt      DateTime                 @default(now()) @map("created_at")
+
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author     User          @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  mediaAsset MediaAsset?   @relation(fields: [mediaAssetId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId, createdAt(sort: Asc), id(sort: Asc)])
+  @@index([authorId])
+  @@map("support_ticket_messages")
+}
+
+model SupportTicketAudit {
+  id         String               @id @db.Uuid
+  ticketId   String               @map("ticket_id") @db.Uuid
+  actorId    String               @map("actor_id") @db.Uuid
+  action     String               @db.VarChar(64)
+  fromStatus SupportTicketStatus? @map("from_status")
+  toStatus   SupportTicketStatus? @map("to_status")
+  metadata   Json?                @db.JsonB
+  createdAt  DateTime             @default(now()) @map("created_at")
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actor  User          @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([ticketId, createdAt(sort: Asc)])
+  @@index([actorId])
+  @@map("support_ticket_audits")
+}
+
 
 

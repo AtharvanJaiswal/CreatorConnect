@@ -21,6 +21,7 @@ import { assignmentsRoutes } from './modules/assignments/assignments.routes.js';
 import { applicationsRoutes } from './modules/applications/applications.routes.js';
 import { discoveryRoutes } from './modules/discovery/discovery.routes.js';
 import { messagingRoutes } from './modules/messaging/messaging.routes.js';
+import { messageRequestRoutes } from './modules/messaging/message-request.routes.js';
 import { notificationsRoutes } from './modules/notifications/notifications.routes.js';
 import { projectsRoutes } from './modules/projects/projects.routes.js';
 import { paymentsRoutes } from './modules/payments/payments.routes.js';
@@ -28,6 +29,9 @@ import { disputesRoutes, cancellationsRoutes } from './modules/disputes/index.js
 import { reviewsRoutes } from './modules/reviews/index.js';
 import { discoveryModuleDRoutes } from './modules/discovery/discovery.module-d.routes.js';
 import { collaborationRoutes } from './modules/collaboration/index.js';
+import { communityRoutes } from './modules/community/index.js';
+import { supportRoutes } from './modules/support/index.js';
+import { lifecycleRoutes } from './modules/lifecycle/lifecycle.routes.js';
 
 export async function buildApp(opts: FastifyServerOptions = {}): Promise<FastifyInstance> {
   const defaultTrustProxy = process.env.TRUST_PROXY
@@ -217,6 +221,7 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
   await app.register(applicationsRoutes);
   await app.register(discoveryRoutes);
   await app.register(messagingRoutes);
+  await app.register(messageRequestRoutes);
   await app.register(notificationsRoutes);
   await app.register(projectsRoutes);
   await app.register(paymentsRoutes);
@@ -225,6 +230,9 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
   await app.register(reviewsRoutes);
   await app.register(discoveryModuleDRoutes);
   await app.register(collaborationRoutes);
+  await app.register(communityRoutes);
+  await app.register(supportRoutes);
+  await app.register(lifecycleRoutes);
 
   return app;
 }

@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><title>CreatorConnect</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:ital,wght@0,400..800;1,400..800&amp;family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"on-tertiary":"#ffffff","surface":"#fff8f5","on-primary-container":"#735c00","error":"#ba1a1a","tertiary":"#864d5d","secondary-fixed":"#e9ddff","background":"#fff8f5","on-tertiary-container":"#874e5e","tertiary-fixed":"#ffd9e1","on-secondary-container":"#594982","surface-container-high":"#efe6e3","primary-container":"#ffd64a","surface-container-lowest":"#ffffff","secondary-fixed-dim":"#d0bcfe","on-primary-fixed-variant":"#564500","on-secondary-fixed":"#210f47","on-surface-variant":"#4d4634","error-container":"#ffdad6","outline-variant":"#d0c6ae","on-error":"#ffffff","surface-variant":"#e9e1dd","secondary":"#65558f","on-secondary":"#ffffff","on-primary-fixed":"#231b00","on-tertiary-fixed":"#360c1b","surface-tint":"#725c00","on-background":"#1e1b19","on-error-container":"#93000a","primary":"#725c00","inverse-surface":"#34302d","on-tertiary-fixed-variant":"#6b3646","surface-bright":"#fff8f5","surface-container":"#f5ece8","surface-dim":"#e0d8d5","surface-container-highest":"#e9e1dd","outline":"#7f7662","secondary-container":"#d0bcfe","primary-fixed":"#ffe083","on-surface":"#1e1b19","inverse-on-surface":"#f7efeb","on-secondary-fixed-variant":"#4d3d75","tertiary-fixed-dim":"#fbb3c5","inverse-primary":"#eac338","surface-container-low":"#faf2ee","tertiary-container":"#ffcdd8","on-primary":"#ffffff","primary-fixed-dim":"#eac338"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"space-lg":"1.5rem","space-2xl":"3rem","space-xl":"2rem","space-md":"1rem","gutter":"1rem","margin-desktop":"3rem","space-3xl":"4rem","space-sm":"0.5rem","margin":"1rem","gutter-desktop":"1.5rem","margin-tablet":"2rem","gutter-tablet":"1.5rem","space-xs":"0.25rem"},"fontFamily":{"display-lg-mobile":["Archivo Narrow"],"headline-md":["Archivo Narrow"],"button-lg":["Archivo Narrow"],"body-md":["Archivo Narrow"],"headline-lg":["Archivo Narrow"],"body-sm":["Archivo Narrow"],"body-lg":["Archivo Narrow"],"label":["Archivo Narrow"],"display-lg":["Archivo Narrow"],"display-accent":["Newsreader"],"caption":["Archivo Narrow"]},"fontSize":{"display-lg-mobile":["30px",{"lineHeight":"32px","letterSpacing":"-0.03em","fontWeight":"800"}],"headline-md":["18px",{"lineHeight":"24px","letterSpacing":"-0.015em","fontWeight":"700"}],"button-lg":["15px",{"lineHeight":"20px","letterSpacing":"-0.01em","fontWeight":"700"}],"body-md":["14px",{"lineHeight":"21px","fontWeight":"400"}],"headline-lg":["25px",{"lineHeight":"30px","letterSpacing":"-0.025em","fontWeight":"800"}],"body-sm":["13px",{"lineHeight":"18px","fontWeight":"400"}],"body-lg":["16px",{"lineHeight":"24px","fontWeight":"500"}],"label":["10px",{"lineHeight":"12px","letterSpacing":"0.09em","fontWeight":"700"}],"display-lg":["36px",{"lineHeight":"38px","letterSpacing":"-0.03em","fontWeight":"800"}],"display-accent":["36px",{"lineHeight":"38px","letterSpacing":"0em","fontWeight":"400"}],"caption":["11.5px",{"lineHeight":"16px","fontWeight":"400"}]}}}};</script></head><body class="bg-background text-on-surface font-body-md antialiased selection:bg-primary-container selection:text-on-primary-container"><header class="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-md shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 max-w-[1200px] mx-auto px-gutter-desktop flex items-center justify-between gap-space-md"><div class="flex items-center gap-space-lg"><a class="flex items-center gap-space-sm group" data-path="home" href="#"><div class="w-9 h-9 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-headline-md font-bold"><span class="leading-none select-none">C*</span></div><div class="flex flex-col"><span class="font-headline-md text-headline-md tracking-tight text-on-surface uppercase">CreatorConnect</span><span class="font-label text-label tracking-widest text-outline uppercase -mt-1">Studio Network</span></div></a><nav class="hidden lg:flex items-center gap-space-xs bg-surface-container-low p-space-xs rounded-full shadow-[0_1px_4px_rgba(0,0,0,0.02)]" data-active-classes="bg-surface-container-high text-on-surface font-button-lg rounded-full"><a class="px-space-md py-space-xs text-on-surface-variant hover:text-on-surface font-body-sm transition-all rounded-full" data-path="home" href="#">Home</a><a class="px-space-md py-space-xs text-on-surface-variant hover:text-on-surface font-body-sm transition-all rounded-full" data-path="discover" href="#">Discover</a><a class="px-space-md py-space-xs text-on-surface-variant hover:text-on-surface font-body-sm transition-all rounded-full" data-path="portfolio" href="#">Portfolio</a><a class="px-space-md py-space-xs text-on-surface-variant hover:text-on-surface font-body-sm transition-all rounded-full" data-path="assignments" href="#">Assignments</a><a aria-current="page" class="relative px-space-md py-space-xs transition-all flex items-center bg-surface-container-high text-on-surface font-button-lg rounded-full" data-path="inbox" href="#"><span>Inbox</span><span class="ml-1.5 w-2 h-2 rounded-full bg-error inline-block"></span></a></nav></div><div class="flex items-center gap-space-md"><div class="hidden md:flex items-center gap-space-sm bg-surface-container-low px-space-md py-space-xs rounded-full cursor-pointer hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-[18px] text-outline">search</span><span class="font-body-sm text-body-sm text-outline">Search creators, briefs...</span><kbd class="font-label text-label bg-surface-container-lowest px-space-xs py-0.5 rounded text-on-surface-variant shadow-[0_1px_2px_rgba(0,0,0,0.05)]">⌘K</kbd></div><button aria-label="Notifications" class="relative w-9 h-9 rounded-full bg-surface-container-low hover:bg-surface-container-high flex items-center justify-center transition-colors text-on-surface-variant"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-error"></span></button><div class="flex items-center gap-space-sm bg-surface-container-lowest p-space-xs pr-space-md rounded-full shadow-[0_1px_4px_rgba(0,0,0,0.04)] cursor-pointer hover:bg-surface-container-low transition-colors"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="hidden sm:flex flex-col text-left"><span class="font-button-lg text-button-lg leading-tight text-on-surface">Kavya Nair</span><span class="font-label text-label tracking-wider text-outline uppercase">Studio Atelier</span></div></div></div></div></header><main class="w-full pt-16 bg-surface"><div class="max-w-[1200px] mx-auto px-gutter-desktop min-h-[calc(100vh-10rem)] py-space-xl"><div class="flex flex-col w-full pb-space-3xl">
+<!-- ==================== QA INTERACTIVE SCENARIO CONTROLLER ==================== -->
+<aside aria-label="Reviewer Scenario Simulator" class="w-full bg-surface-container-highest/60 backdrop-blur-sm rounded-2xl p-space-sm mb-space-lg shadow-sm">
+<div class="flex flex-wrap items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs text-on-surface-variant font-label text-label tracking-wider uppercase pl-space-xs">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">tune</span>
+<span>QA Simulation Harness</span>
+<span class="hidden sm:inline text-outline">• Screen I06</span>
+</div>
+<div class="flex flex-wrap items-center gap-space-xs" id="qaSwitcher">
+<button class="scenario-btn px-space-sm py-1 rounded-full font-label text-label uppercase transition-all bg-on-surface text-surface-container-lowest font-bold" data-scenario="default" onclick="setScenario('default')">
+          Full Details (Default)
+        </button>
+<button class="scenario-btn px-space-sm py-1 rounded-full font-label text-label uppercase transition-all bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high" data-scenario="no-project" onclick="setScenario('no-project')">
+          No Linked Project
+        </button>
+<button class="scenario-btn px-space-sm py-1 rounded-full font-label text-label uppercase transition-all bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high" data-scenario="no-files" onclick="setScenario('no-files')">
+          No Shared Files (Empty)
+        </button>
+<button class="scenario-btn px-space-sm py-1 rounded-full font-label text-label uppercase transition-all bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high" data-scenario="mute-open" onclick="setScenario('mute-open')">
+          Mute Sheet Open
+        </button>
+<button class="scenario-btn px-space-sm py-1 rounded-full font-label text-label uppercase transition-all bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high" data-scenario="block-open" onclick="setScenario('block-open')">
+          Block Warning Dialog
+        </button>
+<button class="scenario-btn px-space-sm py-1 rounded-full font-label text-label uppercase transition-all bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high" data-scenario="offline" onclick="setScenario('offline')">
+          Offline / Cached
+        </button>
+<button class="scenario-btn px-space-sm py-1 rounded-full font-label text-label uppercase transition-all bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high" data-scenario="api-error" onclick="setScenario('api-error')">
+          API Load Error
+        </button>
+</div>
+</div>
+</aside>
+<!-- ==================== BANNER STATES (OFFLINE / ERROR) ==================== -->
+<div class="hidden w-full mb-space-md p-space-md rounded-2xl bg-secondary-fixed text-on-secondary-fixed flex items-center justify-between shadow-sm" id="offlineBanner">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px]">cloud_off</span>
+<div>
+<p class="font-button-lg text-button-lg">Viewing Archived / Offline Thread State</p>
+<p class="font-caption text-caption opacity-80">Synced 14 minutes ago. Actions will queue until link re-establishes.</p>
+</div>
+</div>
+<button class="px-space-md py-1 bg-surface-container-lowest text-on-secondary-fixed rounded-full font-button-lg text-button-lg hover:bg-surface transition-colors shadow-sm" onclick="setScenario('default')">
+      Reconnect
+    </button>
+</div>
+<div class="hidden w-full mb-space-md p-space-md rounded-2xl bg-error-container text-on-error-container flex items-center justify-between shadow-sm" id="errorBanner">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px]">error</span>
+<div>
+<p class="font-button-lg text-button-lg">Failed to sync thread telemetry (#CONV-8824)</p>
+<p class="font-caption text-caption opacity-90">HTTP 503 Service Unavailable: Creator Connect Vault Cluster #04 timed out.</p>
+</div>
+</div>
+<button class="px-space-md py-1 bg-on-error text-error font-button-lg text-button-lg rounded-full hover:bg-surface transition-colors shadow-sm" onclick="setScenario('default')">
+      Retry Request
+    </button>
+</div>
+<!-- ==================== NAVIGATION & BREADCRUMB HEADER ==================== -->
+<header class="w-full flex flex-col gap-space-md mb-space-xl">
+<!-- Breadcrumb rail -->
+<nav aria-label="Breadcrumb" class="flex flex-wrap items-center gap-space-xs text-on-surface-variant font-caption text-caption">
+<a class="hover:text-on-surface transition-colors" href="#">Home</a>
+<span class="text-outline/40">/</span>
+<a class="hover:text-on-surface transition-colors" href="#">Inbox (I01)</a>
+<span class="text-outline/40">/</span>
+<span class="hover:text-on-surface transition-colors">Conversation #CONV-8824 with Rohan K.</span>
+<span class="text-outline/40">/</span>
+<span class="text-on-surface font-bold bg-surface-container-high px-2 py-0.5 rounded-full">Details &amp; Shared Files (I06)</span>
+</nav>
+<!-- Header Actions and Title -->
+<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-md pt-space-xs">
+<div class="space-y-space-xs max-w-2xl">
+<div class="inline-flex items-center gap-space-xs bg-surface-container-low px-space-sm py-1 rounded-full text-on-surface-variant font-label text-label tracking-widest uppercase">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+          Thread Context &amp; Verification Hub
+        </div>
+<h1 class="font-display-lg text-display-lg text-on-surface tracking-tight">
+          Conversation Details &amp; <span class="font-display-accent italic text-primary font-normal">Shared Assets</span>
+</h1>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+          Inspect participants, review linked deliverables, browse shared media, and adjust privacy settings for this thread.
+        </p>
+</div>
+<div class="flex items-center gap-space-sm shrink-0">
+<a class="group inline-flex items-center gap-space-sm bg-surface-container-lowest hover:bg-surface-container text-on-surface px-space-lg py-space-sm rounded-full font-button-lg text-button-lg shadow-sm transition-all hover:-translate-y-0.5" href="#">
+<span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span>
+<span>Return to Chat (I04)</span>
+<span class="font-label text-label bg-surface-container px-2 py-0.5 rounded-full text-outline group-hover:bg-surface-container-high transition-colors">#CONV-8824</span>
+</a>
+</div>
+</div>
+</header>
+<!-- ==================== MAIN TWO-COLUMN WORKSPACE ==================== -->
+<div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-start">
+<!-- ==================== LEFT COLUMN (65% on Desktop -> 8 cols) ==================== -->
+<section class="lg:col-span-8 flex flex-col gap-space-lg">
+<!-- PARTICIPANT DOSSIER CARD -->
+<article class="bg-surface-container-lowest rounded-[28px] p-space-lg shadow-sm relative overflow-hidden">
+<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-space-md pb-space-md">
+<div class="flex items-center gap-space-md">
+<!-- Custom Avatar with Status Indicator -->
+<div class="relative shrink-0">
+<div class="w-16 h-16 rounded-[22px] bg-secondary-container text-on-secondary-container flex items-center justify-center font-display-lg text-[22px] font-bold shadow-sm">
+                RK
+              </div>
+<div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-surface-container-lowest p-0.5 flex items-center justify-center">
+<span class="w-3.5 h-3.5 rounded-full bg-primary-container inline-block" title="Online via CreatorConnect Studio App"></span>
+</div>
+</div>
+<!-- Profile Info -->
+<div class="space-y-0.5">
+<div class="flex items-center gap-space-xs">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Rohan K.</h2>
+<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label text-label tracking-wide uppercase">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+                  Verified Talent
+                </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Lead Cinematographer &amp; DI Colorist · Mumbai, India</p>
+<div class="flex items-center gap-space-xs text-on-surface-variant font-caption text-caption pt-0.5">
+<span class="material-symbols-outlined text-[15px] text-outline">apartment</span>
+<span>Studio Atelier Collective</span>
+<span class="text-outline/40">•</span>
+<span class="text-primary font-bold">Top 5% Colorist</span>
+</div>
+</div>
+</div>
+<!-- Outbound Public Profile Button -->
+<a class="inline-flex items-center gap-space-xs px-space-md py-2 rounded-full bg-surface-container-low hover:bg-surface-container-high text-on-surface font-button-lg text-button-lg transition-all self-stretch sm:self-auto justify-center shadow-sm" href="#">
+<span>View Public Profile (E07)</span>
+<span class="material-symbols-outlined text-[16px]">north_east</span>
+</a>
+</div>
+<!-- Metrics Ticker Bar -->
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-space-sm py-space-md bg-surface-container-low/60 rounded-2xl px-space-md mb-space-md">
+<div class="flex flex-col">
+<span class="font-label text-label tracking-wider uppercase text-outline">Platform Tenure</span>
+<span class="font-headline-md text-headline-md text-on-surface">Feb 2024</span>
+<span class="font-caption text-caption text-outline">15 mos active</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label text-label tracking-wider uppercase text-outline">Track Record</span>
+<span class="font-headline-md text-headline-md text-on-surface">12 Completed</span>
+<span class="font-caption text-caption text-primary font-bold">100% On-time delivery</span>
+</div>
+<div class="col-span-2 sm:col-span-1 flex flex-col">
+<span class="font-label text-label tracking-wider uppercase text-outline">Average Rating</span>
+<div class="flex items-center gap-1">
+<span class="font-headline-md text-headline-md text-on-surface">4.98</span>
+<div class="flex text-primary">
+<span class="material-symbols-outlined text-[15px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[15px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[15px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[15px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[15px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+<span class="font-caption text-caption text-outline">48 client reviews</span>
+</div>
+</div>
+<!-- Privacy Shield Indicator -->
+<div class="flex items-start gap-space-sm bg-surface-container p-space-sm rounded-xl">
+<span class="material-symbols-outlined text-primary text-[20px] shrink-0 mt-0.5">shield</span>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+<span class="font-bold text-on-surface">CreatorConnect Privacy Shield Active:</span> Direct email addresses, personal phone numbers, and banking identifiers remain masked. Payments and files processed through this thread are insured under the Platform Creator Guarantee.
+          </p>
+</div>
+</article>
+<!-- LINKED PROJECT BANNER (G10 Bridge) -->
+<section class="bg-surface-container-lowest rounded-[28px] p-space-lg shadow-sm relative overflow-hidden" id="linkedProjectSection">
+<div class="flex flex-wrap items-center justify-between gap-space-sm mb-space-sm">
+<div class="inline-flex items-center gap-space-xs bg-primary-container px-space-sm py-1 rounded-full text-on-primary-container font-label text-label tracking-wider uppercase font-bold">
+<span class="material-symbols-outlined text-[14px]">layers</span>
+<span>Linked Active Project (G10)</span>
+</div>
+<div class="flex items-center gap-space-xs text-outline font-label text-label uppercase tracking-widest">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+            Escrow Secured
+          </div>
+</div>
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md py-space-xs">
+<div class="space-y-1">
+<h3 class="font-headline-lg text-headline-lg text-on-surface">Summer Fashion Week 2025: 3x Short-Form Reels</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex flex-wrap items-center gap-space-xs">
+<span class="font-bold text-on-surface">ID: #PRJ-8824</span>
+<span class="text-outline">•</span>
+<span class="bg-surface-container px-2 py-0.5 rounded-full font-label text-label text-on-surface">Milestone 2 in Progress</span>
+<span class="text-outline">•</span>
+<span>Due June 02, 2025</span>
+</p>
+</div>
+<div class="flex flex-wrap items-center gap-space-xs">
+<a class="inline-flex items-center gap-space-xs px-space-md py-2.5 rounded-full bg-primary-container text-on-primary-container font-button-lg text-button-lg hover:brightness-95 transition-all shadow-sm" href="#">
+<span>Open Project Workspace (G10)</span>
+<span class="material-symbols-outlined text-[16px]">open_in_new</span>
+</a>
+<a class="inline-flex items-center gap-space-xs px-space-md py-2.5 rounded-full bg-surface-container-low hover:bg-surface-container-high text-on-surface font-button-lg text-button-lg transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>View Brief (G03)</span>
+</a>
+</div>
+</div>
+<!-- Project Progress Bar Strip -->
+<div class="mt-space-md pt-space-sm flex flex-col gap-1.5">
+<div class="flex justify-between items-center text-outline font-label text-label uppercase tracking-wider">
+<span>Overall Deliverable Progress</span>
+<span class="text-on-surface font-bold">65% Completed (Milestone 2 of 3)</span>
+</div>
+<div class="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-500" style="width: 65%;"></div>
+</div>
+</div>
+</section>
+<!-- EMPTY STATE FALLBACK FOR LINKED PROJECT (Controlled via QA switcher) -->
+<div class="hidden bg-surface-container-lowest rounded-[28px] p-space-xl shadow-sm text-center flex flex-col items-center justify-center gap-space-sm py-space-2xl" id="noProjectPlaceholder">
+<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-outline">
+<span class="material-symbols-outlined text-[24px]">folder_off</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface">No Project Linked to This Conversation</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-md">
+          This thread exists as an exploratory or direct creator discussion. You can bind an active project proposal or commission brief at any time.
+        </p>
+<button class="mt-space-xs px-space-md py-2 bg-primary-container text-on-primary-container rounded-full font-button-lg text-button-lg hover:brightness-95 transition-all shadow-sm">
+          + Link or Create New Project
+        </button>
+</div>
+<!-- SHARED FILES & MEDIA SECTION -->
+<section class="bg-surface-container-lowest rounded-[28px] p-space-lg shadow-sm flex flex-col gap-space-md">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs pb-space-xs">
+<div class="flex items-center gap-space-sm">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Shared Files &amp; Media</h2>
+<span class="px-space-sm py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label text-label tracking-wide uppercase font-bold" id="filesBadge">
+              2 Assets in Thread
+            </span>
+</div>
+<span class="font-caption text-caption text-outline">
+            Select any item to open full inspection in Attachment Viewer (I05)
+          </span>
+</div>
+<!-- Files List Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md" id="sharedFilesGrid">
+<!-- Card 1: Lookbook Image Hero Grade -->
+<article class="bg-surface-container-low rounded-2xl p-space-md flex flex-col justify-between hover:bg-surface-container-high/60 transition-all group">
+<div class="space-y-space-sm">
+<!-- Visual Lookbook Thumbnail -->
+<div class="relative w-full h-36 rounded-xl overflow-hidden bg-surface-container-high">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="High-contrast warm editorial fashion week backstage photograph featuring models in sculptural khadi dresses under golden hour cinematic studio lights, saturated terracotta accents and textured fabrics, ultra-high definition photography" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzSRpLLt_umoRw__WpXF0bt0Uebv4KSYKREkJbh69SN1bg4k7ddcEbGxmJf20LcfRxr-Dx-hVFlSOD7neGrFlLiQ-yfLsbOC5yLL5vwfMDYTsDT18d1rQC6p-7cgMagSoGdcHszUK3fDlrNfxfvVRyOIZswoa-PdJBM8UKdBLykjzgaOiSRgFijre5A2Pytd9vg3ZCYtOT3T8CK4CdMg9yPePE9nCQnarR_BHcFApUqMJQjrKgZKfX"/>
+<div class="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-inverse-surface/80 text-inverse-on-surface font-label text-label uppercase tracking-widest backdrop-blur-sm">
+                  RAW High-Res
+                </div>
+<div class="absolute bottom-2 right-2 bg-inverse-surface/80 text-inverse-on-surface p-1 rounded-md backdrop-blur-sm">
+<span class="material-symbols-outlined text-[16px]">zoom_in</span>
+</div>
+</div>
+<div>
+<p class="font-headline-md text-headline-md text-on-surface truncate group-hover:text-primary transition-colors" title="fashion_week_lookbook_hero_grade.jpg">
+                  fashion_week_lookbook_hero_grade.jpg
+                </p>
+<div class="flex flex-wrap items-center gap-x-space-xs gap-y-0.5 text-outline font-caption text-caption mt-1">
+<span class="font-bold text-on-surface">4.8 MB</span>
+<span>•</span>
+<span>JPEG High-Res</span>
+<span>•</span>
+<span>May 19, 2025</span>
+</div>
+<p class="font-label text-label tracking-wide text-outline uppercase mt-1">Shared by Rohan K.</p>
+</div>
+</div>
+<!-- CTA Actions -->
+<div class="pt-space-md flex items-center justify-between gap-space-xs">
+<a class="inline-flex items-center gap-1 text-on-surface font-button-lg text-button-lg hover:text-primary transition-colors" href="#">
+<span>Inspect in Viewer (I05)</span>
+<span class="material-symbols-outlined text-[16px]">open_in_new</span>
+</a>
+<button aria-label="Download fashion_week_lookbook_hero_grade.jpg" class="p-2 rounded-full bg-surface-container-lowest hover:bg-surface text-on-surface-variant hover:text-on-surface transition-colors shadow-sm" title="Download Original">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+</div>
+</article>
+<!-- Card 2: 3D Color LUT Profile (.cube) -->
+<article class="bg-surface-container-low rounded-2xl p-space-md flex flex-col justify-between hover:bg-surface-container-high/60 transition-all group">
+<div class="space-y-space-sm">
+<!-- Technical LUT Icon representation with micro color chart SVG -->
+<div class="relative w-full h-36 rounded-xl bg-surface-container-highest flex flex-col items-center justify-center overflow-hidden p-4">
+<div class="w-12 h-12 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center mb-2 shadow-sm">
+<span class="material-symbols-outlined text-[24px]">palette</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-full bg-[#fbb3c5]"></span>
+<span class="w-3 h-3 rounded-full bg-[#ffd64a]"></span>
+<span class="w-3 h-3 rounded-full bg-[#d0bcfe]"></span>
+<span class="w-3 h-3 rounded-full bg-[#864d5d]"></span>
+</div>
+<span class="font-label text-label tracking-widest text-outline uppercase mt-2">DaVinci 33-point Grid</span>
+<div class="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-surface-container-lowest text-on-surface font-label text-label uppercase shadow-sm">
+                  SHA-256 Validated
+                </div>
+</div>
+<div>
+<p class="font-headline-md text-headline-md text-on-surface truncate group-hover:text-primary transition-colors" title="fashion_week_reel_color_lut_v2.cube">
+                  fashion_week_reel_color_lut_v2.cube
+                </p>
+<div class="flex flex-wrap items-center gap-x-space-xs gap-y-0.5 text-outline font-caption text-caption mt-1">
+<span class="font-bold text-on-surface">2.4 MB</span>
+<span>•</span>
+<span>3D LUT Profile</span>
+<span>•</span>
+<span>May 19, 2025</span>
+</div>
+<p class="font-label text-label tracking-wide text-outline uppercase mt-1">Shared by Rohan K.</p>
+</div>
+</div>
+<!-- CTA Actions -->
+<div class="pt-space-md flex items-center justify-between gap-space-xs">
+<a class="inline-flex items-center gap-1 text-on-surface font-button-lg text-button-lg hover:text-primary transition-colors" href="#">
+<span>Inspect in Viewer (I05)</span>
+<span class="material-symbols-outlined text-[16px]">open_in_new</span>
+</a>
+<button aria-label="Download fashion_week_reel_color_lut_v2.cube" class="inline-flex items-center gap-1 px-space-sm py-1.5 rounded-full bg-surface-container-lowest hover:bg-surface text-on-surface font-button-lg text-button-lg transition-colors shadow-sm" title="Download .cube LUT Profile">
+<span class="material-symbols-outlined text-[16px]">download</span>
+<span class="font-label text-label uppercase">.cube</span>
+</button>
+</div>
+</article>
+</div>
+<!-- EMPTY FILES STATE (Controlled by switcher) -->
+<div class="hidden bg-surface-container-low rounded-2xl p-space-2xl text-center flex flex-col items-center justify-center gap-space-xs" id="noFilesPlaceholder">
+<span class="material-symbols-outlined text-outline text-[32px]">folder_special</span>
+<h4 class="font-headline-md text-headline-md text-on-surface">No Media or Files Shared Yet</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-sm">
+            Deliverables, raw clips, color grade LUTs, and lookbook proofs sent in chat will automatically catalog here.
+          </p>
+</div>
+<!-- Compliance & Limits Disclaimer Footer -->
+<div class="flex items-center gap-space-xs text-outline font-caption text-caption pt-space-xs">
+<span class="material-symbols-outlined text-[16px]">verified_user</span>
+<span>Files uploaded strictly adhere to CreatorConnect 25 MB thread limit. Assets held in immutable cloud storage.</span>
+</div>
+</section>
+</section>
+<!-- ==================== RIGHT COLUMN (35% on Desktop -> 4 cols) ==================== -->
+<aside class="lg:col-span-4 flex flex-col gap-space-lg">
+<!-- CONVERSATION SETTINGS PANEL -->
+<section class="bg-surface-container-lowest rounded-[28px] p-space-lg shadow-sm flex flex-col gap-space-md">
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[18px] text-primary">settings</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Conversation Settings</h2>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-low text-outline font-label text-label uppercase">
+            Encrypted
+          </span>
+</div>
+<div class="flex items-center gap-space-xs bg-surface-container-low/70 px-space-sm py-2 rounded-xl text-on-surface font-caption text-caption">
+<span class="w-2 h-2 rounded-full bg-primary shrink-0"></span>
+<span>Thread status: <span class="font-bold">Active &amp; End-to-End Logged</span></span>
+</div>
+<!-- NOTIFICATION MUTE CONTROL CARD -->
+<div class="bg-surface-container-low rounded-2xl p-space-md flex flex-col gap-space-sm">
+<div class="flex items-start justify-between gap-space-xs">
+<div>
+<p class="font-label text-label uppercase tracking-wider text-outline">Notification Policy</p>
+<p class="font-body-md text-body-md font-bold text-on-surface" id="currentMuteState">
+                Active (All alerts enabled)
+              </p>
+</div>
+<span class="material-symbols-outlined text-outline text-[20px]">notifications_active</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant">
+            Receive in-app sound, push updates, and workspace summaries for replies from Rohan K.
+          </p>
+<button class="w-full mt-space-xs py-2 px-space-md rounded-full bg-surface-container-lowest hover:bg-surface text-on-surface font-button-lg text-button-lg transition-all shadow-sm flex items-center justify-center gap-space-xs" onclick="toggleMuteSheet(true)">
+<span class="material-symbols-outlined text-[16px]">volume_off</span>
+<span>Mute Notifications...</span>
+</button>
+</div>
+<!-- Export Chat Shortcut -->
+<div class="pt-space-xs flex items-center justify-between">
+<span class="font-caption text-caption text-on-surface-variant">Need offline records?</span>
+<button class="inline-flex items-center gap-1 font-button-lg text-button-lg text-primary hover:underline" onclick="exportChatTranscript()">
+<span class="material-symbols-outlined text-[16px]">download</span>
+<span>Export History (.txt)</span>
+</button>
+</div>
+</section>
+<!-- TRUST, SAFETY & GOVERNANCE SECTION -->
+<section class="bg-surface-container-lowest rounded-[28px] p-space-lg shadow-sm flex flex-col gap-space-md">
+<div class="flex items-center gap-space-xs pb-space-xs">
+<span class="material-symbols-outlined text-[18px] text-tertiary">gavel</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Trust, Safety &amp; Governance</h2>
+</div>
+<!-- Anti-Circumvention Policy Box -->
+<div class="p-space-sm rounded-xl bg-surface-container-low text-on-surface-variant font-caption text-caption space-y-1">
+<p class="font-bold text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-primary">policy</span>
+            Mutual Protection Policy
+          </p>
+<p class="leading-relaxed">
+            All creative compensation must process via Escrow. Communicating or transacting off-platform forfeits payment protection and milestone arbitration.
+          </p>
+</div>
+<!-- Block Participant Card -->
+<div class="bg-surface-container-low rounded-2xl p-space-md flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-md text-headline-md text-on-surface">Block Rohan K.</h3>
+<span class="material-symbols-outlined text-outline text-[18px]">person_off</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+            Freezes direct messaging with Rohan K. Because active project <span class="font-bold text-on-surface">#PRJ-8824</span> is underway, essential milestone notifications remain delivered in Workspace (G10).
+          </p>
+<button class="w-full mt-space-xs py-2 px-space-md rounded-full bg-surface-container-lowest text-on-surface hover:text-error hover:bg-error-container/40 font-button-lg text-button-lg transition-all shadow-sm flex items-center justify-center gap-space-xs" onclick="toggleBlockDialog(true)">
+<span class="material-symbols-outlined text-[16px]">block</span>
+<span>Block Participant...</span>
+</button>
+</div>
+<!-- Report Conversation Card -->
+<div class="bg-surface-container-low rounded-2xl p-space-md flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-md text-headline-md text-on-surface">Report Thread Content</h3>
+<span class="material-symbols-outlined text-outline text-[18px]">flag</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+            Report suspicious solicitations, circumvention proposals, or harassment to CreatorConnect Trust &amp; Safety.
+          </p>
+<button class="w-full mt-space-xs py-2 px-space-md rounded-full bg-surface-container-lowest text-on-surface hover:bg-surface font-button-lg text-button-lg transition-all shadow-sm flex items-center justify-center gap-space-xs" onclick="triggerReportModal()">
+<span class="material-symbols-outlined text-[16px]">report</span>
+<span>Report to Safety Team...</span>
+</button>
+</div>
+</section>
+<!-- AUDIT META CARD -->
+<div class="p-space-md rounded-2xl bg-surface-container-low/50 flex flex-col gap-1 text-outline font-label text-label uppercase tracking-widest">
+<span>Channel: P2P Thread</span>
+<span>Key Fingerprint: 4b29-e1a0-98f2</span>
+<span>Server Node: CC-IN-BOM-03</span>
+</div>
+</aside>
+</div>
+<!-- ==================== MODAL 1: MUTE NOTIFICATIONS SHEET ==================== -->
+<div class="fixed inset-0 z-50 bg-inverse-surface/40 backdrop-blur-sm hidden items-center justify-center p-space-md" id="muteModal">
+<div class="bg-surface-container-lowest w-full max-w-md rounded-[28px] p-space-xl shadow-xl flex flex-col gap-space-md transform transition-all animate-in fade-in zoom-in-95 duration-200">
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-space-xs">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px] text-on-surface">volume_off</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-on-surface">Mute Notifications</h3>
+</div>
+<button class="p-1 rounded-full hover:bg-surface-container text-on-surface-variant" onclick="toggleMuteSheet(false)">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+        Choose how long to silence sound, badge alerts, and email highlights for messages from <span class="font-bold text-on-surface">Rohan K.</span> in thread #CONV-8824.
+      </p>
+<!-- Options Radios -->
+<div class="flex flex-col gap-space-xs" id="muteDurationOptions">
+<label class="flex items-center justify-between p-space-sm rounded-xl bg-surface-container-low cursor-pointer hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-space-sm">
+<input checked="" class="accent-on-surface w-4 h-4" name="muteDuration" type="radio" value="8_hours"/>
+<span class="font-body-md text-body-md text-on-surface">Mute for 8 hours</span>
+</div>
+<span class="font-label text-label uppercase text-outline">Short Break</span>
+</label>
+<label class="flex items-center justify-between p-space-sm rounded-xl bg-surface-container-low cursor-pointer hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-space-sm">
+<input class="accent-on-surface w-4 h-4" name="muteDuration" type="radio" value="1_week"/>
+<span class="font-body-md text-body-md text-on-surface">Mute for 1 week</span>
+</div>
+<span class="font-label text-label uppercase text-outline">Project Sprint</span>
+</label>
+<label class="flex items-center justify-between p-space-sm rounded-xl bg-surface-container-low cursor-pointer hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-space-sm">
+<input class="accent-on-surface w-4 h-4" name="muteDuration" type="radio" value="indefinite"/>
+<span class="font-body-md text-body-md text-on-surface">Mute until I turn it back on</span>
+</div>
+<span class="font-label text-label uppercase text-outline">Indefinite</span>
+</label>
+</div>
+<div class="flex items-center justify-end gap-space-sm pt-space-xs">
+<button class="px-space-md py-2 rounded-full font-button-lg text-button-lg text-on-surface hover:bg-surface-container transition-colors" onclick="toggleMuteSheet(false)">
+          Cancel
+        </button>
+<button class="px-space-lg py-2 rounded-full bg-primary-container text-on-primary-container font-button-lg text-button-lg hover:brightness-95 transition-all shadow-sm" onclick="applyMute()">
+          Apply Mute
+        </button>
+</div>
+</div>
+</div>
+<!-- ==================== MODAL 2: BLOCK PARTICIPANT WARNING DIALOG ==================== -->
+<div class="fixed inset-0 z-50 bg-inverse-surface/40 backdrop-blur-sm hidden items-center justify-center p-space-md" id="blockModal">
+<div class="bg-surface-container-lowest w-full max-w-lg rounded-[28px] p-space-xl shadow-xl flex flex-col gap-space-md transform transition-all animate-in fade-in zoom-in-95 duration-200">
+<div class="flex items-start gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-error-container text-error flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[22px]">warning</span>
+</div>
+<div class="space-y-1">
+<h3 class="font-headline-lg text-headline-lg text-on-surface">Block Rohan K.?</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+            Are you sure you want to restrict direct contact with this participant?
+          </p>
+</div>
+</div>
+<!-- Warning note about active project -->
+<div class="bg-surface-container p-space-md rounded-2xl flex flex-col gap-space-xs text-on-surface-variant font-caption text-caption">
+<p class="font-bold text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-primary">info</span>
+          Important: Linked Project Active (#PRJ-8824)
+        </p>
+<p class="leading-relaxed">
+          Because milestone deliverables are in escrow, blocking Rohan K. will freeze informal messages but will <span class="font-bold text-on-surface">NOT cancel contractual deadlines</span>. Formal status changes, asset delivery submissions, and platform escrow payouts will remain accessible inside Workspace (G10).
+        </p>
+</div>
+<div class="flex flex-col sm:flex-row items-center justify-end gap-space-sm pt-space-xs">
+<button class="w-full sm:w-auto px-space-md py-2.5 rounded-full font-button-lg text-button-lg text-on-surface hover:bg-surface-container transition-colors text-center" onclick="toggleBlockDialog(false)">
+          Dismiss &amp; Keep Active
+        </button>
+<button class="w-full sm:w-auto px-space-lg py-2.5 rounded-full bg-error text-on-error font-button-lg text-button-lg hover:brightness-110 transition-all shadow-sm text-center" onclick="confirmBlock()">
+          Yes, Block Participant
+        </button>
+</div>
+</div>
+</div>
+<!-- TOAST NOTIFICATION CONTAINER -->
+<div class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none bg-inverse-surface text-inverse-on-surface px-space-lg py-space-sm rounded-full font-button-lg text-button-lg shadow-xl flex items-center gap-space-xs" id="toastMessage">
+<span class="material-symbols-outlined text-[18px] text-primary-container" id="toastIcon">check_circle</span>
+<span id="toastText">Action processed successfully</span>
+</div>
+</div>
+<!-- ==================== CLIENT-SIDE CONTROLLERS ==================== -->
+<script>
+  function showToast(text, icon = 'check_circle') {
+    const toast = document.getElementById('toastMessage');
+    const toastText = document.getElementById('toastText');
+    const toastIcon = document.getElementById('toastIcon');
+    if (!toast) return;
+    toastText.textContent = text;
+    toastIcon.textContent = icon;
+    toast.classList.remove('translate-y-24', 'opacity-0', 'pointer-events-none');
+    setTimeout(() => {
+      toast.classList.add('translate-y-24', 'opacity-0', 'pointer-events-none');
+    }, 3200);
+  }
+
+  function toggleMuteSheet(show) {
+    const modal = document.getElementById('muteModal');
+    if (!modal) return;
+    if (show) {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    } else {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+  }
+
+  function applyMute() {
+    const checkedOption = document.querySelector('input[name="muteDuration"]:checked');
+    const label = checkedOption ? checkedOption.value : '8_hours';
+    const currentMuteState = document.getElementById('currentMuteState');
+    let displayText = 'Active (All alerts enabled)';
+    if (label === '8_hours') displayText = 'Muted (8 hours remaining)';
+    if (label === '1_week') displayText = 'Muted (1 week remaining)';
+    if (label === 'indefinite') displayText = 'Muted (Until unmuted)';
+
+    if (currentMuteState) {
+      currentMuteState.textContent = displayText;
+      currentMuteState.classList.add('text-primary');
+    }
+    toggleMuteSheet(false);
+    showToast('Notifications muted: ' + displayText, 'volume_off');
+  }
+
+  function toggleBlockDialog(show) {
+    const modal = document.getElementById('blockModal');
+    if (!modal) return;
+    if (show) {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    } else {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+  }
+
+  function confirmBlock() {
+    toggleBlockDialog(false);
+    showToast('Participant Rohan K. blocked. Project #PRJ-8824 stays visible.', 'block');
+  }
+
+  function triggerReportModal() {
+    showToast('Trust & Safety ticket initiated. Audit bundle prepared.', 'verified');
+  }
+
+  function exportChatTranscript() {
+    showToast('Preparing conversation transcript (.txt) for #CONV-8824...', 'download');
+  }
+
+  // Interactive Scenario Switcher logic
+  function setScenario(scenarioKey) {
+    // Update Switcher Active Button Styling
+    document.querySelectorAll('.scenario-btn').forEach(btn => {
+      if (btn.getAttribute('data-scenario') === scenarioKey) {
+        btn.classList.remove('bg-surface-container-lowest', 'text-on-surface-variant');
+        btn.classList.add('bg-on-surface', 'text-surface-container-lowest', 'font-bold');
+      } else {
+        btn.classList.add('bg-surface-container-lowest', 'text-on-surface-variant');
+        btn.classList.remove('bg-on-surface', 'text-surface-container-lowest', 'font-bold');
+      }
+    });
+
+    const projectSection = document.getElementById('linkedProjectSection');
+    const noProjectPlaceholder = document.getElementById('noProjectPlaceholder');
+    const sharedFilesGrid = document.getElementById('sharedFilesGrid');
+    const noFilesPlaceholder = document.getElementById('noFilesPlaceholder');
+    const filesBadge = document.getElementById('filesBadge');
+    const offlineBanner = document.getElementById('offlineBanner');
+    const errorBanner = document.getElementById('errorBanner');
+
+    // Reset base elements
+    offlineBanner.classList.add('hidden');
+    errorBanner.classList.add('hidden');
+    toggleMuteSheet(false);
+    toggleBlockDialog(false);
+
+    if (scenarioKey === 'default') {
+      projectSection.classList.remove('hidden');
+      noProjectPlaceholder.classList.add('hidden');
+      sharedFilesGrid.classList.remove('hidden');
+      noFilesPlaceholder.classList.add('hidden');
+      filesBadge.textContent = '2 Assets in Thread';
+    } else if (scenarioKey === 'no-project') {
+      projectSection.classList.add('hidden');
+      noProjectPlaceholder.classList.remove('hidden');
+      sharedFilesGrid.classList.remove('hidden');
+      noFilesPlaceholder.classList.add('hidden');
+      filesBadge.textContent = '2 Assets in Thread';
+    } else if (scenarioKey === 'no-files') {
+      projectSection.classList.remove('hidden');
+      noProjectPlaceholder.classList.add('hidden');
+      sharedFilesGrid.classList.add('hidden');
+      noFilesPlaceholder.classList.remove('hidden');
+      filesBadge.textContent = '0 Assets in Thread';
+    } else if (scenarioKey === 'mute-open') {
+      projectSection.classList.remove('hidden');
+      noProjectPlaceholder.classList.add('hidden');
+      sharedFilesGrid.classList.remove('hidden');
+      noFilesPlaceholder.classList.add('hidden');
+      toggleMuteSheet(true);
+    } else if (scenarioKey === 'block-open') {
+      projectSection.classList.remove('hidden');
+      noProjectPlaceholder.classList.add('hidden');
+      sharedFilesGrid.classList.remove('hidden');
+      noFilesPlaceholder.classList.add('hidden');
+      toggleBlockDialog(true);
+    } else if (scenarioKey === 'offline') {
+      offlineBanner.classList.remove('hidden');
+      projectSection.classList.remove('hidden');
+      noProjectPlaceholder.classList.add('hidden');
+      sharedFilesGrid.classList.remove('hidden');
+      noFilesPlaceholder.classList.add('hidden');
+    } else if (scenarioKey === 'api-error') {
+      errorBanner.classList.remove('hidden');
+      projectSection.classList.remove('hidden');
+      noProjectPlaceholder.classList.add('hidden');
+      sharedFilesGrid.classList.remove('hidden');
+      noFilesPlaceholder.classList.add('hidden');
+    }
+  }
+</script></div></main><footer class="w-full bg-surface-container-low py-space-xl"><div class="max-w-[1200px] mx-auto px-gutter-desktop flex flex-col md:flex-row items-center justify-between gap-space-md text-on-surface-variant font-caption text-caption"><div class="flex items-center gap-space-sm"><span class="font-headline-md text-headline-md tracking-tight uppercase text-on-surface">CreatorConnect</span><span class="text-outline">•</span><span class="font-display-accent italic text-on-surface-variant">India's AI Creative Matchmaker</span><span class="text-outline">•</span><span>© 2025 CreatorConnect Inc. All rights reserved.</span></div><div class="flex items-center gap-space-lg"><a class="hover:text-on-surface transition-colors" href="#">Platform Status</a><a class="hover:text-on-surface transition-colors" href="#">Editorial Standards</a><a class="hover:text-on-surface transition-colors" href="#">Privacy Policy</a><a class="hover:text-on-surface transition-colors" href="#">Terms of Service</a></div></div></footer></body></html>

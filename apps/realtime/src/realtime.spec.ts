@@ -1015,4 +1015,163 @@ describe('Realtime Service & Authenticated Messaging (Increment 8)', () => {
       }
     }
   });
+
+  // --------------------------------------------------------------------------
+  // Increment 10E: Socket.IO Messaging Actions & Receipts
+  // --------------------------------------------------------------------------
+  describe('Realtime Messaging Actions & Receipts (message:send, delivered, read, typing)', () => {
+    let clientA: ClientSocket;
+    let clientB: ClientSocket;
+
+    beforeAll(async () => {
+      const tokenA = await generateToken(userA.sub, userA.email);
+      const tokenB = await generateToken(userB.sub, userB.email);
+
+      clientA = createClient(serverUrl, {
+        auth: { token: `Bearer ${tokenA}` },
+        transports: ['websocket'],
+      });
+      clientB = createClient(serverUrl, {
+        auth: { token: `Bearer ${tokenB}` },
+        transports: ['websocket'],
+      });
+
+      await Promise.all([
+        new Promise<void>((resolve, reject) => {
+          clientA.on('connect', () => resolve());
+          clientA.on('connect_error', (err) => reject(err));
+        }),
+        new Promise<void>((resolve, reject) => {
+          clientB.on('connect', () => resolve());
+          clientB.on('connect_error', (err) => reject(err));
+        }),
+      ]);
+
+      clientsToClose.push(clientA, clientB);
+
+      // Join conversation room
+      await Promise.all([
+        new Promise<void>((resolve) => {
+          clientA.emit('conversation:join', { conversationId: conversationAB }, () => resolve());
+        }),
+        new Promise<void>((resolve) => {
+          clientB.emit('conversation:join', { conversationId: conversationAB }, () => resolve());
+        }),
+      ]);
+    });
+
+    it('sends message via socket and returns acknowledgement with sequence', async () => {
+      const res: any = await new Promise((resolve) => {
+        clientA.emit(
+          'message:send',
+          {
+            conversationId: conversationAB,
+            clientMessageId: '01a2097e-1111-7111-8111-111111111111',
+            content: 'Realtime socket message content',
+          },
+          (response: any) => resolve(response),
+        );
+      });
+
+      expect(res.success).toBe(true);
+      expect(res.data).toBeDefined();
+      expect(res.data.conversationId).toBe(conversationAB);
+      expect(res.data.content).toBe('Realtime socket message content');
+      expect(typeof res.data.sequence).toBe('string');
+    });
+
+    it('acknowledges delivery via socket and broadcasts message:delivered to room', async () => {
+      const deliveredPromise = new Promise<any>((resolve) => {
+        clientA.on('message:delivered', (payload) => resolve(payload));
+      });
+
+      const ackRes: any = await new Promise((resolve) => {
+        clientB.emit(
+          'message:delivered',
+          {
+            conversationId: conversationAB,
+            sequence: '1',
+          },
+          (response: any) => resolve(response),
+        );
+      });
+
+      expect(ackRes.success).toBe(true);
+      expect(ackRes.data.lastDeliveredSequence).toBeDefined();
+
+      const broadcast = await Promise.race([
+        deliveredPromise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Delivered broadcast timeout')), 2000),
+        ),
+      ]);
+
+      expect(broadcast.conversationId).toBe(conversationAB);
+      expect(broadcast.userId).toBe(userB.id);
+      expect(broadcast.sequence).toBe('1');
+    });
+
+    it('acknowledges read via socket and broadcasts message:read to room', async () => {
+      const readPromise = new Promise<any>((resolve) => {
+        clientA.on('message:read', (payload) => resolve(payload));
+      });
+
+      const ackRes: any = await new Promise((resolve) => {
+        clientB.emit(
+          'message:read',
+          {
+            conversationId: conversationAB,
+            sequence: '1',
+          },
+          (response: any) => resolve(response),
+        );
+      });
+
+      expect(ackRes.success).toBe(true);
+      expect(ackRes.data.lastReadSequence).toBe('1');
+
+      const broadcast = await Promise.race([
+        readPromise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Read broadcast timeout')), 2000),
+        ),
+      ]);
+
+      expect(broadcast.conversationId).toBe(conversationAB);
+      expect(broadcast.userId).toBe(userB.id);
+      expect(broadcast.sequence).toBe('1');
+    });
+
+    it('broadcasts ephemeral typing indicator via socket to other participants', async () => {
+      const typingPromise = new Promise<any>((resolve) => {
+        clientB.on('conversation:typing', (payload) => resolve(payload));
+      });
+
+      const ackRes: any = await new Promise((resolve) => {
+        clientA.emit(
+          'conversation:typing',
+          {
+            conversationId: conversationAB,
+            isTyping: true,
+          },
+          (response: any) => resolve(response),
+        );
+      });
+
+      expect(ackRes.success).toBe(true);
+      expect(ackRes.data.isTyping).toBe(true);
+
+      const broadcast = await Promise.race([
+        typingPromise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Typing broadcast timeout')), 2000),
+        ),
+      ]);
+
+      expect(broadcast.conversationId).toBe(conversationAB);
+      expect(broadcast.userId).toBe(userA.id);
+      expect(broadcast.isTyping).toBe(true);
+      expect(typeof broadcast.timestamp).toBe('string');
+    });
+  });
 });

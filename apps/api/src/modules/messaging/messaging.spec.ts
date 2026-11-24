@@ -2,7 +2,6 @@ import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { getPrismaClient, type PrismaClient } from '@creatorconnect/database';
 import { generateUuidV7 } from '@creatorconnect/utils';
-import { encodeMessageCursor } from '@creatorconnect/contracts';
 import { buildApp } from '../../app.js';
 import { defaultJwtVerifier } from '../../services/jwt-verifier.js';
 import { createTestJwt, createTestKeySet } from '../../../../../tests/fixtures/auth-test-helper.js';
@@ -174,10 +173,24 @@ describe('Messaging REST API Integration Tests (Increment 6)', () => {
       },
     });
     tokenDeactivated = await createTestJwt({ sub: subDeactivated, email: emailDeactivated });
+
+    // Establish mutual consent between userA and userB for downstream messaging tests
+    await prisma.messageRequest.create({
+      data: {
+        id: generateUuidV7(),
+        senderId: userB.id,
+        recipientId: userA.id,
+        initialMessage: 'Hey Alice, let us chat!',
+        status: 'ACCEPTED',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        respondedAt: new Date(),
+      },
+    });
   });
 
   afterAll(async () => {
     // Cleanup test data
+    await prisma.messageRequest.deleteMany({});
     await prisma.report.deleteMany({});
     await prisma.messageReaction.deleteMany({});
     await prisma.messageAttachment.deleteMany({});
@@ -1126,6 +1139,14 @@ describe('Messaging REST API Integration Tests (Increment 6)', () => {
     });
 
     it('allows author (Alice) to soft-delete message with 204 and outbox emission', async () => {
+      // Reset createdAt to within the 15-minute window
+      await prisma.message.update({
+        where: { id: messageId },
+        data: {
+          createdAt: new Date(),
+        },
+      });
+
       const res = await app.inject({
         method: 'DELETE',
         url: `/api/v1/conversations/${convId}/messages/${messageId}`,
@@ -1437,6 +1458,127 @@ describe('Messaging REST API Integration Tests (Increment 6)', () => {
       expect(res.statusCode).toBe(403);
       expect(res.json().code).toBe('NOT_CONVERSATION_PARTICIPANT');
     });
+
+    it('rejects duplicate pending report against the same target with 409 DUPLICATE_REPORT', async () => {
+      // Alice already reported Bob in test 1 with status PENDING.
+      // Attempting to submit a second report for Bob while first is PENDING must be rejected with 409.
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/reports',
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          targetType: 'USER',
+          targetId: userB.id,
+          category: 'HARASSMENT',
+          details: 'Submitting a duplicate report while previous one is still pending.',
+        },
+      });
+
+      expect(res.statusCode).toBe(409);
+      const body = res.json();
+      expect(body.code).toBe('DUPLICATE_REPORT');
+      expect(body.title).toBe('Duplicate Report');
+    });
+
+    it('allows reporting a different target even when a pending report exists for another target', async () => {
+      // Alice has a pending report on Bob, but now reports Charlie (a different user)
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/reports',
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          targetType: 'USER',
+          targetId: userC.id,
+          category: 'SPAM',
+          details: 'Reporting a completely different target should succeed.',
+        },
+      });
+
+      expect(res.statusCode).toBe(201);
+      expect(res.json().targetId).toBe(userC.id);
+      expect(res.json().status).toBe('PENDING');
+    });
+
+    it('allows reporting the same target after prior report has been RESOLVED', async () => {
+      // Resolve Alice's pending report on userC
+      await prisma.report.updateMany({
+        where: { reporterId: userA.id, targetId: userC.id, status: 'PENDING' },
+        data: { status: 'RESOLVED' },
+      });
+
+      // Now Alice reports userC again
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/reports',
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          targetType: 'USER',
+          targetId: userC.id,
+          category: 'INAPPROPRIATE_CONTENT',
+          details: 'New incident occurred after previous report was resolved.',
+        },
+      });
+
+      expect(res.statusCode).toBe(201);
+      expect(res.json().targetId).toBe(userC.id);
+      expect(res.json().status).toBe('PENDING');
+    });
+
+    it('safely handles concurrent duplicate report submissions with exactly one 201 and remaining 409', async () => {
+      // Create a fresh target user for concurrent submission test
+      const targetUser = await prisma.user.create({
+        data: {
+          id: generateUuidV7(),
+          supabaseAuthId: `sb-target-${generateUuidV7()}`,
+          email: `target-${generateUuidV7()}@test.com`,
+          status: 'ACTIVE',
+        },
+      });
+
+      // Fire 5 concurrent report requests from Alice against targetUser
+      const responses = await Promise.all(
+        Array.from({ length: 5 }).map(() =>
+          app.inject({
+            method: 'POST',
+            url: '/api/v1/reports',
+            headers: { authorization: `Bearer ${tokenA}` },
+            payload: {
+              targetType: 'USER',
+              targetId: targetUser.id,
+              category: 'SPAM',
+              details: 'Concurrent submission race safety test.',
+            },
+          }),
+        ),
+      );
+
+      const successCount = responses.filter((r) => r.statusCode === 201).length;
+      const conflictCount = responses.filter((r) => r.statusCode === 409).length;
+
+      expect(successCount).toBe(1);
+      expect(conflictCount).toBe(4);
+
+      // Verify in DB that only 1 record exists
+      const dbCount = await prisma.report.count({
+        where: { reporterId: userA.id, targetId: targetUser.id, status: 'PENDING' },
+      });
+      expect(dbCount).toBe(1);
+    });
+
+    it('rejects unauthenticated report submissions with 401', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/reports',
+        payload: {
+          targetType: 'USER',
+          targetId: userB.id,
+          category: 'SPAM',
+          details: 'Unauthenticated attempt.',
+        },
+      });
+
+      expect(res.statusCode).toBe(401);
+    });
   });
 
   // ==============================================================================
@@ -1516,6 +1658,474 @@ describe('Messaging REST API Integration Tests (Increment 6)', () => {
 
       expect(res.statusCode).toBe(403);
       expect(res.json().code).toBe('USER_DEACTIVATED');
+    });
+  });
+
+  describe('DELETE /api/v1/conversations/:id/messages/:messageId (Soft Deletion & Policy Enforcement)', () => {
+    let testConvId: string;
+    let authorMsgId: string;
+
+    beforeAll(async () => {
+      // Create conversation between userA and userB
+      const createConvRes = await app.inject({
+        method: 'POST',
+        url: '/api/v1/conversations',
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: { recipientId: userB.id },
+      });
+      testConvId = createConvRes.json().id;
+
+      // User A sends a message
+      const sendRes = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${testConvId}/messages`,
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          clientMessageId: generateUuidV7(),
+          content: 'Message to be deleted by Alice',
+        },
+      });
+      authorMsgId = sendRes.json().id;
+    });
+
+    it('denies non-participant from deleting message with 404', async () => {
+      const res = await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/conversations/${testConvId}/messages/${authorMsgId}`,
+        headers: { authorization: `Bearer ${tokenC}` },
+      });
+
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('denies non-author participant from deleting message with 404', async () => {
+      const res = await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/conversations/${testConvId}/messages/${authorMsgId}`,
+        headers: { authorization: `Bearer ${tokenB}` },
+      });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json().code).toBe('MESSAGE_NOT_FOUND');
+    });
+
+    it('denies non-admin author from deleting message older than 15 minutes with 400 MESSAGE_NOT_EDITABLE', async () => {
+      // Create an expired message sent 20 minutes ago
+      const expiredMsgId = generateUuidV7();
+      await prisma.message.create({
+        data: {
+          id: expiredMsgId,
+          conversationId: testConvId,
+          senderId: userA.id,
+          sequence: 9999n,
+          clientMessageId: generateUuidV7(),
+          content: 'Sent 20 minutes ago',
+          status: 'SENT',
+          createdAt: new Date(Date.now() - 20 * 60 * 1000),
+        },
+      });
+
+      const res = await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/conversations/${testConvId}/messages/${expiredMsgId}`,
+        headers: { authorization: `Bearer ${tokenA}` },
+      });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.json().code).toBe('MESSAGE_NOT_EDITABLE');
+    });
+
+    it('allows admin to delete message even if older than 15 minutes with 204', async () => {
+      const expiredMsgId = generateUuidV7();
+      await prisma.message.create({
+        data: {
+          id: expiredMsgId,
+          conversationId: testConvId,
+          senderId: userA.id,
+          sequence: 10000n,
+          clientMessageId: generateUuidV7(),
+          content: 'Admin target message',
+          status: 'SENT',
+          createdAt: new Date(Date.now() - 30 * 60 * 1000),
+        },
+      });
+
+      const res = await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/conversations/${testConvId}/messages/${expiredMsgId}`,
+        headers: { authorization: `Bearer ${tokenAdmin}` },
+      });
+
+      expect(res.statusCode).toBe(204);
+
+      const dbMsg = await prisma.message.findUnique({ where: { id: expiredMsgId } });
+      expect(dbMsg?.status).toBe('DELETED');
+      expect(dbMsg?.content).toBe('[This message was deleted]');
+      expect(dbMsg?.deletedAt).not.toBeNull();
+    });
+
+    it('allows author to soft-delete message within 15 minutes with 204', async () => {
+      const res = await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/conversations/${testConvId}/messages/${authorMsgId}`,
+        headers: { authorization: `Bearer ${tokenA}` },
+      });
+
+      expect(res.statusCode).toBe(204);
+
+      const dbMsg = await prisma.message.findUnique({ where: { id: authorMsgId } });
+      expect(dbMsg?.status).toBe('DELETED');
+      expect(dbMsg?.content).toBe('[This message was deleted]');
+      expect(dbMsg?.deletedAt).not.toBeNull();
+
+      // Verify outbox event creation
+      const outbox = await prisma.outboxEvent.findFirst({
+        where: {
+          aggregateId: authorMsgId,
+          eventType: 'message.deleted.v1',
+        },
+      });
+      expect(outbox).not.toBeNull();
+      expect((outbox?.payload as any)?.conversationId).toBe(testConvId);
+      expect((outbox?.payload as any)?.deletedBy).toBe(userA.id);
+    });
+
+    it('returns 404 when attempting to delete an already deleted message', async () => {
+      const res = await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/conversations/${testConvId}/messages/${authorMsgId}`,
+        headers: { authorization: `Bearer ${tokenA}` },
+      });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json().code).toBe('MESSAGE_NOT_FOUND');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 10. Delivery Receipts Integration Tests (SENT != DELIVERED != READ)
+  // --------------------------------------------------------------------------
+  describe('Delivery Receipts (SENT != DELIVERED != READ)', () => {
+    let deliveryConvId: string;
+
+    beforeAll(async () => {
+      const convRes = await app.inject({
+        method: 'POST',
+        url: '/api/v1/conversations',
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: { recipientId: userB.id },
+      });
+      deliveryConvId = convRes.json().id;
+
+      // User A sends message sequence 1
+      await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${deliveryConvId}/messages`,
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          clientMessageId: generateUuidV7(),
+          content: 'Delivery test message 1',
+        },
+      });
+
+      // User A sends message sequence 2
+      await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${deliveryConvId}/messages`,
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: {
+          clientMessageId: generateUuidV7(),
+          content: 'Delivery test message 2',
+        },
+      });
+    });
+
+    it('allows recipient to acknowledge delivery up to a sequence number', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${deliveryConvId}/delivered`,
+        headers: { authorization: `Bearer ${tokenB}` },
+        payload: { sequence: '2' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.conversationId).toBe(deliveryConvId);
+      expect(body.lastDeliveredSequence).toBe('2');
+      expect(typeof body.updatedAt).toBe('string');
+    });
+
+    it('enforces monotonic progression: lower sequence acknowledgement does not regress delivery sequence', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${deliveryConvId}/delivered`,
+        headers: { authorization: `Bearer ${tokenB}` },
+        payload: { sequence: '1' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      // Should remain at 2
+      expect(body.lastDeliveredSequence).toBe('2');
+    });
+
+    it('rejects delivery acknowledgement from non-participants with 404 anti-enumeration', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${deliveryConvId}/delivered`,
+        headers: { authorization: `Bearer ${tokenC}` },
+        payload: { sequence: '2' },
+      });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.json().code).toBe('CONVERSATION_NOT_FOUND');
+    });
+
+    it('reflects lastDeliveredSequence in conversation participant response', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/conversations/${deliveryConvId}`,
+        headers: { authorization: `Bearer ${tokenB}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const participantB = res.json().participants.find((p: any) => p.userId === userB.id);
+      expect(participantB).toBeDefined();
+      expect(participantB.lastDeliveredSequence).toBe('2');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 11. Recipient Discovery & Selection Tests
+  // --------------------------------------------------------------------------
+  describe('User Discovery & Recipient Selection', () => {
+    let discBob: { id: string; firstName: string };
+
+    beforeAll(async () => {
+      // Ensure no dangling blocks interfere with recipient discovery
+      await prisma.userBlock.deleteMany({});
+
+      const ts = Date.now();
+      discBob = await prisma.user.create({
+        data: {
+          id: generateUuidV7(),
+          supabaseAuthId: `sub_disc_bob_${ts}`,
+          email: `disc_bob_${ts}@test.com`,
+          firstName: `UniqueBob_${ts}`,
+          lastName: 'Api',
+          status: 'ACTIVE',
+        },
+      });
+    });
+
+    it('returns matching discoverable users without leaking sensitive data', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/conversations/recipients?query=${discBob.firstName}`,
+        headers: { authorization: `Bearer ${tokenA}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const items = res.json().items;
+      expect(Array.isArray(items)).toBe(true);
+
+      const bob = items.find((u: any) => u.id === discBob.id);
+      expect(bob).toBeDefined();
+      expect(bob.displayName).toContain(discBob.firstName);
+      expect(bob).toHaveProperty('avatarUrl');
+      expect(bob).toHaveProperty('isVerified');
+      // Must NOT leak email, phone, or password hash
+      expect(bob).not.toHaveProperty('email');
+      expect(bob).not.toHaveProperty('password');
+      expect(bob).not.toHaveProperty('supabaseAuthId');
+    });
+
+    it('excludes authenticated caller from recipient search results (no self-messaging discovery)', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/conversations/recipients?query=Alice',
+        headers: { authorization: `Bearer ${tokenA}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const items = res.json().items;
+      const self = items.find((u: any) => u.id === userA.id);
+      expect(self).toBeUndefined();
+    });
+
+    it('excludes suspended and deactivated users from recipient search results', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/conversations/recipients?query=Api',
+        headers: { authorization: `Bearer ${tokenA}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const items = res.json().items;
+      const suspended = items.find((u: any) => u.id === userSuspended.id);
+      const deactivated = items.find((u: any) => u.id === userDeactivated.id);
+      expect(suspended).toBeUndefined();
+      expect(deactivated).toBeUndefined();
+    });
+
+    it('excludes blocked users bidirectionally from recipient search results', async () => {
+      // User A blocks User C
+      await app.inject({
+        method: 'POST',
+        url: '/api/v1/blocks',
+        headers: { authorization: `Bearer ${tokenA}` },
+        payload: { targetUserId: userC.id },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/conversations/recipients?query=Charlie',
+        headers: { authorization: `Bearer ${tokenA}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const items = res.json().items;
+      const blockedUser = items.find((u: any) => u.id === userC.id);
+      expect(blockedUser).toBeUndefined();
+
+      // Clean up block
+      await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/blocks/${userC.id}`,
+        headers: { authorization: `Bearer ${tokenA}` },
+      });
+    });
+
+    it('supports recipient search via /api/v1/chat/recipients alias', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/chat/recipients?query=Bob',
+        headers: { authorization: `Bearer ${tokenA}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(Array.isArray(res.json().items)).toBe(true);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 12. Accurate Unread Counts (Excludes Self-Sent & Soft-Deleted Messages)
+  // --------------------------------------------------------------------------
+  describe('Accurate Unread Counts', () => {
+    let unreadConvId: string;
+    let messageToDeleteId: string;
+    let senderUser: { id: string };
+    let recipientUser: { id: string };
+    let tokenSender: string;
+    let tokenRecipient: string;
+
+    beforeAll(async () => {
+      const ts = Date.now();
+      const idS = generateUuidV7();
+      const subS = `sub_unread_s_${ts}`;
+      const emailS = `unread_s_${ts}@test.com`;
+      senderUser = await prisma.user.create({
+        data: {
+          id: idS,
+          supabaseAuthId: subS,
+          email: emailS,
+          firstName: 'Sender',
+          lastName: 'Unread',
+          status: 'ACTIVE',
+        },
+      });
+      tokenSender = await createTestJwt({ sub: subS, email: emailS });
+
+      const idR = generateUuidV7();
+      const subR = `sub_unread_r_${ts}`;
+      const emailR = `unread_r_${ts}@test.com`;
+      recipientUser = await prisma.user.create({
+        data: {
+          id: idR,
+          supabaseAuthId: subR,
+          email: emailR,
+          firstName: 'Recipient',
+          lastName: 'Unread',
+          status: 'ACTIVE',
+        },
+      });
+      tokenRecipient = await createTestJwt({ sub: subR, email: emailR });
+
+      // Establish consent
+      await prisma.messageRequest.create({
+        data: {
+          id: generateUuidV7(),
+          senderId: senderUser.id,
+          recipientId: recipientUser.id,
+          initialMessage: 'Unread test request',
+          status: 'ACCEPTED',
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          respondedAt: new Date(),
+        },
+      });
+
+      // Establish conversation
+      const convRes = await app.inject({
+        method: 'POST',
+        url: '/api/v1/conversations',
+        headers: { authorization: `Bearer ${tokenSender}` },
+        payload: { recipientId: recipientUser.id },
+      });
+      unreadConvId = convRes.json().id;
+
+      // Sender sends a message
+      const msgRes = await app.inject({
+        method: 'POST',
+        url: `/api/v1/conversations/${unreadConvId}/messages`,
+        headers: { authorization: `Bearer ${tokenSender}` },
+        payload: {
+          clientMessageId: generateUuidV7(),
+          content: 'Unread count test message',
+        },
+      });
+      messageToDeleteId = msgRes.json().id;
+    });
+
+    it('calculates unread count as 0 for sender even if sender has not called mark-read', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/conversations/${unreadConvId}`,
+        headers: { authorization: `Bearer ${tokenSender}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      // Sender's own message must NOT count as unread for the sender
+      expect(res.json().unreadCount).toBe(0);
+    });
+
+    it('calculates unread count as 1 for recipient', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/conversations/${unreadConvId}`,
+        headers: { authorization: `Bearer ${tokenRecipient}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json().unreadCount).toBe(1);
+    });
+
+    it('does not count soft-deleted messages towards recipient unread count', async () => {
+      // Sender soft-deletes the message
+      await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/conversations/${unreadConvId}/messages/${messageToDeleteId}`,
+        headers: { authorization: `Bearer ${tokenSender}` },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/v1/conversations/${unreadConvId}`,
+        headers: { authorization: `Bearer ${tokenRecipient}` },
+      });
+
+      expect(res.statusCode).toBe(200);
+      // Soft-deleted message should no longer count as unread!
+      expect(res.json().unreadCount).toBe(0);
     });
   });
 });

@@ -392,4 +392,363 @@ describe('Transactional Outbox Dispatcher Integration Tests (Increment 7)', () =
       expect(finalEvent?.status).toBe('PUBLISHED');
     });
   });
+
+  describe('5. Milestone 2C.1 Outbox Event Routing & Schema Validation Regression', () => {
+    it('validates, dispatches, and acknowledges message_request.created.v1 event successfully', async () => {
+      const requestId = generateUuidV7();
+      const senderId = generateUuidV7();
+      const recipientId = generateUuidV7();
+
+      const event = await prisma.outboxEvent.create({
+        data: {
+          id: generateUuidV7(),
+          eventType: 'message_request.created.v1',
+          aggregateType: 'MessageRequest',
+          aggregateId: requestId,
+          payload: {
+            requestId,
+            senderId,
+            recipientId,
+            initialMessage: 'Collaboration proposal',
+            expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+            createdAt: new Date().toISOString(),
+          },
+          status: 'PENDING',
+        },
+      });
+
+      const processed = await processor.processNextBatch();
+
+      expect(processed).toBe(1);
+      expect(dispatcher.dispatched).toHaveLength(1);
+      expect(dispatcher.dispatched[0].eventType).toBe('message_request.created.v1');
+
+      const dbEvent = await prisma.outboxEvent.findUnique({ where: { id: event.id } });
+      expect(dbEvent?.status).toBe('PUBLISHED');
+    });
+
+    it('validates, dispatches, and acknowledges message_request.accepted.v1 event successfully', async () => {
+      const requestId = generateUuidV7();
+      const senderId = generateUuidV7();
+      const recipientId = generateUuidV7();
+      const conversationId = generateUuidV7();
+
+      const event = await prisma.outboxEvent.create({
+        data: {
+          id: generateUuidV7(),
+          eventType: 'message_request.accepted.v1',
+          aggregateType: 'MessageRequest',
+          aggregateId: requestId,
+          payload: {
+            requestId,
+            senderId,
+            recipientId,
+            conversationId,
+            acceptedAt: new Date().toISOString(),
+          },
+          status: 'PENDING',
+        },
+      });
+
+      const processed = await processor.processNextBatch();
+
+      expect(processed).toBe(1);
+      expect(dispatcher.dispatched).toHaveLength(1);
+      expect(dispatcher.dispatched[0].eventType).toBe('message_request.accepted.v1');
+
+      const dbEvent = await prisma.outboxEvent.findUnique({ where: { id: event.id } });
+      expect(dbEvent?.status).toBe('PUBLISHED');
+    });
+
+    it('routes message_request.declined, cancelled, and expired events successfully', async () => {
+      const requestId1 = generateUuidV7();
+      const requestId2 = generateUuidV7();
+      const requestId3 = generateUuidV7();
+      const senderId = generateUuidV7();
+      const recipientId = generateUuidV7();
+
+      await prisma.outboxEvent.createMany({
+        data: [
+          {
+            id: generateUuidV7(),
+            eventType: 'message_request.declined.v1',
+            aggregateType: 'MessageRequest',
+            aggregateId: requestId1,
+            payload: {
+              requestId: requestId1,
+              senderId,
+              recipientId,
+              declinedAt: new Date().toISOString(),
+              reason: 'Not interested',
+            },
+            status: 'PENDING',
+          },
+          {
+            id: generateUuidV7(),
+            eventType: 'message_request.cancelled.v1',
+            aggregateType: 'MessageRequest',
+            aggregateId: requestId2,
+            payload: {
+              requestId: requestId2,
+              senderId,
+              recipientId,
+              cancelledAt: new Date().toISOString(),
+            },
+            status: 'PENDING',
+          },
+          {
+            id: generateUuidV7(),
+            eventType: 'message_request.expired.v1',
+            aggregateType: 'MessageRequest',
+            aggregateId: requestId3,
+            payload: {
+              requestId: requestId3,
+              senderId,
+              recipientId,
+              expiredAt: new Date().toISOString(),
+            },
+            status: 'PENDING',
+          },
+        ],
+      });
+
+      const processed = await processor.processNextBatch();
+
+      expect(processed).toBe(3);
+      expect(dispatcher.dispatched).toHaveLength(3);
+      const types = dispatcher.dispatched.map((e) => e.eventType);
+      expect(types).toContain('message_request.declined.v1');
+      expect(types).toContain('message_request.cancelled.v1');
+      expect(types).toContain('message_request.expired.v1');
+    });
+
+    it('routes message.updated.v1 and message.deleted.v1 events successfully', async () => {
+      const messageId1 = generateUuidV7();
+      const messageId2 = generateUuidV7();
+      const conversationId = generateUuidV7();
+      const senderId = generateUuidV7();
+
+      await prisma.outboxEvent.createMany({
+        data: [
+          {
+            id: generateUuidV7(),
+            eventType: 'message.updated.v1',
+            aggregateType: 'Message',
+            aggregateId: messageId1,
+            payload: {
+              messageId: messageId1,
+              conversationId,
+              senderId,
+              sequence: '2',
+              content: 'Updated content text',
+              updatedAt: new Date().toISOString(),
+            },
+            status: 'PENDING',
+          },
+          {
+            id: generateUuidV7(),
+            eventType: 'message.deleted.v1',
+            aggregateType: 'Message',
+            aggregateId: messageId2,
+            payload: {
+              messageId: messageId2,
+              conversationId,
+              deletedBy: senderId,
+              sequence: '3',
+              deletedAt: new Date().toISOString(),
+            },
+            status: 'PENDING',
+          },
+        ],
+      });
+
+      const processed = await processor.processNextBatch();
+
+      expect(processed).toBe(2);
+      expect(dispatcher.dispatched).toHaveLength(2);
+      const types = dispatcher.dispatched.map((e) => e.eventType);
+      expect(types).toContain('message.updated.v1');
+      expect(types).toContain('message.deleted.v1');
+    });
+
+    it('rejects malformed message_request payload as terminal failure moving to DEAD_LETTER', async () => {
+      const event = await prisma.outboxEvent.create({
+        data: {
+          id: generateUuidV7(),
+          eventType: 'message_request.created.v1',
+          aggregateType: 'MessageRequest',
+          aggregateId: generateUuidV7(),
+          payload: {
+            requestId: 'invalid-non-uuid-format',
+            senderId: 'invalid-sender',
+          },
+          status: 'PENDING',
+        },
+      });
+
+      const processed = await processor.processNextBatch();
+
+      expect(processed).toBe(1);
+      // Malformed event is rejected before reaching dispatcher
+      expect(dispatcher.dispatched).toHaveLength(0);
+
+      const dbEvent = await prisma.outboxEvent.findUnique({ where: { id: event.id } });
+      expect(dbEvent?.status).toBe('DEAD_LETTER');
+      expect(dbEvent?.lastError).toContain('PAYLOAD_VALIDATION_FAILED');
+    });
+
+    it('rejects unknown event types as terminal failures without silent drop', async () => {
+      const event = await prisma.outboxEvent.create({
+        data: {
+          id: generateUuidV7(),
+          eventType: 'totally.unknown.event.v99',
+          aggregateType: 'Unknown',
+          aggregateId: generateUuidV7(),
+          payload: { foo: 'bar' },
+          status: 'PENDING',
+        },
+      });
+
+      const processed = await processor.processNextBatch();
+
+      expect(processed).toBe(1);
+      expect(dispatcher.dispatched).toHaveLength(0);
+
+      const dbEvent = await prisma.outboxEvent.findUnique({ where: { id: event.id } });
+      expect(dbEvent?.status).toBe('DEAD_LETTER');
+      expect(dbEvent?.lastError).toContain('UNKNOWN_EVENT_TYPE: totally.unknown.event.v99');
+    });
+
+    describe('Support Domain Outbox Event Processing & Schema Validation (Phase 3B.6.3)', () => {
+      it('validates and successfully publishes support.ticket.created.v1', async () => {
+        const ticketId = generateUuidV7();
+        const requesterId = generateUuidV7();
+        const event = await prisma.outboxEvent.create({
+          data: {
+            id: generateUuidV7(),
+            eventType: 'support.ticket.created.v1',
+            aggregateType: 'SupportTicket',
+            aggregateId: ticketId,
+            payload: {
+              ticketId,
+              ticketNumber: 'SUP-2026-ABC12',
+              requesterId,
+              category: 'ESCROW_RECONCILIATION',
+              priority: 'HIGH',
+              subject: 'Escrow dispute inquiry',
+            },
+            status: 'PENDING',
+          },
+        });
+
+        const processed = await processor.processNextBatch();
+
+        expect(processed).toBe(1);
+        expect(dispatcher.dispatched).toHaveLength(1);
+        expect(dispatcher.dispatched[0].eventType).toBe('support.ticket.created.v1');
+
+        const dbEvent = await prisma.outboxEvent.findUnique({ where: { id: event.id } });
+        expect(dbEvent?.status).toBe('PUBLISHED');
+      });
+
+      it('validates and successfully publishes support.ticket.internal_note.created.v1', async () => {
+        const ticketId = generateUuidV7();
+        const authorId = generateUuidV7();
+        const messageId = generateUuidV7();
+        const event = await prisma.outboxEvent.create({
+          data: {
+            id: generateUuidV7(),
+            eventType: 'support.ticket.internal_note.created.v1',
+            aggregateType: 'SupportTicket',
+            aggregateId: ticketId,
+            payload: {
+              ticketId,
+              messageId,
+              authorId,
+              authorRole: 'STAFF',
+              isInternal: true,
+            },
+            status: 'PENDING',
+          },
+        });
+
+        const processed = await processor.processNextBatch();
+
+        expect(processed).toBe(1);
+        expect(dispatcher.dispatched).toHaveLength(1);
+
+        const dbEvent = await prisma.outboxEvent.findUnique({ where: { id: event.id } });
+        expect(dbEvent?.status).toBe('PUBLISHED');
+      });
+
+      it('rejects malformed support event payload to DEAD_LETTER (wrong isInternal flag)', async () => {
+        const ticketId = generateUuidV7();
+        const event = await prisma.outboxEvent.create({
+          data: {
+            id: generateUuidV7(),
+            eventType: 'support.ticket.internal_note.created.v1',
+            aggregateType: 'SupportTicket',
+            aggregateId: ticketId,
+            payload: {
+              ticketId,
+              messageId: generateUuidV7(),
+              authorId: generateUuidV7(),
+              authorRole: 'STAFF',
+              isInternal: false, // Invalid! Must be literal true for internal_note
+            },
+            status: 'PENDING',
+          },
+        });
+
+        const processed = await processor.processNextBatch();
+
+        expect(processed).toBe(1);
+        expect(dispatcher.dispatched).toHaveLength(0); // Never reached dispatcher
+
+        const dbEvent = await prisma.outboxEvent.findUnique({ where: { id: event.id } });
+        expect(dbEvent?.status).toBe('DEAD_LETTER');
+        expect(dbEvent?.lastError).toContain('PAYLOAD_VALIDATION_FAILED');
+      });
+
+      it('safely handles idempotency for support outbox events via processed_events', async () => {
+        const ticketId = generateUuidV7();
+        const eventId = generateUuidV7();
+
+        const event = await prisma.outboxEvent.create({
+          data: {
+            id: eventId,
+            eventType: 'support.ticket.status.changed.v1',
+            aggregateType: 'SupportTicket',
+            aggregateId: ticketId,
+            payload: {
+              ticketId,
+              previousStatus: 'OPEN',
+              newStatus: 'IN_PROGRESS',
+              resolutionSummary: null,
+              actorId: generateUuidV7(),
+            },
+            status: 'PENDING',
+          },
+        });
+
+        // First execution -> dispatches, records processedEvent, and marks published
+        await processor.processNextBatch();
+        expect(dispatcher.dispatched).toHaveLength(1);
+
+        // Reset outboxEvent to PENDING with nextAttemptAt in the past to simulate duplicate lease / delivery of already-processed event
+        await prisma.outboxEvent.update({
+          where: { id: eventId },
+          data: { status: 'PENDING', nextAttemptAt: new Date(Date.now() - 1000) },
+        });
+
+        // Second execution -> detects duplicate via processed_events, skips dispatch, marks published
+        dispatcher.dispatched = [];
+        await processor.processNextBatch();
+
+        expect(dispatcher.dispatched).toHaveLength(0); // Zero duplicate dispatch
+        const dbEvent = await prisma.outboxEvent.findUnique({ where: { id: eventId } });
+        expect(dbEvent?.status).toBe('PUBLISHED');
+      });
+    });
+  });
 });

@@ -419,4 +419,42 @@ describe('NotificationEventHandler Unit Tests', () => {
     expect(notification.type).toBe('REVIEW_MODERATED');
     expect(notification.body).toContain('temporarily hidden');
   });
+
+  describe('Support Ticketing Domain Event Isolation (Phase 3B.6.3)', () => {
+    it('safely passes through support events without leaking to notifications', async () => {
+      const supportEventTypes = [
+        'support.ticket.created.v1',
+        'support.ticket.assigned.v1',
+        'support.ticket.message.created.v1',
+        'support.ticket.internal_note.created.v1',
+        'support.ticket.status.changed.v1',
+        'support.ticket.resolved.v1',
+      ];
+
+      for (const eventType of supportEventTypes) {
+        const event: ClaimedOutboxEvent = {
+          id: generateUuidV7(),
+          eventType,
+          aggregateType: 'SupportTicket',
+          aggregateId: generateUuidV7(),
+          payload: {
+            ticketId: generateUuidV7(),
+            messageId: generateUuidV7(),
+            authorId: generateUuidV7(),
+            authorRole: 'STAFF',
+            isInternal: eventType.includes('internal_note'),
+          },
+          attempts: 1,
+          createdAt: new Date(),
+          claimToken: { eventId: generateUuidV7(), attempt: 1 },
+        };
+
+        const result = await handler.dispatch(event);
+
+        expect(result.success).toBe(true);
+        // CRITICAL PRIVACY: Support events (and especially internal notes) must NEVER emit customer notifications
+        expect(fakeRepo.notifications).toHaveLength(0);
+      }
+    });
+  });
 });

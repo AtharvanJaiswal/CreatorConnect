@@ -1,14 +1,28 @@
-import { getPrismaClient } from '@creatorconnect/database';
+import { getPrismaClient, type PrismaClient } from '@creatorconnect/database';
 import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import type { Queue } from 'bullmq';
 import type { Logger } from 'pino';
+import { MessageRequestExpiryWorker } from './message-request-expiry.worker.js';
 
 export class CleanupScheduler {
-  private prisma = getPrismaClient();
+  private prisma: PrismaClient;
   private s3: S3Client;
   private bucket: string;
+  private expiryWorker: MessageRequestExpiryWorker;
 
-  constructor(private logger: Logger) {
+  constructor(
+    private logger: Logger,
+    prisma?: PrismaClient,
+    expiryWorker?: MessageRequestExpiryWorker,
+  ) {
+    this.prisma = prisma || getPrismaClient();
+    this.expiryWorker =
+      expiryWorker ||
+      new MessageRequestExpiryWorker({
+        prisma: this.prisma,
+        logger: this.logger,
+      });
+
     const endpoint = process.env.R2_ENDPOINT || process.env.S3_ENDPOINT;
     const region = process.env.AWS_REGION || 'auto';
     const accessKeyId = process.env.R2_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID || 'mock_key';
@@ -102,5 +116,10 @@ export class CleanupScheduler {
       this.logger.info({ count: res.count }, 'Closed expired published assignments');
     }
     return res.count;
+  }
+
+  async sweepExpiredMessageRequests(): Promise<number> {
+    const sweepResult = await this.expiryWorker.expirePendingRequests();
+    return sweepResult.expired;
   }
 }

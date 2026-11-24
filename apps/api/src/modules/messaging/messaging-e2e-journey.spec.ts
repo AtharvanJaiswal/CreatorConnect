@@ -118,10 +118,24 @@ describe('Messaging & Notifications End-to-End Vertical Slice Journey', () => {
       },
     });
     tokenC = await createTestJwt({ sub: subC, email: emailC });
+
+    // Establish mutual consent between User A and User B
+    await prisma.messageRequest.create({
+      data: {
+        id: generateUuidV7(),
+        senderId: userB.id,
+        recipientId: userA.id,
+        initialMessage: 'Hi User A, let us connect!',
+        status: 'ACCEPTED',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        respondedAt: new Date(),
+      },
+    });
   });
 
   afterAll(async () => {
     // Teardown test records
+    await prisma.messageRequest.deleteMany({});
     await prisma.notification.deleteMany({
       where: { userId: { in: [userA.id, userB.id, userC.id] } },
     });

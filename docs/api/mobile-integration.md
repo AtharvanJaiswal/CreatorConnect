@@ -95,6 +95,29 @@ Never upload large binary media files through the backend API.
 - Pass token in handshake: `{ auth: { token: '<access_token>' } }`.
 - Support background app states: disconnect cleanly when app goes into background; reconnect and synchronize unread messages upon returning to foreground.
 
+### 2.9.1 Mobile Delivery & Read Receipt Acknowledgment Protocol
+
+Mobile clients participate in a strict 3-state delivery lifecycle: `SENT` ≠ `DELIVERED` ≠ `READ`.
+
+1. **Delivery Acknowledgment (`DELIVERED`)**:
+   - As soon as a message is received by the mobile device (either via foreground Socket.IO `message:created` or background push notification processing), the client MUST send an acknowledgment:
+     - **Via HTTP REST**: `POST /api/v1/conversations/{id}/delivered` with body `{ "sequence": "<message_sequence>" }`.
+     - **Via Socket.IO**: Emit `message:delivered` with payload `{ "conversationId": "{id}", "sequence": "<message_sequence>" }`.
+   - The backend durably persists `last_delivered_sequence` in PostgreSQL (`conversation_participants`) and broadcasts `message:delivered` to all devices in the room.
+   - Delivery pointers advance strictly monotonically; replayed or out-of-order sequence acknowledgments are harmlessly ignored without regressions.
+
+2. **Read Acknowledgment (`READ`)**:
+   - When the user opens or focuses the conversation view, the mobile app sends read acknowledgment:
+     - **Via HTTP REST**: `POST /api/v1/conversations/{id}/read` with body `{ "sequence": "<message_sequence>" }`.
+     - **Via Socket.IO**: Emit `message:read` with payload `{ "conversationId": "{id}", "sequence": "<message_sequence>" }`.
+   - Reading automatically advances the delivered sequence in PostgreSQL if it had not already reached `sequence`.
+
+3. **Offline Sync & Reconnection**:
+   - Upon reconnecting to the network or resuming from background, the client retrieves missed messages:
+     - **Via HTTP REST Keyset Pagination**: `GET /api/v1/conversations/{id}/messages?cursor=<base64url_cursor>&direction=next` (where cursor is generated from `lastSeenSequence` using `encodeMessageCursor(lastSeenSeq)`).
+     - **Via Socket.IO Event**: Emit `conversation:sync` with `{ "conversationId": "{id}", "sinceSequence": "<lastSeenSequence>" }`.
+   - After processing sync delta messages, acknowledge delivery of the latest sequence received.
+
 ### 2.10 Push Notifications (FCM & APNs)
 
 - Register device token on app launch via Firebase Cloud Messaging SDK.
@@ -159,3 +182,110 @@ Generate an `Idempotency-Key` (UUIDv7) for any operation where a duplicate execu
 ### 2.20 User Role Switching
 
 A user may hold both `CREATOR` and `BRAND` roles. The active mode is a client UI preference; the backend validates permissions based on the requested resource and user active roles.
+
+---
+
+## 3. Messaging & Real-Time Chat Integration Guide
+
+### 3.1 Overview
+
+The messaging system provides peer-to-peer conversations, keyset pagination, distinct delivery/read receipts (`SENT` ≠ `DELIVERED` ≠ `READ`), typing indicators, and media attachments.
+
+### 3.2 Sequence Number Handling (Critical Rule)
+
+All sequence numbers (`sequence`, `lastReadSequence`, `lastDeliveredSequence`) are transmitted as **decimal strings** (e.g. `"42"`).
+
+- **Kotlin**: Parse as `String` or `java.math.BigInteger`. Do NOT parse as `Int`.
+- **Swift**: Parse as `String` or `UInt64`. Do NOT parse as standard 32-bit `Int`.
+
+### 3.3 Recipient Discovery
+
+To present a user search dialog before starting a direct conversation:
+
+```http
+GET /api/v1/conversations/recipients?query=alice&limit=20
+Authorization: Bearer <access_token>
+```
+
+Response:
+
+```json
+{
+  "items": [
+    {
+      "id": "01928374-...",
+      "displayName": "Alice Smith",
+      "avatarUrl": "https://cdn.creatorconnect.com/...",
+      "role": "CREATOR",
+      "isVerified": true
+    }
+  ]
+}
+```
+
+### 3.4 Delivery & Read Receipts Flow
+
+When a message arrives on the mobile device (via Socket.IO push or app foreground sync):
+
+1. **Acknowledge Delivery immediately**:
+   - HTTP: `POST /api/v1/conversations/{id}/delivered` with `{"sequence": "42"}`
+   - Or Socket: `socket.emit("message:delivered", {"conversationId": id, "sequence": "42"})`
+2. **Acknowledge Read when thread is opened/visible to user**:
+   - HTTP: `POST /api/v1/conversations/{id}/read` with `{"sequence": "42"}`
+   - Or Socket: `socket.emit("message:read", {"conversationId": id, "sequence": "42"})`
+
+### 3.5 Android Integration (Kotlin Example)
+
+```kotlin
+// Socket.IO message handler in Android ChatViewModel
+socket.on("message:created") { args ->
+    val data = args[0] as JSONObject
+    val conversationId = data.getString("conversationId")
+    val sequence = data.getString("sequence")
+
+    // 1. Append message to local Room database
+    chatRepository.insertMessage(data)
+
+    // 2. Acknowledge delivery
+    val ackPayload = JSONObject().apply {
+        put("conversationId", conversationId)
+        put("sequence", sequence)
+    }
+    socket.emit("message:delivered", ackPayload)
+}
+
+socket.on("message:delivered") { args ->
+    val data = args[0] as JSONObject
+    val conversationId = data.getString("conversationId")
+    val sequence = data.getString("sequence")
+    chatRepository.updateDeliveredSequence(conversationId, sequence)
+}
+```
+
+### 3.6 iOS Integration (Swift Example)
+
+```swift
+// Socket.IO message handler in iOS ChatViewModel
+socket.on("message:created") { data, ack in
+    guard let messageData = data[0] as? [String: Any],
+          let conversationId = messageData["conversationId"] as? String,
+          let sequence = messageData["sequence"] as? String else { return }
+
+    // 1. Insert into local SwiftData / CoreData store
+    self.saveMessage(messageData)
+
+    // 2. Emit delivery receipt
+    let ackPayload: [String: Any] = [
+        "conversationId": conversationId,
+        "sequence": sequence
+    ]
+    self.socket.emit("message:delivered", ackPayload)
+}
+
+socket.on("message:delivered") { data, ack in
+    guard let payload = data[0] as? [String: Any],
+          let conversationId = payload["conversationId"] as? String,
+          let sequence = payload["sequence"] as? String else { return }
+    self.updateDeliveryReceipt(conversationId: conversationId, sequence: sequence)
+}
+```

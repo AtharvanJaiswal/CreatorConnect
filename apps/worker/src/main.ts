@@ -57,7 +57,7 @@ export async function createWorkerRuntime(
     });
 
   const mediaProcessor = new MediaProcessor(logger);
-  const cleanupScheduler = new CleanupScheduler(logger);
+  const cleanupScheduler = new CleanupScheduler(logger, prisma);
 
   const notificationHandler = new NotificationEventHandler({
     prisma,
@@ -117,11 +117,13 @@ export async function createWorkerRuntime(
     // 4. Initial hygiene pass and periodic cleanup interval
     await cleanupScheduler.cleanupExpiredQuarantine().catch(() => {});
     await cleanupScheduler.closeExpiredAssignments().catch(() => {});
+    await cleanupScheduler.sweepExpiredMessageRequests().catch(() => {});
 
     cleanupInterval = setInterval(
       async () => {
         await cleanupScheduler.cleanupExpiredQuarantine().catch(() => {});
         await cleanupScheduler.closeExpiredAssignments().catch(() => {});
+        await cleanupScheduler.sweepExpiredMessageRequests().catch(() => {});
       },
       10 * 60 * 1000,
     );

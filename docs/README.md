@@ -34,9 +34,15 @@ Welcome to the authoritative engineering and architectural documentation suite f
 - [Mobile Integration Manual](file:///f:/CreatorConnect/docs/api/mobile-integration.md): 20-point guide for native/RN Android & iOS developers.
 - [Web Frontend Integration Manual](file:///f:/CreatorConnect/docs/api/web-integration.md): Guide for typed TanStack Query microfrontend consumers.
 
-### 3. Security Architecture
+### 3. Security & Privacy Architecture
 
 - [Security Architecture & Threat Model](file:///f:/CreatorConnect/docs/security/security-architecture.md): STRIDE analysis, Supabase Auth decoupling, RBAC, presigned uploads, webhook security.
+- [Account Lifecycle Threat Model](file:///f:/CreatorConnect/docs/security/account-lifecycle-threat-model.md): 15-scenario STRIDE threat analysis for account deactivation, deletion, and cache invalidation.
+- [Comprehensive PII Data Inventory](file:///f:/CreatorConnect/docs/security/pii-data-inventory.md): Exhaustive platform data inventory, PII sensitivity classification, and relational deletion behaviors.
+- [Data Retention & Erasure Architectural Assessment](file:///f:/CreatorConnect/docs/architecture/data-retention-and-erasure-assessment.md): Phase 3B.8 comprehensive technical investigation, state machine, and modular design.
+- [Legal & Compliance Decision Register](file:///f:/CreatorConnect/docs/compliance/data-retention-decision-register.md): 12-question formal legal approval register for statutory retention and erasure governance.
+- [Migration 0014 Design Proposal](file:///f:/CreatorConnect/docs/database/migration-0014-design-proposal.md): Future schema changes, pseudonymization tombstone design, and zero-downtime rollout plan.
+- [Account Erasure Operational Runbook](file:///f:/CreatorConnect/docs/runbooks/account-erasure-operational-runbook.md): SRE/Operator SOP for suspension, deactivation, erasure, and post-restore re-erasure.
 
 ### 4. Quality Assurance & Testing
 

@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><title>CreatorConnect</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:ital,wght@0,400..800;1,400..800&amp;family=Newsreader:ital,opsz,wght@0,6..72,400..800;1,6..72,400..800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-primary-fixed": "#231b00", "outline-variant": "#d0c6ae", "inverse-surface": "#34302d", "on-error": "#ffffff", "surface-container-low": "#faf2ee", "tertiary-fixed-dim": "#fbb3c5", "surface-container-highest": "#e9e1dd", "on-secondary-fixed": "#210f47", "on-secondary-fixed-variant": "#4d3d75", "on-tertiary-container": "#874e5e", "tertiary-container": "#ffcdd8", "outline": "#7f7662", "inverse-on-surface": "#f7efeb", "inverse-primary": "#eac338", "on-primary": "#ffffff", "tertiary": "#864d5d", "on-primary-container": "#735c00", "error": "#ba1a1a", "surface-container-high": "#efe6e3", "on-surface-variant": "#4d4634", "surface-dim": "#e0d8d5", "primary-fixed-dim": "#eac338", "on-secondary": "#ffffff", "secondary-container": "#d0bcfe", "on-tertiary-fixed": "#360c1b", "secondary": "#65558f", "tertiary-fixed": "#ffd9e1", "error-container": "#ffdad6", "on-tertiary-fixed-variant": "#6b3646", "surface-container": "#f5ece8", "surface-bright": "#fff8f5", "on-surface": "#1e1b19", "on-background": "#1e1b19", "background": "#fff8f5", "on-tertiary": "#ffffff", "on-secondary-container": "#594982", "secondary-fixed": "#e9ddff", "surface-variant": "#e9e1dd", "primary-fixed": "#ffe083", "on-error-container": "#93000a", "primary-container": "#ffd64a", "surface": "#fff8f5", "surface-container-lowest": "#ffffff", "secondary-fixed-dim": "#d0bcfe", "primary": "#725c00", "on-primary-fixed-variant": "#564500", "surface-tint": "#725c00" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-2xl": "3rem", "space-lg": "1.5rem", "space-xl": "2rem", "margin-tablet": "2rem", "space-sm": "0.5rem", "space-xs": "0.25rem", "gutter": "1rem", "space-3xl": "4rem", "space-md": "1rem", "gutter-tablet": "1.5rem", "gutter-desktop": "1.5rem", "margin-desktop": "3rem", "margin": "1rem" }, "fontFamily": { "caption": [ "Archivo Narrow" ], "display-lg-mobile": [ "Archivo Narrow" ], "display-lg": [ "Archivo Narrow" ], "display-accent": [ "Newsreader" ], "headline-lg": [ "Archivo Narrow" ], "body-lg": [ "Archivo Narrow" ], "button-lg": [ "Archivo Narrow" ], "body-sm": [ "Archivo Narrow" ], "headline-md": [ "Archivo Narrow" ], "body-md": [ "Archivo Narrow" ], "label": [ "Archivo Narrow" ] }, "fontSize": { "caption": [ "11.5px", { "lineHeight": "16px", "fontWeight": "400" } ], "display-lg-mobile": [ "30px", { "lineHeight": "32px", "letterSpacing": "-0.03em", "fontWeight": "800" } ], "display-lg": [ "36px", { "lineHeight": "38px", "letterSpacing": "-0.03em", "fontWeight": "800" } ], "display-accent": [ "36px", { "lineHeight": "38px", "letterSpacing": "0em", "fontWeight": "400" } ], "headline-lg": [ "25px", { "lineHeight": "30px", "letterSpacing": "-0.025em", "fontWeight": "800" } ], "body-lg": [ "16px", { "lineHeight": "24px", "fontWeight": "500" } ], "button-lg": [ "15px", { "lineHeight": "20px", "letterSpacing": "-0.01em", "fontWeight": "700" } ], "body-sm": [ "13px", { "lineHeight": "18px", "fontWeight": "400" } ], "headline-md": [ "18px", { "lineHeight": "24px", "letterSpacing": "-0.015em", "fontWeight": "700" } ], "body-md": [ "14px", { "lineHeight": "21px", "fontWeight": "400" } ], "label": [ "10px", { "lineHeight": "12px", "letterSpacing": "0.09em", "fontWeight": "700" } ] } } } };</script></head><body class="bg-background font-body-md text-on-surface antialiased min-h-screen flex flex-col justify-between selection:bg-primary-container selection:text-on-primary-container"><header class="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-20 max-w-[1200px] mx-auto px-margin-desktop flex items-center justify-between gap-space-lg"><div class="flex items-center gap-space-xl"><a class="flex items-center gap-space-xs group" data-path="home" href="#"><span class="w-9 h-9 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-display-lg text-headline-md leading-none shadow-[2px_2px_0px_#1e1b19]">C*</span><span class="font-headline-md text-headline-md tracking-tight text-on-surface group-hover:text-primary transition-colors">Creator<span class="font-display-accent italic font-normal text-on-surface-variant">Connect</span></span></a><nav class="hidden lg:flex items-center gap-space-xs" data-active-classes="bg-primary-container text-on-primary-container font-button-lg shadow-[2px_2px_0px_#1e1b19]"><a class="px-space-md py-space-xs rounded-full font-button-lg text-button-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="home" href="#">Home</a><a class="px-space-md py-space-xs rounded-full font-button-lg text-button-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="discover" href="#">Discover</a><a class="px-space-md py-space-xs rounded-full font-button-lg text-button-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="portfolio" href="#">Portfolio</a><a class="px-space-md py-space-xs rounded-full font-button-lg text-button-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="assignments" href="#">Assignments</a><a class="px-space-md py-space-xs rounded-full font-button-lg text-button-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="inbox" href="#">Inbox<span class="w-2 h-2 rounded-full bg-error ring-2 ring-surface inline-block"></span></a></nav></div><div class="flex items-center gap-space-md"><div class="hidden md:flex items-center bg-surface-container-lowest rounded-full px-space-md py-space-xs shadow-[0px_1px_4px_rgba(20,17,15,0.06)]"><span class="material-symbols-outlined text-[18px] text-on-surface-variant mr-space-xs">search</span><span class="font-body-sm text-body-sm text-on-surface-variant pr-space-md">Search creators, briefs...</span><kbd class="font-caption text-caption bg-surface-container text-on-surface-variant px-space-xs py-0.5 rounded-full">⌘K</kbd></div><a aria-label="Notifications" class="relative w-10 h-10 rounded-full bg-surface-container-lowest hover:bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-all" data-path="notifications" href="#"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-tertiary"></span></a><a class="flex items-center gap-space-sm pl-space-xs pr-space-md py-space-xs rounded-full bg-surface-container-lowest hover:bg-surface-container transition-all group" data-path="profile" href="#"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="hidden xl:flex flex-col text-left leading-none"><span class="font-headline-md text-body-sm font-bold text-on-surface group-hover:text-primary transition-colors">Kavya Nair</span><span class="font-caption text-caption text-on-surface-variant">Studio Atelier</span></div></a></div></div></header><main class="w-full max-w-[1200px] mx-auto pt-20 px-margin-desktop flex-1"><div class="flex flex-col w-full">
+<!-- QA State Harness (Platform Diagnostic Bar) -->
+<aside aria-label="Dev Harness" class="w-full bg-surface-container-high/60 backdrop-blur-sm px-space-md py-space-xs rounded-xl mb-space-lg flex flex-wrap items-center justify-between gap-space-sm text-caption font-caption">
+<div class="flex items-center gap-space-sm">
+<span class="flex h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+<span class="font-bold tracking-wider text-on-surface uppercase">I01 Context Engine</span>
+<span class="text-on-surface-variant font-medium">Authoritative Inbox Hub · 1440px Canvas</span>
+</div>
+<div class="flex items-center gap-space-xs overflow-x-auto py-0.5" id="qa-harness">
+<button class="qa-btn px-space-sm py-0.5 rounded-full bg-primary-container text-on-primary-container font-button-lg shadow-[1px_1px_0px_#1e1b19] transition-all" data-view="populated" type="button">Populated (4)</button>
+<button class="qa-btn px-space-sm py-0.5 rounded-full bg-surface-container-lowest text-on-surface-variant hover:text-on-surface transition-all" data-view="requests" type="button">Requests Preview (I02)</button>
+<button class="qa-btn px-space-sm py-0.5 rounded-full bg-surface-container-lowest text-on-surface-variant hover:text-on-surface transition-all" data-view="empty" type="button">Empty State</button>
+<button class="qa-btn px-space-sm py-0.5 rounded-full bg-surface-container-lowest text-on-surface-variant hover:text-on-surface transition-all" data-view="loading" type="button">Loading Skeletons</button>
+<button class="qa-btn px-space-sm py-0.5 rounded-full bg-surface-container-lowest text-on-surface-variant hover:text-on-surface transition-all" data-view="error" type="button">API Retry</button>
+<button class="qa-btn px-space-sm py-0.5 rounded-full bg-surface-container-lowest text-on-surface-variant hover:text-on-surface transition-all" data-view="offline" type="button">Offline Sync</button>
+</div>
+</aside>
+<!-- Editorial Section Header -->
+<section class="flex flex-col md:flex-row md:items-end justify-between gap-space-md mb-space-xl">
+<div>
+<div class="flex items-center gap-space-xs mb-space-xs">
+<span class="font-label text-label tracking-widest uppercase text-outline">Workspace · Communique</span>
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+<span class="font-caption text-caption text-on-surface-variant">Encrypted Protocol v4</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-on-surface tracking-tight">
+        Messages <span class="font-display-accent italic font-normal text-on-surface-variant">&amp; Conversations</span>
+</h1>
+</div>
+<!-- Navigation Tab Pill Bar -->
+<nav class="flex items-center gap-space-xs bg-surface-container p-1 rounded-full shadow-sm" role="tablist">
+<button aria-selected="true" class="flex items-center gap-space-xs px-space-lg py-space-xs rounded-full bg-primary-container text-on-primary-container font-button-lg text-button-lg shadow-[2px_2px_0px_#1e1b19] transition-all" id="tab-chats" role="tab">
+<span class="material-symbols-outlined text-[18px]">forum</span>
+<span>Chats (4 Active)</span>
+</button>
+<button aria-selected="false" class="flex items-center gap-space-xs px-space-lg py-space-xs rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container-lowest/60 font-button-lg text-button-lg transition-all group" data-path="requests-i02" id="tab-requests" role="tab">
+<span class="material-symbols-outlined text-[18px] group-hover:scale-105 transition-transform">inbox_customize</span>
+<span>Requests (2)</span>
+<span class="px-space-xs py-0.2 rounded-full bg-tertiary-container text-on-tertiary-container font-caption text-caption font-bold">New</span>
+</button>
+</nav>
+</section>
+<!-- Main Dual-Column Inbox Grid -->
+<main class="grid grid-cols-1 lg:grid-cols-12 gap-gutter-desktop items-start">
+<!-- Left Column: Master Conversation Directory -->
+<div class="lg:col-span-7 flex flex-col gap-space-md">
+<!-- Primary List Container -->
+<div class="flex flex-col gap-space-sm" id="conversations-wrapper">
+<!-- Thread 1 (Selected by default) -->
+<article class="thread-item group relative bg-surface-container-lowest rounded-[24px] p-space-lg shadow-sm hover:shadow-md transition-all cursor-pointer bg-gradient-to-r from-primary-container/20 to-surface-container-lowest shadow-[2px_2px_0px_#1e1b19]" data-thread-id="rohan" tabindex="0">
+<div class="flex items-start gap-space-md">
+<div class="relative flex-shrink-0">
+<img class="w-14 h-14 rounded-full object-cover shadow-[1px_1px_0px_#1e1b19]" data-alt="Close up professional portrait of a contemporary South Asian male cinematographer in a studio with warm atmospheric rim lighting and camera lens flare in Mumbai." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAlpsQCZ8eTfLPdp_HmPMa7dXbb_VmEF_kJ99bMcpF3UAcTMmYVwZ_EzYW0ihMSEgXtBLUkq4e8fuxaf6Q7LkppjiNEgYNIWV_feYWofKOPYu8ccC-7hpFsOp2Ij-bHYQU32-a17R-XHT1aHXL480_SUTHyxnVTP4yJSGhS3wagKwhquIeopBkEUsuZ25lq875rUROp6ksw13NhitSYRLrhcIXlzFTxybAvML-VsvJnpS6piO8SXD-J"/>
+<span class="absolute -bottom-1 -right-1 bg-surface-container-lowest rounded-full p-0.5 shadow-sm">
+<span class="material-symbols-outlined text-primary text-[16px] block">verified</span>
+</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between gap-space-xs mb-1">
+<h2 class="font-headline-md text-headline-md text-on-surface truncate group-hover:text-primary transition-colors">
+                  Rohan K.
+                </h2>
+<time class="font-caption text-caption text-on-surface-variant flex-shrink-0">11:42 AM</time>
+</div>
+<p class="font-caption text-caption text-on-surface-variant truncate mb-space-xs">
+                Lead Cinematographer &amp; DI Colorist · Mumbai
+              </p>
+<!-- Linked Project Badge -->
+<div class="inline-flex items-center gap-space-xs px-space-xs py-0.5 rounded-full bg-surface-container text-on-surface-variant font-caption text-caption mb-space-xs">
+<span class="material-symbols-outlined text-[13px] text-primary">movie_filter</span>
+<span class="font-medium truncate">Project: Summer Fashion Week #PRJ-8824</span>
+</div>
+<!-- Last Message Snippet -->
+<p class="font-body-sm text-body-sm text-on-surface line-clamp-2">
+                "DaVinci Resolve project file and 4K stems are exported and ready on Frame.io."
+              </p>
+</div>
+</div>
+</article>
+<!-- Thread 2: Tanvi Mehta (Unread) -->
+<article class="thread-item group relative bg-surface-container-lowest rounded-[24px] p-space-lg shadow-sm hover:shadow-md transition-all cursor-pointer" data-thread-id="tanvi" tabindex="0">
+<div class="flex items-start gap-space-md">
+<div class="relative flex-shrink-0">
+<img class="w-14 h-14 rounded-full object-cover shadow-[1px_1px_0px_#1e1b19]" data-alt="Studio editorial portrait of a creative South Asian woman fashion director wearing artisanal layered garments against warm textured terracotta plaster background in New Delhi." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDT3B7IyyDX8EOMSLJq9IBRAMTTxOMdEzBSdcjsXaVQkWbvWCZyJ9hz4Uj0jsUe1gd9VGQBztVjh2z5qBYvKOWbrmNWYvLAU8QGALbMPO35spaowiz5zNBHiGamOnSjLkWE_C4b1uATj24me8Tr1ipVFKFum2CDBWNcB7iibERiLso3kAdRYGZT31BA5B4VkBvpq6BpZsomcVVs3CmjeXVf5LyL_YRvWc0UHolYg3H1VY37BufbUFTz"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between gap-space-xs mb-1">
+<div class="flex items-center gap-space-xs truncate">
+<h2 class="font-headline-md text-headline-md text-on-surface truncate group-hover:text-primary transition-colors">
+                    Tanvi Mehta
+                  </h2>
+<span class="inline-flex items-center gap-1 px-space-xs py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-caption text-caption font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span>1 new</span>
+</span>
+</div>
+<time class="font-caption text-caption font-bold text-on-surface flex-shrink-0">Yesterday</time>
+</div>
+<p class="font-caption text-caption text-on-surface-variant truncate mb-space-xs">
+                Fashion Director &amp; Visual Stylist · Delhi
+              </p>
+<!-- Linked Project Badge -->
+<div class="inline-flex items-center gap-space-xs px-space-xs py-0.5 rounded-full bg-secondary-fixed/40 text-on-secondary-fixed-variant font-caption text-caption mb-space-xs">
+<span class="material-symbols-outlined text-[13px] text-secondary">style</span>
+<span class="font-medium truncate">Project: Monsoon Lookbook 2025</span>
+</div>
+<!-- Last Message Snippet -->
+<p class="font-body-sm text-body-sm text-on-surface font-semibold line-clamp-2">
+                "Reviewed the moodboard links, let's schedule a call tomorrow."
+              </p>
+</div>
+</div>
+</article>
+<!-- Thread 3: Siddharth Rao -->
+<article class="thread-item group relative bg-surface-container-lowest rounded-[24px] p-space-lg shadow-sm hover:shadow-md transition-all cursor-pointer" data-thread-id="siddharth" tabindex="0">
+<div class="flex items-start gap-space-md">
+<div class="relative flex-shrink-0">
+<img class="w-14 h-14 rounded-full object-cover shadow-[1px_1px_0px_#1e1b19]" data-alt="Artistic profile of a young South Asian sound engineer with headphones in an ambient sonic lab with warm analog synthesizer meters glowing in Bengaluru." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJk1xfjvlXKC_HtmUG3vyZpgEbjZ479jF85vJ-3rEiDDKKfso2tV2m3ANyiQgzAAAckVJgXjTt5sjfK0GGvYG7b1UXV45cST3XTHIPH3Ve1DtlXyCuvJbzb7xGvfMajlNbGyAtbPBXxjjleoWPrV9m1yycY2t4D0Lc_KkgBfABzVXaw3ZxsdoGIbCTJ7gkNoXKlYlyba0HqTgDolLnbT7TUy0Y26HeQQDiv9oGjuma2POtl9ixHG1c"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between gap-space-xs mb-1">
+<h2 class="font-headline-md text-headline-md text-on-surface truncate group-hover:text-primary transition-colors">
+                  Siddharth Rao
+                </h2>
+<time class="font-caption text-caption text-on-surface-variant flex-shrink-0">May 16</time>
+</div>
+<p class="font-caption text-caption text-on-surface-variant truncate mb-space-xs">
+                Spatial Audio &amp; Sound Architect · Bengaluru
+              </p>
+<!-- Linked Project Badge -->
+<div class="inline-flex items-center gap-space-xs px-space-xs py-0.5 rounded-full bg-surface-container text-on-surface-variant font-caption text-caption mb-space-xs">
+<span class="material-symbols-outlined text-[13px] text-primary">graphic_eq</span>
+<span class="font-medium truncate">Project: Brand Anthem Audio #CTR-9902</span>
+</div>
+<!-- Last Message Snippet -->
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+                "Spatial mixing master stems have been delivered to your ICICI escrow vault."
+              </p>
+</div>
+</div>
+</article>
+<!-- Thread 4: CreatorConnect Support -->
+<article class="thread-item group relative bg-surface-container-lowest rounded-[24px] p-space-lg shadow-sm hover:shadow-md transition-all cursor-pointer" data-thread-id="support" tabindex="0">
+<div class="flex items-start gap-space-md">
+<div class="relative flex-shrink-0">
+<div class="w-14 h-14 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-display-lg text-headline-md shadow-[1px_1px_0px_#1e1b19]">
+<span class="material-symbols-outlined text-[24px]">verified_user</span>
+</div>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between gap-space-xs mb-1">
+<div class="flex items-center gap-space-xs truncate">
+<h2 class="font-headline-md text-headline-md text-on-surface truncate group-hover:text-primary transition-colors">
+                    CreatorConnect Support
+                  </h2>
+<span class="px-space-xs py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-caption text-caption uppercase font-bold">Official</span>
+</div>
+<time class="font-caption text-caption text-on-surface-variant flex-shrink-0">May 12</time>
+</div>
+<p class="font-caption text-caption text-on-surface-variant truncate mb-space-xs">
+                Platform Trust &amp; Escrow Service · Ticket #CC-8491
+              </p>
+<div class="inline-flex items-center gap-space-xs px-space-xs py-0.5 rounded-full bg-surface-container text-on-surface-variant font-caption text-caption mb-space-xs">
+<span class="material-symbols-outlined text-[13px] text-primary">shield_locked</span>
+<span class="font-medium truncate">Escrow ID #CC-8491</span>
+</div>
+<!-- Last Message Snippet -->
+<p class="font-body-sm text-body-sm text-on-surface-variant line-clamp-2">
+                "Escrow verification completed for milestone #2."
+              </p>
+</div>
+</div>
+</article>
+</div>
+<!-- State Containers (Hidden by default, activated via QA harness) -->
+<!-- Empty State -->
+<section class="hidden flex-col items-center justify-center text-center p-space-2xl bg-surface-container-lowest rounded-[28px] shadow-sm" id="state-empty">
+<div class="w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center mb-space-md">
+<span class="material-symbols-outlined text-outline text-[32px]">chat_bubble_outline</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-space-xs">No Active Conversations Yet</h3>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-md mb-space-lg">
+          When you initiate dialogue from a brief or accept an inquiry from a verified collaborator, your active threads will appear here.
+        </p>
+<a class="inline-flex items-center gap-space-xs px-space-lg py-space-sm rounded-full bg-primary-container text-on-primary-container font-button-lg text-button-lg shadow-[2px_2px_0px_#1e1b19] hover:bg-primary-fixed transition-colors" data-path="discover" href="#">
+<span>Explore Creator Directory</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</a>
+</section>
+<!-- Skeleton Loading State -->
+<div class="hidden flex-col gap-space-sm" id="state-loading">
+<div class="bg-surface-container-lowest rounded-[24px] p-space-lg animate-pulse flex gap-space-md">
+<div class="w-14 h-14 rounded-full bg-surface-container-highest flex-shrink-0"></div>
+<div class="flex-1 space-y-2">
+<div class="h-4 bg-surface-container-highest rounded w-1/3"></div>
+<div class="h-3 bg-surface-container-highest rounded w-1/2"></div>
+<div class="h-3 bg-surface-container-highest rounded w-4/5"></div>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-[24px] p-space-lg animate-pulse flex gap-space-md">
+<div class="w-14 h-14 rounded-full bg-surface-container-highest flex-shrink-0"></div>
+<div class="flex-1 space-y-2">
+<div class="h-4 bg-surface-container-highest rounded w-1/4"></div>
+<div class="h-3 bg-surface-container-highest rounded w-2/5"></div>
+<div class="h-3 bg-surface-container-highest rounded w-3/4"></div>
+</div>
+</div>
+</div>
+<!-- Error State -->
+<section class="hidden flex-col items-center justify-center text-center p-space-2xl bg-surface-container-lowest rounded-[28px] shadow-sm" id="state-error">
+<div class="w-16 h-16 rounded-full bg-error-container text-on-error-container flex items-center justify-center mb-space-md">
+<span class="material-symbols-outlined text-[32px]">sync_problem</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-space-xs">Message Sync Disrupted</h3>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-md mb-space-lg">
+          We encountered an issue synchronizing the message stream with Bangalore Gateway Node 03.
+        </p>
+<button class="px-space-lg py-space-sm rounded-full bg-on-surface text-surface font-button-lg text-button-lg hover:bg-on-surface-variant transition-colors" type="button">
+          Retry Sync Sequence
+        </button>
+</section>
+<!-- Offline Indicator Notice -->
+<div class="hidden p-space-md bg-secondary-fixed text-on-secondary-fixed rounded-2xl flex items-center justify-between" id="state-offline">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px]">cloud_off</span>
+<span class="font-body-sm text-body-sm font-medium">Offline Sync Mode Active — Serving cached cryptographic transcripts</span>
+</div>
+<span class="font-caption text-caption bg-surface-container-lowest/80 px-space-xs py-0.5 rounded-full font-bold">Local SQLite</span>
+</div>
+</div>
+<!-- Right Column: Calm Selection Dossier (Explicitly NOT I04 Live Chat) -->
+<aside class="lg:col-span-5 sticky top-24">
+<div class="bg-surface-container-lowest rounded-[28px] p-space-xl shadow-sm flex flex-col gap-space-lg">
+<!-- Dossier Top Section -->
+<header class="flex items-center justify-between pb-space-sm bg-surface-container-low/40 -mx-space-xl -mt-space-xl p-space-xl rounded-t-[28px]">
+<div>
+<span class="font-label text-label tracking-widest uppercase text-outline block mb-0.5">Thread Dossier</span>
+<h2 class="font-headline-md text-headline-md text-on-surface" id="dossier-name">Rohan K.</h2>
+</div>
+<span class="px-space-sm py-1 rounded-full bg-surface-container text-on-surface-variant font-caption text-caption font-medium">
+            Active Participant
+          </span>
+</header>
+<!-- Participant Profile Snapshot Card -->
+<section aria-labelledby="dossier-name" class="flex flex-col gap-space-sm">
+<div class="flex items-center gap-space-md">
+<img class="w-16 h-16 rounded-full object-cover shadow-[1px_1px_0px_#1e1b19]" data-alt="Detailed professional headshot of Rohan K., creative DI colorist and cinematographer based in Bandra West Mumbai with warm key light." id="dossier-avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDiYV0S9-M9Qq56WZg2XSiWheivzoxBI6Wa5hVOIfHXBwBs7b4Wm9R-XiwCuGyhE-BvnANTyYRtwmcU-olBnsStvOXP8X-Tv7uwwwrMgu-qN7G58iXGE1yro7n0NgR50V2gMzOWusqYiLfKyn1OFNiS5guK5k5S14FX3RKKxSlYBrBiociYMg256bngPkSdMDmFsg424fGWjWZRERhcG0f2N11S-iIaxVQ54_7uoWRE0cM99hDpfbQE"/>
+<div class="min-w-0">
+<div class="flex items-center gap-1">
+<span class="font-headline-md text-headline-md text-on-surface truncate" id="dossier-fullname">Rohan Kalbag</span>
+<span class="material-symbols-outlined text-primary text-[16px]">verified</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant truncate" id="dossier-role">Lead Cinematographer &amp; DI Colorist</p>
+<p class="font-caption text-caption text-outline flex items-center gap-1 mt-0.5" id="dossier-location">
+<span class="material-symbols-outlined text-[13px]">location_on</span>
+<span>Mumbai (IST GMT+5:30)</span>
+</p>
+</div>
+</div>
+<div class="pt-space-xs">
+<a class="inline-flex items-center gap-space-xs text-primary hover:text-on-surface font-button-lg text-body-sm transition-colors" data-path="profile-e07" href="#">
+<span>View Public Profile (E07)</span>
+<span class="material-symbols-outlined text-[16px]">north_east</span>
+</a>
+</div>
+</section>
+<!-- Linked Assignment Card -->
+<section class="bg-surface-container-low rounded-2xl p-space-md">
+<div class="flex items-center justify-between mb-space-xs">
+<span class="font-label text-label tracking-wider uppercase text-on-surface-variant">Linked Assignment</span>
+<span class="px-space-xs py-0.5 rounded-full bg-primary-container text-on-primary-container font-caption text-caption font-bold">In Production</span>
+</div>
+<h3 class="font-headline-md text-body-lg text-on-surface font-bold mb-1" id="dossier-project-title">
+            Summer Fashion Week 2025: 3x Short-Form Reels
+          </h3>
+<p class="font-caption text-caption text-on-surface-variant mb-space-sm" id="dossier-project-id">
+            Linked Brief Identifier: #PRJ-8824 · Escrow Milestone 2 Active
+          </p>
+<a class="inline-flex items-center gap-space-xs text-on-surface hover:text-primary font-button-lg text-body-sm transition-colors" data-path="workspace-g10" href="#">
+<span>Open Project Workspace (G10)</span>
+<span class="material-symbols-outlined text-[15px]">arrow_outward</span>
+</a>
+</section>
+<!-- Thread Data Overview Metrics -->
+<section class="grid grid-cols-2 gap-space-sm">
+<div class="bg-surface-container p-space-sm rounded-xl">
+<span class="font-label text-label uppercase text-on-surface-variant block">Shared Assets</span>
+<span class="font-headline-md text-headline-md text-on-surface">2 Files</span>
+<span class="font-caption text-caption text-outline block">Stems &amp; Project</span>
+</div>
+<div class="bg-surface-container p-space-sm rounded-xl">
+<span class="font-label text-label uppercase text-on-surface-variant block">Last Exchanged</span>
+<span class="font-headline-md text-headline-md text-on-surface" id="dossier-last-time">11:42 AM</span>
+<span class="font-caption text-caption text-outline block">Today via Frame</span>
+</div>
+</section>
+<!-- Compliance & Security Assurance Note -->
+<div class="flex items-start gap-space-xs p-space-sm rounded-xl bg-surface-container-highest/40 text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-primary mt-0.5 flex-shrink-0">lock</span>
+<p class="font-caption text-caption leading-relaxed">
+            All messages, deliverables, and escrow timestamps are immutable and backed by CreatorConnect Smart Legal Escrow.
+          </p>
+</div>
+<!-- Authoritative Hand-off Call To Action to I04 -->
+<div class="pt-space-xs flex flex-col gap-space-xs">
+<a class="w-full flex items-center justify-center gap-space-sm py-space-sm px-space-md rounded-full bg-primary-container text-on-primary-container font-button-lg text-button-lg shadow-[2px_2px_0px_#1e1b19] hover:bg-primary-fixed transition-transform active:translate-y-0.5 text-center" data-path="chat-i04" href="#" id="dossier-open-chat">
+<span>Open Active Chat (I04)</span>
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</a>
+<a class="w-full flex items-center justify-center gap-space-xs py-space-xs text-on-surface-variant hover:text-on-surface font-button-lg text-body-sm transition-colors text-center" data-path="media-i06" href="#">
+<span>Participant Details &amp; Media Vault (I06)</span>
+<span class="material-symbols-outlined text-[16px]">arrow_outward</span>
+</a>
+</div>
+</div>
+</aside>
+</main>
+</div>
+<script>
+  // Interactive Directory Selection & Harness Handling
+  document.addEventListener('DOMContentLoaded', () => {
+    const threadItems = document.querySelectorAll('.thread-item');
+    const dossierName = document.getElementById('dossier-name');
+    const dossierFullname = document.getElementById('dossier-fullname');
+    const dossierRole = document.getElementById('dossier-role');
+    const dossierLocation = document.getElementById('dossier-location');
+    const dossierProjectTitle = document.getElementById('dossier-project-title');
+    const dossierProjectId = document.getElementById('dossier-project-id');
+    const dossierLastTime = document.getElementById('dossier-last-time');
+
+    const threadDataMap = {
+      rohan: {
+        shortName: "Rohan K.",
+        fullName: "Rohan Kalbag",
+        role: "Lead Cinematographer & DI Colorist",
+        location: "Mumbai (IST GMT+5:30)",
+        projectTitle: "Summer Fashion Week 2025: 3x Short-Form Reels",
+        projectId: "Linked Brief Identifier: #PRJ-8824 · Escrow Milestone 2 Active",
+        lastTime: "11:42 AM"
+      },
+      tanvi: {
+        shortName: "Tanvi Mehta",
+        fullName: "Tanvi Mehta",
+        role: "Fashion Director & Visual Stylist",
+        location: "Delhi (IST GMT+5:30)",
+        projectTitle: "Monsoon Lookbook 2025 Campaign",
+        projectId: "Linked Brief Identifier: #PRJ-7719 · Pre-Production Stage",
+        lastTime: "Yesterday"
+      },
+      siddharth: {
+        shortName: "Siddharth Rao",
+        fullName: "Siddharth Rao",
+        role: "Spatial Audio & Sound Architect",
+        location: "Bengaluru (IST GMT+5:30)",
+        projectTitle: "Brand Anthem Audio & Spatial Mix",
+        projectId: "Linked Contract: #CTR-9902 · Stems Delivered",
+        lastTime: "May 16"
+      },
+      support: {
+        shortName: "Support",
+        fullName: "CreatorConnect Support",
+        role: "Platform Trust & Escrow Service",
+        location: "Bangalore HQ (Automated & Escrow Desk)",
+        projectTitle: "Milestone #2 Verification Clearance",
+        projectId: "Escrow Ticket #CC-8491 · Fully Resolved",
+        lastTime: "May 12"
+      }
+    };
+
+    threadItems.forEach(item => {
+      item.addEventListener('click', () => {
+        // Reset active visual highlight
+        threadItems.forEach(el => {
+          el.classList.remove('bg-gradient-to-r', 'from-primary-container/20', 'to-surface-container-lowest', 'shadow-[2px_2px_0px_#1e1b19]');
+        });
+        item.classList.add('bg-gradient-to-r', 'from-primary-container/20', 'to-surface-container-lowest', 'shadow-[2px_2px_0px_#1e1b19]');
+
+        const threadId = item.getAttribute('data-thread-id');
+        const data = threadDataMap[threadId];
+        if (data) {
+          dossierName.textContent = data.shortName;
+          dossierFullname.textContent = data.fullName;
+          dossierRole.textContent = data.role;
+          dossierLocation.innerHTML = `<span class="material-symbols-outlined text-[13px]">location_on</span><span>${data.location}</span>`;
+          dossierProjectTitle.textContent = data.projectTitle;
+          dossierProjectId.textContent = data.projectId;
+          dossierLastTime.textContent = data.lastTime;
+        }
+      });
+    });
+
+    // QA Harness View States
+    const qaButtons = document.querySelectorAll('.qa-btn');
+    const convWrapper = document.getElementById('conversations-wrapper');
+    const emptyState = document.getElementById('state-empty');
+    const loadingState = document.getElementById('state-loading');
+    const errorState = document.getElementById('state-error');
+    const offlineState = document.getElementById('state-offline');
+    const tabChats = document.getElementById('tab-chats');
+    const tabRequests = document.getElementById('tab-requests');
+
+    qaButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        qaButtons.forEach(b => {
+          b.classList.remove('bg-primary-container', 'text-on-primary-container', 'shadow-[1px_1px_0px_#1e1b19]');
+          b.classList.add('bg-surface-container-lowest', 'text-on-surface-variant');
+        });
+        btn.classList.add('bg-primary-container', 'text-on-primary-container', 'shadow-[1px_1px_0px_#1e1b19]');
+        btn.classList.remove('bg-surface-container-lowest', 'text-on-surface-variant');
+
+        const view = btn.getAttribute('data-view');
+        
+        // Reset all views
+        convWrapper.classList.remove('hidden');
+        emptyState.classList.add('hidden');
+        loadingState.classList.add('hidden');
+        errorState.classList.add('hidden');
+        offlineState.classList.add('hidden');
+        tabChats.classList.add('bg-primary-container', 'text-on-primary-container', 'shadow-[2px_2px_0px_#1e1b19]');
+        tabRequests.classList.remove('bg-primary-container', 'text-on-primary-container', 'shadow-[2px_2px_0px_#1e1b19]');
+
+        if (view === 'requests') {
+          tabChats.classList.remove('bg-primary-container', 'text-on-primary-container', 'shadow-[2px_2px_0px_#1e1b19]');
+          tabRequests.classList.add('bg-primary-container', 'text-on-primary-container', 'shadow-[2px_2px_0px_#1e1b19]');
+        } else if (view === 'empty') {
+          convWrapper.classList.add('hidden');
+          emptyState.classList.remove('hidden');
+          emptyState.classList.add('flex');
+        } else if (view === 'loading') {
+          convWrapper.classList.add('hidden');
+          loadingState.classList.remove('hidden');
+          loadingState.classList.add('flex');
+        } else if (view === 'error') {
+          convWrapper.classList.add('hidden');
+          errorState.classList.remove('hidden');
+          errorState.classList.add('flex');
+        } else if (view === 'offline') {
+          offlineState.classList.remove('hidden');
+        }
+      });
+    });
+  });
+</script></main><footer class="w-full bg-surface-container-low mt-space-3xl"><div class="max-w-[1200px] mx-auto px-margin-desktop py-space-xl flex flex-col md:flex-row items-center justify-between gap-space-md text-on-surface-variant"><div class="flex items-center gap-space-sm"><span class="font-headline-md text-body-lg font-bold text-on-surface">CreatorConnect</span><span class="font-caption text-caption uppercase tracking-wider bg-surface-container px-space-xs py-0.5 rounded-full text-on-surface-variant">v2.4.0 Engine</span></div><div class="font-caption text-caption text-on-surface-variant">© 2025 CreatorConnect Inc. Contemporary South Asian AI Discovery Network. All rights reserved.</div><div class="flex items-center gap-space-md font-button-lg text-body-sm"><a class="hover:text-on-surface transition-colors" data-path="privacy-terms" href="#">Privacy &amp; Terms</a><a class="hover:text-on-surface transition-colors" data-path="system-status" href="#">Status</a><a class="hover:text-on-surface transition-colors" data-path="support" href="#">Support</a></div></div></footer></body></html>

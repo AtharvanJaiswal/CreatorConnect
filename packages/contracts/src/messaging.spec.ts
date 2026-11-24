@@ -24,6 +24,17 @@ import {
   MessageResponseSchema,
   ListMessagesQuerySchema,
   MarkReadInputSchema,
+  MarkDeliveredInputSchema,
+  MarkDeliveredResponseSchema,
+  RecipientSearchQuerySchema,
+  RecipientSearchResponseSchema,
+  SocketMessageSendPayloadSchema,
+  SocketMessageDeliveredPayloadSchema,
+  SocketMessageReadPayloadSchema,
+  SocketTypingPayloadSchema,
+  SocketDeliveryReceiptBroadcastSchema,
+  SocketReadReceiptBroadcastSchema,
+  SocketTypingBroadcastSchema,
   // Blocks
   CreateBlockInputSchema,
   UserBlockResponseSchema,
@@ -33,6 +44,19 @@ import {
   // Reports
   CreateReportInputSchema,
   ReportResponseSchema,
+  // Message Requests
+  MessageRequestStatusSchema,
+  CreateMessageRequestInputSchema,
+  DeclineMessageRequestInputSchema,
+  MessageRequestResponseSchema,
+  AcceptMessageRequestResponseSchema,
+  ListMessageRequestsQuerySchema,
+  ListMessageRequestsResponseSchema,
+  MessageRequestCreatedV1PayloadSchema,
+  MessageRequestAcceptedV1PayloadSchema,
+  MessageRequestDeclinedV1PayloadSchema,
+  MessageRequestCancelledV1PayloadSchema,
+  MessageRequestExpiredV1PayloadSchema,
   // Error codes
   MessagingErrorCode,
 } from './messaging.js';
@@ -495,6 +519,257 @@ describe('Phase 5 Messaging Contracts & Validation', () => {
           removedAt: 'invalid-date',
         }),
       ).toBe(false);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 6. Message Requests Contracts (Milestone 2B)
+  // --------------------------------------------------------------------------
+  describe('Message Requests Contracts', () => {
+    it('validates MessageRequestStatusSchema enum literals', () => {
+      expect(Value.Check(MessageRequestStatusSchema, 'PENDING')).toBe(true);
+      expect(Value.Check(MessageRequestStatusSchema, 'ACCEPTED')).toBe(true);
+      expect(Value.Check(MessageRequestStatusSchema, 'DECLINED')).toBe(true);
+      expect(Value.Check(MessageRequestStatusSchema, 'EXPIRED')).toBe(true);
+      expect(Value.Check(MessageRequestStatusSchema, 'CANCELLED')).toBe(true);
+      expect(Value.Check(MessageRequestStatusSchema, 'UNKNOWN')).toBe(false);
+    });
+
+    it('validates CreateMessageRequestInputSchema constraints', () => {
+      expect(
+        Value.Check(CreateMessageRequestInputSchema, {
+          recipientId: VALID_UUID,
+          initialMessage: 'Hi there, loved your recent video!',
+        }),
+      ).toBe(true);
+
+      // Boundary: exactly 500 characters allowed
+      expect(
+        Value.Check(CreateMessageRequestInputSchema, {
+          recipientId: VALID_UUID,
+          initialMessage: 'x'.repeat(500),
+        }),
+      ).toBe(true);
+
+      // Rejects 501 characters
+      expect(
+        Value.Check(CreateMessageRequestInputSchema, {
+          recipientId: VALID_UUID,
+          initialMessage: 'x'.repeat(501),
+        }),
+      ).toBe(false);
+
+      // Rejects empty string
+      expect(
+        Value.Check(CreateMessageRequestInputSchema, {
+          recipientId: VALID_UUID,
+          initialMessage: '',
+        }),
+      ).toBe(false);
+
+      // Rejects non-UUID recipientId
+      expect(
+        Value.Check(CreateMessageRequestInputSchema, {
+          recipientId: 'not-a-uuid',
+          initialMessage: 'Hello',
+        }),
+      ).toBe(false);
+    });
+
+    it('validates DeclineMessageRequestInputSchema optional reason', () => {
+      expect(Value.Check(DeclineMessageRequestInputSchema, {})).toBe(true);
+      expect(Value.Check(DeclineMessageRequestInputSchema, { reason: 'Not interested' })).toBe(
+        true,
+      );
+      expect(Value.Check(DeclineMessageRequestInputSchema, { reason: 'x'.repeat(255) })).toBe(true);
+      expect(Value.Check(DeclineMessageRequestInputSchema, { reason: 'x'.repeat(256) })).toBe(
+        false,
+      );
+    });
+
+    it('validates MessageRequestResponseSchema', () => {
+      const response = {
+        id: VALID_UUID,
+        senderId: ANOTHER_UUID,
+        recipientId: THIRD_UUID,
+        conversationId: null,
+        initialMessage: 'Hello!',
+        status: 'PENDING',
+        declinedReason: null,
+        expiresAt: '2026-11-01T12:00:00.000Z',
+        respondedAt: null,
+        createdAt: '2026-10-24T12:00:00.000Z',
+        updatedAt: '2026-10-24T12:00:00.000Z',
+        senderProfile: {
+          displayName: 'Alice Creator',
+          avatarUrl: 'https://example.com/avatar.jpg',
+          role: 'CREATOR',
+          location: 'Berlin, DE',
+          isVerified: true,
+        },
+      };
+      expect(Value.Check(MessageRequestResponseSchema, response)).toBe(true);
+    });
+
+    it('validates ListMessageRequestsQuerySchema boundaries', () => {
+      expect(Value.Check(ListMessageRequestsQuerySchema, {})).toBe(true);
+      expect(
+        Value.Check(ListMessageRequestsQuerySchema, {
+          direction: 'incoming',
+          status: 'PENDING',
+          limit: 20,
+          cursor: 'eyJjIjoiMjAyNi0xMC0yNCIsImlkIjoiMTIzIn0',
+        }),
+      ).toBe(true);
+      expect(Value.Check(ListMessageRequestsQuerySchema, { limit: 0 })).toBe(false);
+      expect(Value.Check(ListMessageRequestsQuerySchema, { limit: 51 })).toBe(false);
+      expect(Value.Check(ListMessageRequestsQuerySchema, { direction: 'invalid' })).toBe(false);
+    });
+
+    it('validates MessageRequest outbox payload schemas', () => {
+      expect(
+        Value.Check(MessageRequestCreatedV1PayloadSchema, {
+          requestId: VALID_UUID,
+          senderId: ANOTHER_UUID,
+          recipientId: THIRD_UUID,
+          initialMessage: 'Hello!',
+          expiresAt: '2026-11-01T12:00:00.000Z',
+          createdAt: '2026-10-24T12:00:00.000Z',
+        }),
+      ).toBe(true);
+
+      expect(
+        Value.Check(MessageRequestAcceptedV1PayloadSchema, {
+          requestId: VALID_UUID,
+          senderId: ANOTHER_UUID,
+          recipientId: THIRD_UUID,
+          conversationId: VALID_UUID,
+          acceptedAt: '2026-10-24T12:00:00.000Z',
+        }),
+      ).toBe(true);
+
+      expect(
+        Value.Check(MessageRequestDeclinedV1PayloadSchema, {
+          requestId: VALID_UUID,
+          senderId: ANOTHER_UUID,
+          recipientId: THIRD_UUID,
+          declinedAt: '2026-10-24T12:00:00.000Z',
+          reason: 'Busy',
+        }),
+      ).toBe(true);
+
+      expect(
+        Value.Check(MessageRequestCancelledV1PayloadSchema, {
+          requestId: VALID_UUID,
+          senderId: ANOTHER_UUID,
+          recipientId: THIRD_UUID,
+          cancelledAt: '2026-10-24T12:00:00.000Z',
+        }),
+      ).toBe(true);
+
+      expect(
+        Value.Check(MessageRequestExpiredV1PayloadSchema, {
+          requestId: VALID_UUID,
+          senderId: ANOTHER_UUID,
+          recipientId: THIRD_UUID,
+          expiredAt: '2026-10-24T12:00:00.000Z',
+        }),
+      ).toBe(true);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // 10. Delivery Receipts, Recipient Search & Socket Payloads
+  // --------------------------------------------------------------------------
+  describe('Delivery Receipts, Recipient Search & Socket Contracts', () => {
+    it('validates delivery receipt schemas', () => {
+      expect(Value.Check(MarkDeliveredInputSchema, { sequence: '42' })).toBe(true);
+      expect(Value.Check(MarkDeliveredInputSchema, { sequence: -1 })).toBe(false);
+
+      expect(
+        Value.Check(MarkDeliveredResponseSchema, {
+          conversationId: VALID_UUID,
+          lastDeliveredSequence: '42',
+          updatedAt: '2026-10-24T12:00:00.000Z',
+        }),
+      ).toBe(true);
+    });
+
+    it('validates recipient search schemas', () => {
+      expect(Value.Check(RecipientSearchQuerySchema, { query: 'alice', limit: 10 })).toBe(true);
+      expect(Value.Check(RecipientSearchQuerySchema, { query: '' })).toBe(false);
+
+      expect(
+        Value.Check(RecipientSearchResponseSchema, {
+          items: [
+            {
+              id: VALID_UUID,
+              displayName: 'Alice Smith',
+              avatarUrl: 'https://example.com/avatar.jpg',
+              role: 'CREATOR',
+              isVerified: true,
+            },
+          ],
+        }),
+      ).toBe(true);
+    });
+
+    it('validates socket real-time schemas', () => {
+      expect(
+        Value.Check(SocketMessageSendPayloadSchema, {
+          conversationId: VALID_UUID,
+          clientMessageId: ANOTHER_UUID,
+          content: 'Hello via socket',
+        }),
+      ).toBe(true);
+
+      expect(
+        Value.Check(SocketMessageDeliveredPayloadSchema, {
+          conversationId: VALID_UUID,
+          sequence: '5',
+        }),
+      ).toBe(true);
+
+      expect(
+        Value.Check(SocketMessageReadPayloadSchema, {
+          conversationId: VALID_UUID,
+          sequence: '5',
+        }),
+      ).toBe(true);
+
+      expect(
+        Value.Check(SocketTypingPayloadSchema, {
+          conversationId: VALID_UUID,
+          isTyping: true,
+        }),
+      ).toBe(true);
+
+      expect(
+        Value.Check(SocketDeliveryReceiptBroadcastSchema, {
+          conversationId: VALID_UUID,
+          userId: ANOTHER_UUID,
+          sequence: '5',
+          deliveredAt: '2026-10-24T12:00:00.000Z',
+        }),
+      ).toBe(true);
+
+      expect(
+        Value.Check(SocketReadReceiptBroadcastSchema, {
+          conversationId: VALID_UUID,
+          userId: ANOTHER_UUID,
+          sequence: '5',
+          readAt: '2026-10-24T12:00:00.000Z',
+        }),
+      ).toBe(true);
+
+      expect(
+        Value.Check(SocketTypingBroadcastSchema, {
+          conversationId: VALID_UUID,
+          userId: ANOTHER_UUID,
+          isTyping: true,
+          timestamp: '2026-10-24T12:00:00.000Z',
+        }),
+      ).toBe(true);
     });
   });
 });
