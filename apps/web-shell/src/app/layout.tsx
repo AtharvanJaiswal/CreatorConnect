@@ -1,14 +1,11 @@
 import type { Metadata } from 'next';
 import React from 'react';
 import '@creatorconnect/design-system/globals.css';
-import { Header } from '../components/header';
-import { Footer } from '../components/footer';
 import { AuthProvider } from '../providers/auth-provider';
 
 export const metadata: Metadata = {
-  title: 'CreatorConnect — Multi-Sided Creator Economy Platform',
-  description:
-    'Production-grade multi-sided ecosystem connecting Creators, Production Talent, Brands, and Operations.',
+  title: 'CreatorConnect — Admin Operations Console',
+  description: 'Enterprise administration, moderation, and ledger management portal.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -26,14 +23,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen bg-background font-sans text-foreground antialiased selection:bg-primary/20 selection:text-primary flex flex-col justify-between">
-        <AuthProvider>
-          <div>
-            <Header />
-            <main className="flex-1">{children}</main>
-          </div>
-          <Footer />
-        </AuthProvider>
+      <body className="min-h-screen bg-[#FAF6EF] font-sans text-foreground antialiased selection:bg-[#FFD64A]/30 selection:text-[#14110F]">
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
