@@ -250,7 +250,10 @@ export class MessagingRepository implements IMessagingRepository {
       where: { conversationId, userId, leftAt: null },
       select: { lastDeliveredSequence: true },
     });
-    return (participant?.lastDeliveredSequence ?? 0n).toString();
+    if (!participant) {
+      throw new ConversationNotFoundError();
+    }
+    return participant.lastDeliveredSequence.toString();
   }
 
   /**
@@ -921,95 +924,99 @@ export class MessagingRepository implements IMessagingRepository {
   }
 
   /**
-   * Updates a participant's lastReadSequence pointer.
+   * Updates a participant's lastReadSequence pointer monotonically and atomically in PostgreSQL,
+   * advancing lastDeliveredSequence to guarantee delivered >= read without regressing.
    */
   public async markConversationRead(
     conversationId: string,
     userId: string,
     sequence: string | bigint,
   ): Promise<MarkReadResponse> {
-    const participant = await this.prisma.conversationParticipant.findFirst({
-      where: { conversationId, userId, leftAt: null },
-    });
-    if (!participant) {
+    const seq = typeof sequence === 'bigint' ? sequence : BigInt(sequence);
+
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        conversation_id: string;
+        last_read_sequence: bigint;
+        last_delivered_sequence: bigint;
+        updated_at: Date;
+      }>
+    >`
+      UPDATE "conversation_participants" p
+      SET 
+        "last_read_sequence" = GREATEST(
+          p."last_read_sequence", 
+          LEAST(${seq}::bigint, c."current_sequence")
+        ),
+        "last_delivered_sequence" = GREATEST(
+          p."last_delivered_sequence", 
+          p."last_read_sequence", 
+          LEAST(${seq}::bigint, c."current_sequence")
+        ),
+        "updated_at" = NOW()
+      FROM "conversations" c
+      WHERE p."conversation_id" = ${conversationId}::uuid 
+        AND p."user_id" = ${userId}::uuid 
+        AND p."left_at" IS NULL
+        AND c."id" = p."conversation_id"
+        AND c."deleted_at" IS NULL
+      RETURNING p."conversation_id", p."last_read_sequence", p."last_delivered_sequence", p."updated_at"
+    `;
+
+    if (!rows || rows.length === 0 || !rows[0]) {
       throw new ConversationNotFoundError();
     }
 
-    const seq = typeof sequence === 'bigint' ? sequence : BigInt(sequence);
-    const newRead = seq > participant.lastReadSequence ? seq : participant.lastReadSequence;
-    const currentDelivered = participant.lastDeliveredSequence ?? 0n;
-    const newDelivered = newRead > currentDelivered ? newRead : currentDelivered;
-
-    const updated = await this.prisma.conversationParticipant.update({
-      where: {
-        conversationId_userId: {
-          conversationId,
-          userId,
-        },
-      },
-      data: {
-        lastReadSequence: newRead,
-        lastDeliveredSequence: newDelivered,
-      },
-    });
-
+    const updated = rows[0];
     return {
-      conversationId: updated.conversationId,
-      lastReadSequence: updated.lastReadSequence.toString(),
-      updatedAt: updated.updatedAt.toISOString(),
+      conversationId: updated.conversation_id,
+      lastReadSequence: updated.last_read_sequence.toString(),
+      updatedAt: updated.updated_at.toISOString(),
     };
   }
 
   /**
-   * Updates a participant's lastDeliveredSequence pointer monotonically.
+   * Updates a participant's lastDeliveredSequence pointer monotonically and atomically in PostgreSQL.
    */
   public async markConversationDelivered(
     conversationId: string,
     userId: string,
     sequence: string | bigint,
   ): Promise<MarkDeliveredResponse> {
-    const participant = await this.prisma.conversationParticipant.findFirst({
-      where: { conversationId, userId, leftAt: null },
-      include: {
-        conversation: {
-          select: {
-            id: true,
-            deletedAt: true,
-            currentSequence: true,
-          },
-        },
-      },
-    });
+    const seq = typeof sequence === 'bigint' ? sequence : BigInt(sequence);
 
-    if (!participant || !participant.conversation || participant.conversation.deletedAt !== null) {
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        conversation_id: string;
+        last_delivered_sequence: bigint;
+        updated_at: Date;
+      }>
+    >`
+      UPDATE "conversation_participants" p
+      SET 
+        "last_delivered_sequence" = GREATEST(
+          p."last_delivered_sequence", 
+          LEAST(${seq}::bigint, c."current_sequence")
+        ),
+        "updated_at" = NOW()
+      FROM "conversations" c
+      WHERE p."conversation_id" = ${conversationId}::uuid 
+        AND p."user_id" = ${userId}::uuid 
+        AND p."left_at" IS NULL
+        AND c."id" = p."conversation_id"
+        AND c."deleted_at" IS NULL
+      RETURNING p."conversation_id", p."last_delivered_sequence", p."updated_at"
+    `;
+
+    if (!rows || rows.length === 0 || !rows[0]) {
       throw new ConversationNotFoundError();
     }
 
-    const seq = typeof sequence === 'bigint' ? sequence : BigInt(sequence);
-    const cappedSeq =
-      seq > participant.conversation.currentSequence
-        ? participant.conversation.currentSequence
-        : seq;
-
-    const currentDelivered = participant.lastDeliveredSequence ?? 0n;
-    const newDelivered = cappedSeq > currentDelivered ? cappedSeq : currentDelivered;
-
-    const updated = await this.prisma.conversationParticipant.update({
-      where: {
-        conversationId_userId: {
-          conversationId,
-          userId,
-        },
-      },
-      data: {
-        lastDeliveredSequence: newDelivered,
-      },
-    });
-
+    const updated = rows[0];
     return {
-      conversationId,
-      lastDeliveredSequence: updated.lastDeliveredSequence.toString(),
-      updatedAt: updated.updatedAt.toISOString(),
+      conversationId: updated.conversation_id,
+      lastDeliveredSequence: updated.last_delivered_sequence.toString(),
+      updatedAt: updated.updated_at.toISOString(),
     };
   }
 
