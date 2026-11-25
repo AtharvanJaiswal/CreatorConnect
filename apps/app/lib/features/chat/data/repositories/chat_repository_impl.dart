@@ -67,8 +67,46 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
-  Future<void> declineRequest(String conversationId) async {
-    return _remoteDataSource.declineRequest(conversationId);
+  Future<void> declineRequest(String conversationId, {String? reason}) async {
+    return _remoteDataSource.declineRequest(conversationId, reason: reason);
+  }
+
+  @override
+  Future<MessageRequestItem> createMessageRequest({
+    required String recipientId,
+    required String initialMessage,
+  }) async {
+    return _remoteDataSource.createMessageRequest(
+      recipientId: recipientId,
+      initialMessage: initialMessage,
+    );
+  }
+
+  @override
+  Future<List<MessageRequestItem>> getMessageRequests({
+    String direction = 'incoming',
+    String status = 'PENDING',
+  }) async {
+    return _remoteDataSource.getMessageRequests(
+      direction: direction,
+      status: status,
+    );
+  }
+
+  @override
+  Future<void> cancelMessageRequest(String requestId) async {
+    return _remoteDataSource.cancelMessageRequest(requestId);
+  }
+
+  @override
+  Future<String?> getAttachmentDownloadUrl({
+    required String conversationId,
+    required String attachmentId,
+  }) async {
+    return _remoteDataSource.getAttachmentDownloadUrl(
+      conversationId: conversationId,
+      attachmentId: attachmentId,
+    );
   }
 
   @override

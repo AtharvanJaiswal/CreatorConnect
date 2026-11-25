@@ -10,6 +10,7 @@ import '../widgets/d16_connect_sent_overlay.dart';
 import 'd10_brand_public_profile_screen.dart';
 import '../../../../core/widgets/safe_image.dart';
 import '../../../chat/presentation/controllers/chat_controllers.dart';
+import '../../../chat/presentation/bottom_sheets/dlg_send_message_request_sheet.dart';
 
 class D09CreatorPublicProfileScreen extends ConsumerWidget {
   final String profileId;
@@ -497,13 +498,17 @@ class D09CreatorPublicProfileScreen extends ConsumerWidget {
       if (context.mounted) {
         Navigator.pushNamed(context, '/chat', arguments: conv.id);
       }
-    } catch (e) {
+    } catch (_) {
+      // If direct conversation is not permitted without intro request or unconsented, open request composer
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not start conversation: ${e.toString().split('\n').first}'),
-            backgroundColor: AppColors.error,
-          ),
+        DlgSendMessageRequestSheet.show(
+          context,
+          recipientId: targetUserId,
+          recipientName: profile.name,
+          recipientHandle: profile.handle,
+          recipientAvatar: profile.avatarUrl,
+          recipientRole: profile.role,
+          isVerified: profile.isVerified,
         );
       }
     }

@@ -77,8 +77,11 @@ class NetworkConnectivityNotifier extends StateNotifier<NetworkConnectivityState
     final candidateHosts = {
       EnvironmentConfig.activeHost,
       if (EnvironmentConfig.currentEnv == AppEnvironment.local) ...[
+        '192.168.1.104',
+        '192.168.1.103',
         '127.0.0.1',
         '10.0.2.2',
+        '192.168.1.42',
         '192.168.1.108',
       ],
     }.toList();

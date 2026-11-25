@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/safe_image.dart';
 import '../../domain/entities/chat_entities.dart';
@@ -81,68 +84,81 @@ class _E04ChatThreadScreenState extends ConsumerState<E04ChatThreadScreen> {
     final selectedType = await DlgE08AttachmentPickerSheet.show(context);
     if (selectedType == null) return;
 
-    if (selectedType == AttachmentType.brief) {
-      const att = MessageAttachment(
-        id: 'att-brief-ref',
-        type: AttachmentType.brief,
-        fileName: 'Summer_Reels_Brief_Link',
-        fileSize: 'Link',
-        url: 'https://creatorconnect.app/briefs/summer-reels',
-      );
-      await ref.read(chatThreadProvider(widget.conversationId).notifier).sendMessage(
-        'Attached collaboration brief reference: Summer Reels Campaign',
-        attachment: att,
-      );
-      _scrollToBottom();
-      return;
-    }
+    try {
+      String? filePath;
+      String? fileName;
+      int? fileSize;
 
-    if (selectedType == AttachmentType.document) {
-      const att = MessageAttachment(
-        id: 'att-doc-upload',
-        type: AttachmentType.document,
-        fileName: 'Campaign_Deliverables_v1.pdf',
-        fileSize: '2.1 MB',
-        url: 'https://creatorconnect.r2.cloudflarestorage.com/docs/deliverables.pdf',
-        pageCount: 4,
-      );
-      await ref.read(chatThreadProvider(widget.conversationId).notifier).sendMessage(
-        'Sharing updated deliverable timeline & deliverables spec',
-        attachment: att,
-      );
-      _scrollToBottom();
-      return;
-    }
+      if (selectedType == AttachmentType.image) {
+        final picker = ImagePicker();
+        final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+        if (picked != null) {
+          filePath = picked.path;
+          fileName = picked.name;
+          final f = File(picked.path);
+          if (await f.exists()) fileSize = await f.length();
+        }
+      } else if (selectedType == AttachmentType.video) {
+        final picker = ImagePicker();
+        final picked = await picker.pickVideo(source: ImageSource.gallery);
+        if (picked != null) {
+          filePath = picked.path;
+          fileName = picked.name;
+          final f = File(picked.path);
+          if (await f.exists()) fileSize = await f.length();
+        }
+      } else if (selectedType == AttachmentType.document) {
+        final result = await FilePicker.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['pdf', 'doc', 'docx', 'png', 'jpg'],
+        );
+        if (result != null && result.files.isNotEmpty) {
+          final picked = result.files.first;
+          filePath = picked.path;
+          fileName = picked.name;
+          fileSize = picked.size;
+        }
+      }
 
-    if (selectedType == AttachmentType.video) {
-      const att = MessageAttachment(
-        id: 'att-vid-upload',
-        type: AttachmentType.video,
-        fileName: 'Reel_RoughCut_02.mp4',
-        fileSize: '18.4 MB',
-        url: 'https://creatorconnect.r2.cloudflarestorage.com/videos/roughcut_02.mp4',
-      );
-      await ref.read(chatThreadProvider(widget.conversationId).notifier).sendMessage(
-        'Here is the second iteration of the 15s reel rough cut.',
-        attachment: att,
-      );
-      _scrollToBottom();
-      return;
+      if (filePath != null) {
+        final repo = ref.read(chatRepositoryProvider);
+        final att = await repo.uploadAttachment(
+          filePath,
+          selectedType,
+          originalName: fileName,
+          fileSize: fileSize,
+        );
+        await ref.read(chatThreadProvider(widget.conversationId).notifier).sendMessage(
+          'Shared an attachment: ${att.fileName}',
+          attachment: att,
+        );
+        _scrollToBottom();
+      } else if (selectedType == AttachmentType.brief) {
+        final conv = ref.read(chatThreadProvider(widget.conversationId)).conversation ?? widget.initialPeer;
+        final briefTitle = conv?.pinnedBrief?.title ?? 'Collaboration Campaign Brief';
+        final att = MessageAttachment(
+          id: 'brief-${widget.conversationId}',
+          type: AttachmentType.brief,
+          fileName: briefTitle,
+          fileSize: 'Link',
+          url: 'https://creatorconnect.app/briefs/${widget.conversationId}',
+        );
+        await ref.read(chatThreadProvider(widget.conversationId).notifier).sendMessage(
+          'Attached collaboration brief reference: $briefTitle',
+          attachment: att,
+        );
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to share attachment: ${e.toString().split('\n').first}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
-
-    // Default image
-    const att = MessageAttachment(
-      id: 'att-img-upload',
-      type: AttachmentType.image,
-      fileName: 'Moodboard_Palettes.png',
-      fileSize: '4.8 MB',
-      url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600',
-    );
-    await ref.read(chatThreadProvider(widget.conversationId).notifier).sendMessage(
-      'Here are the approved color palettes and moodboard reference.',
-      attachment: att,
-    );
-    _scrollToBottom();
   }
 
   void _openAttachmentViewer(MessageAttachment att) {
@@ -154,6 +170,7 @@ class _E04ChatThreadScreenState extends ConsumerState<E04ChatThreadScreen> {
           attachment: att,
           sentBy: conv?.peerName,
           timestamp: 'Today',
+          conversationId: widget.conversationId,
         ),
       ),
     );
@@ -674,6 +691,9 @@ class _E04ChatThreadScreenState extends ConsumerState<E04ChatThreadScreen> {
                 controller: _textCtrl,
                 textCapitalization: TextCapitalization.sentences,
                 style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                onChanged: (val) {
+                  ref.read(chatThreadProvider(widget.conversationId).notifier).setTyping(val.trim().isNotEmpty);
+                },
                 decoration: const InputDecoration(
                   hintText: 'Type a message...',
                   hintStyle: TextStyle(fontSize: 14, color: AppColors.textMuted),

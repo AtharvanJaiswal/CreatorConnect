@@ -68,9 +68,9 @@ class EnvironmentConfig {
     if (customHost.isNotEmpty) return customHost;
     if (kIsWeb) return '127.0.0.1';
     // On physical Android running over Wi-Fi without USB cable/adb reverse:
-    // Default to host Wi-Fi LAN IP (192.168.1.42). ApiClient.probeBestLocalHost()
-    // also dynamically probes 192.168.1.42, 127.0.0.1, and 10.0.2.2 on startup.
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) return '192.168.1.42';
+    // Default to host Wi-Fi LAN IP (192.168.1.104). ApiClient.probeBestLocalHost()
+    // also dynamically probes 192.168.1.104, 127.0.0.1, and 10.0.2.2 on startup.
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) return '192.168.1.104';
     return '127.0.0.1';
   }
 

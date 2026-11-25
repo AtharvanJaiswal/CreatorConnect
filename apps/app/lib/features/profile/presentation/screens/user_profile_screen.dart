@@ -222,6 +222,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ),
           ),
           IconButton(
+            icon: const Icon(Icons.settings_outlined, color: AppColors.textPrimary),
+            tooltip: 'Settings',
+            onPressed: () => Navigator.pushNamed(context, '/settings'),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout_rounded, color: AppColors.textPrimary),
             tooltip: 'Log Out',
             onPressed: _showLogoutConfirmDialog,

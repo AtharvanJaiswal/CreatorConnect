@@ -101,9 +101,21 @@ class ConversationsNotifier extends StateNotifier<ConversationsState> {
     await loadInbox();
   }
 
-  Future<void> declineRequest(String conversationId) async {
-    await _repo.declineRequest(conversationId);
+  Future<void> declineRequest(String conversationId, {String? reason}) async {
+    await _repo.declineRequest(conversationId, reason: reason);
     await loadInbox();
+  }
+
+  Future<MessageRequestItem> sendIntroductoryRequest({
+    required String recipientId,
+    required String initialMessage,
+  }) async {
+    final result = await _repo.createMessageRequest(
+      recipientId: recipientId,
+      initialMessage: initialMessage,
+    );
+    await loadInbox();
+    return result;
   }
 }
 
@@ -271,13 +283,19 @@ class ChatThreadNotifier extends StateNotifier<ChatThreadState> {
     }
   }
 
+  void setTyping(bool isTyping) {
+    if (state.isTyping != isTyping) {
+      state = state.copyWith(isTyping: isTyping);
+    }
+  }
+
   Future<void> acceptRequest() async {
     await _repo.acceptRequest(conversationId);
     await loadThread();
   }
 
-  Future<void> declineRequest() async {
-    await _repo.declineRequest(conversationId);
+  Future<void> declineRequest({String? reason}) async {
+    await _repo.declineRequest(conversationId, reason: reason);
   }
 
   Future<void> deleteMessage(

@@ -18,6 +18,7 @@ import 'package:creatorconnect/features/chat/presentation/dialogs/dlg_e09_delete
 import 'package:creatorconnect/features/chat/presentation/dialogs/dlg_e10_block_user_dialog.dart';
 import 'package:creatorconnect/features/chat/presentation/bottom_sheets/dlg_e08_attachment_picker_sheet.dart';
 import 'package:creatorconnect/features/chat/presentation/bottom_sheets/dlg_e11_report_user_sheet.dart';
+import 'package:creatorconnect/features/chat/presentation/bottom_sheets/dlg_send_message_request_sheet.dart';
 
 // Mock HttpOverrides to avoid NetworkImage 400 errors during widget testing
 class TestHttpOverrides extends HttpOverrides {
@@ -245,9 +246,53 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
-  Future<void> declineRequest(String conversationId) async {
+  Future<void> declineRequest(String conversationId, {String? reason}) async {
     _conversations.removeWhere((c) => c.id == conversationId);
     _messages.remove(conversationId);
+  }
+
+  final List<MessageRequestItem> _messageRequests = [];
+
+  @override
+  Future<MessageRequestItem> createMessageRequest({
+    required String recipientId,
+    required String initialMessage,
+  }) async {
+    if (initialMessage.trim().isEmpty || initialMessage.trim().length > 500) {
+      throw ArgumentError('Initial message must be between 1 and 500 characters.');
+    }
+    final req = MessageRequestItem(
+      id: 'req-${_messageRequests.length + 1}',
+      senderId: 'me',
+      recipientId: recipientId,
+      initialMessage: initialMessage.trim(),
+      status: 'PENDING',
+      createdAt: DateTime.now(),
+      senderName: 'You',
+    );
+    _messageRequests.add(req);
+    return req;
+  }
+
+  @override
+  Future<List<MessageRequestItem>> getMessageRequests({
+    String direction = 'incoming',
+    String status = 'PENDING',
+  }) async {
+    return _messageRequests.where((r) => r.status == status).toList();
+  }
+
+  @override
+  Future<void> cancelMessageRequest(String requestId) async {
+    _messageRequests.removeWhere((r) => r.id == requestId);
+  }
+
+  @override
+  Future<String?> getAttachmentDownloadUrl({
+    required String conversationId,
+    required String attachmentId,
+  }) async {
+    return 'https://creatorconnect.r2.cloudflarestorage.com/download/$attachmentId?token=auth123';
   }
 
   @override
@@ -1009,6 +1054,168 @@ void main() {
       // Verify date separators
       expect(find.text('YESTERDAY'), findsOneWidget);
       expect(find.text('TODAY'), findsOneWidget);
+    });
+  });
+
+  group('Module E: Message Requests, Moderation, and Attachments Flow Tests', () {
+    test('MessageRequestItem.fromJson parses sender profile and status', () {
+      final json = {
+        'id': 'req-101',
+        'senderId': 'user-alpha',
+        'recipientId': 'user-beta',
+        'initialMessage': 'Excited to collaborate on your latest travel vlog!',
+        'status': 'PENDING',
+        'createdAt': '2026-11-20T10:00:00.000Z',
+        'senderProfile': {
+          'displayName': 'Rohan Varma',
+          'avatarUrl': 'https://example.com/rohan.jpg',
+          'role': 'CREATOR',
+          'location': 'Bangalore',
+          'isVerified': true,
+        },
+      };
+
+      final req = MessageRequestItem.fromJson(json);
+      expect(req.id, 'req-101');
+      expect(req.senderName, 'Rohan Varma');
+      expect(req.senderRole, 'CREATOR');
+      expect(req.location, 'Bangalore');
+      expect(req.isVerified, isTrue);
+      expect(req.initialMessage, contains('Excited to collaborate'));
+      expect(req.status, 'PENDING');
+
+      // Adapter conversion
+      final conv = ConversationItem.fromMessageRequest(req);
+      expect(conv.id, 'req-101');
+      expect(conv.peerName, 'Rohan Varma');
+      expect(conv.isRequest, isTrue);
+      expect(conv.isAccepted, isFalse);
+      expect(conv.isPeerVerified, isTrue);
+      expect(conv.location, 'Bangalore');
+      expect(conv.lastMessage, req.initialMessage);
+    });
+
+    test('Introductory message request enforces 500 characters max limit', () {
+      final repo = FakeChatRepository();
+      expect(
+        () => repo.createMessageRequest(recipientId: 'r-1', initialMessage: ''),
+        throwsArgumentError,
+      );
+
+      final over500 = 'a' * 501;
+      expect(
+        () => repo.createMessageRequest(recipientId: 'r-1', initialMessage: over500),
+        throwsArgumentError,
+      );
+    });
+
+    test('Creating and cancelling message request updates repository state', () async {
+      final repo = FakeChatRepository();
+      final created = await repo.createMessageRequest(
+        recipientId: 'user-gamma',
+        initialMessage: 'Hey, would love to feature your brand in my podcast episode.',
+      );
+
+      expect(created.id, isNotEmpty);
+      expect(created.recipientId, 'user-gamma');
+
+      final pending = await repo.getMessageRequests(status: 'PENDING');
+      expect(pending.any((r) => r.id == created.id), isTrue);
+
+      await repo.cancelMessageRequest(created.id);
+      final remaining = await repo.getMessageRequests(status: 'PENDING');
+      expect(remaining.any((r) => r.id == created.id), isFalse);
+    });
+
+    testWidgets('DlgSendMessageRequestSheet renders recipient, character count, and submits request', (tester) async {
+      final repo = FakeChatRepository();
+      bool? result;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            chatRepositoryProvider.overrideWithValue(repo),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () async {
+                    result = await DlgSendMessageRequestSheet.show(
+                      context,
+                      recipientId: 'brand-99',
+                      recipientName: 'Nike India',
+                      recipientHandle: '@nike_india',
+                      recipientRole: 'BRAND',
+                      isVerified: true,
+                    );
+                  },
+                  child: const Text('Send Note'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Send Note'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Send Message Request'), findsOneWidget);
+      expect(find.text('Nike India'), findsOneWidget);
+      expect(find.text('@nike_india'), findsOneWidget);
+      expect(find.text('0 / 500'), findsOneWidget);
+      expect(find.textContaining('Direct contact information (phone, email, links) will be shielded'), findsOneWidget);
+
+      // Enter intro text
+      await tester.enterText(find.byType(TextField), 'Hello Nike India! We want to pitch a summer campaign.');
+      await tester.pumpAndSettle();
+      expect(find.text('53 / 500'), findsOneWidget);
+
+      // Submit
+      await tester.tap(find.text('Send Request'));
+      await tester.pumpAndSettle();
+
+      expect(result, isTrue);
+      final reqs = await repo.getMessageRequests();
+      expect(reqs.any((r) => r.recipientId == 'brand-99'), isTrue);
+    });
+
+    testWidgets('E07AttachmentViewerScreen authorizes and triggers download callback', (tester) async {
+      const att = MessageAttachment(
+        id: 'att-media-99',
+        type: AttachmentType.document,
+        fileName: 'Campaign_Schedule_Final.pdf',
+        fileSize: '3.5 MB',
+        url: 'https://example.com/schedule.pdf',
+        pageCount: 6,
+      );
+
+      final fakeRepo = FakeChatRepository();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: E07AttachmentViewerScreen(
+            attachment: att,
+            sentBy: 'Zara India',
+            timestamp: '10:30 AM',
+            conversationId: 'conv-test-01',
+            repository: fakeRepo,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Campaign_Schedule_Final.pdf'), findsWidgets);
+      expect(find.text('3.5 MB'), findsOneWidget);
+      expect(find.text('Sent by Zara India • 10:30 AM'), findsOneWidget);
+      expect(find.text('Download File'), findsOneWidget);
+
+      await tester.tap(find.text('Download File'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Download authorized'), findsOneWidget);
     });
   });
 }

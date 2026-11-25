@@ -344,15 +344,46 @@ class ConversationItem {
     String peerRole = (json['peerRole'] as String? ?? 'CREATOR').toUpperCase();
     String peerAvatar = json['peerAvatar'] as String? ?? '';
     bool isPeerVerified = json['isPeerVerified'] as bool? ?? false;
+    String? location = json['location'] as String?;
+    String? followers = json['followers'] as String?;
 
     if (json['participants'] is List) {
       final participants = json['participants'] as List;
-      final peer = participants.firstWhere(
-        (p) => p is Map && p['userId'] != currentUserId,
-        orElse: () => participants.isNotEmpty ? participants.first : null,
-      );
+      dynamic peer;
+      if (currentUserId.isNotEmpty) {
+        peer = participants.firstWhere(
+          (p) => p is Map && p['userId'] != currentUserId,
+          orElse: () => null,
+        );
+      }
+      peer ??= participants.isNotEmpty ? participants.first : null;
+
       if (peer is Map) {
         if (peerId.isEmpty) peerId = peer['userId'] as String? ?? '';
+        final profile = peer['profile'] as Map<String, dynamic>?;
+        if (profile != null) {
+          final profileName = profile['displayName'] as String? ??
+              profile['name'] as String? ??
+              profile['fullName'] as String?;
+          if (profileName != null && profileName.trim().isNotEmpty) {
+            peerName = profileName.trim();
+          }
+          final avatar = profile['avatarUrl'] as String?;
+          if (avatar != null && avatar.isNotEmpty) {
+            peerAvatar = avatar;
+          }
+          final role = profile['role'] as String?;
+          if (role != null && role.isNotEmpty) {
+            peerRole = role.toUpperCase();
+          }
+          if (profile['location'] != null) {
+            location = profile['location'] as String?;
+          }
+          if (profile['isVerified'] is bool) {
+            isPeerVerified = profile['isVerified'] as bool;
+          }
+        }
+
         if (peerName.isEmpty) {
           peerName = peer['userName'] as String? ??
               peer['name'] as String? ??
@@ -362,7 +393,12 @@ class ConversationItem {
         }
         if (peerHandle.isEmpty) peerHandle = peer['handle'] as String? ?? '';
         if (peerAvatar.isEmpty) peerAvatar = peer['avatarUrl'] as String? ?? '';
-        if (peer['role'] != null) peerRole = peer['role'].toString().toUpperCase();
+        if (peer['role'] != null && (peerRole == 'CREATOR' || peerRole == 'MEMBER')) {
+          final roleStr = peer['role'].toString().toUpperCase();
+          if (roleStr != 'MEMBER' && roleStr != 'OWNER' && roleStr != 'ADMIN') {
+            peerRole = roleStr;
+          }
+        }
       }
     }
 
@@ -384,8 +420,8 @@ class ConversationItem {
       lastMessageTime: json['lastMessageTime'] as String? ?? 'Recently',
       unreadCount: json['unreadCount'] as int? ?? 0,
       isRequest: json['isRequest'] as bool? ?? false,
-      followers: json['followers'] as String?,
-      location: json['location'] as String?,
+      followers: followers ?? json['followers'] as String?,
+      location: location ?? json['location'] as String?,
       pinnedBrief: json['pinnedBrief'] != null
           ? PinnedBriefContext.fromJson(json['pinnedBrief'] as Map<String, dynamic>)
           : null,
@@ -413,5 +449,156 @@ class ConversationItem {
     'pinnedBrief': pinnedBrief?.toJson(),
     'isAccepted': isAccepted,
     'isBlocked': isBlocked,
+  };
+
+  /// Factory helper to adapt a Phase 19F MessageRequestItem into a ConversationItem
+  factory ConversationItem.fromMessageRequest(MessageRequestItem request) {
+    return ConversationItem(
+      id: request.id,
+      peerId: request.senderId,
+      peerName: request.senderName,
+      peerHandle: '@${request.senderName.toLowerCase().replaceAll(RegExp(r'\s+'), '_')}',
+      peerRole: request.senderRole ?? 'CREATOR',
+      peerAvatar: request.senderAvatar ?? '',
+      isPeerVerified: request.isVerified,
+      isOnline: false,
+      lastMessage: request.initialMessage,
+      lastMessageTime: request.createdAt != null
+          ? _formatRelativeTime(request.createdAt!)
+          : 'Recently',
+      unreadCount: 1,
+      isRequest: true,
+      isAccepted: request.status == 'ACCEPTED',
+      location: request.location,
+      followers: request.followers,
+    );
+  }
+
+  static String _formatRelativeTime(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 60) {
+      return diff.inMinutes <= 1 ? 'Just now' : '${diff.inMinutes}m ago';
+    } else if (diff.inHours < 24) {
+      return '${diff.inHours}h ago';
+    } else if (diff.inDays < 7) {
+      return '${diff.inDays}d ago';
+    } else {
+      return '${dt.day}/${dt.month}/${dt.year}';
+    }
+  }
+}
+
+/// Phase 19F Inbound/Outbound Message Request Entity
+@immutable
+class MessageRequestItem {
+  final String id;
+  final String senderId;
+  final String recipientId;
+  final String? conversationId;
+  final String initialMessage;
+  final String status; // PENDING, ACCEPTED, DECLINED, EXPIRED, CANCELLED
+  final String? declinedReason;
+  final DateTime? expiresAt;
+  final DateTime? createdAt;
+  final DateTime? respondedAt;
+  final String senderName;
+  final String? senderAvatar;
+  final String? senderRole;
+  final String? location;
+  final bool isVerified;
+  final String? followers;
+
+  const MessageRequestItem({
+    required this.id,
+    required this.senderId,
+    required this.recipientId,
+    this.conversationId,
+    required this.initialMessage,
+    required this.status,
+    this.declinedReason,
+    this.expiresAt,
+    this.createdAt,
+    this.respondedAt,
+    this.senderName = 'Creator',
+    this.senderAvatar,
+    this.senderRole = 'CREATOR',
+    this.location,
+    this.isVerified = false,
+    this.followers,
+  });
+
+  factory MessageRequestItem.fromJson(Map<String, dynamic> json) {
+    final profile = json['senderProfile'] as Map<String, dynamic>?;
+    return MessageRequestItem(
+      id: json['id'] as String? ?? '',
+      senderId: json['senderId'] as String? ?? '',
+      recipientId: json['recipientId'] as String? ?? '',
+      conversationId: json['conversationId'] as String?,
+      initialMessage: json['initialMessage'] as String? ?? '',
+      status: (json['status'] as String? ?? 'PENDING').toUpperCase(),
+      declinedReason: json['declinedReason'] as String?,
+      expiresAt: json['expiresAt'] != null
+          ? DateTime.tryParse(json['expiresAt'].toString())
+          : null,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString())
+          : null,
+      respondedAt: json['respondedAt'] != null
+          ? DateTime.tryParse(json['respondedAt'].toString())
+          : null,
+      senderName: profile?['displayName'] as String? ??
+          json['senderName'] as String? ??
+          'Creator',
+      senderAvatar: profile?['avatarUrl'] as String? ??
+          json['senderAvatar'] as String?,
+      senderRole: (profile?['role'] as String? ??
+              json['senderRole'] as String? ??
+              'CREATOR')
+          .toUpperCase(),
+      location: profile?['location'] as String? ?? json['location'] as String?,
+      isVerified: profile?['isVerified'] as bool? ??
+          json['isVerified'] as bool? ??
+          false,
+      followers: profile?['followers'] as String? ??
+          json['followers'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'senderId': senderId,
+    'recipientId': recipientId,
+    'conversationId': conversationId,
+    'initialMessage': initialMessage,
+    'status': status,
+    'declinedReason': declinedReason,
+    'expiresAt': expiresAt?.toIso8601String(),
+    'createdAt': createdAt?.toIso8601String(),
+    'respondedAt': respondedAt?.toIso8601String(),
+    'senderProfile': {
+      'displayName': senderName,
+      'avatarUrl': senderAvatar,
+      'role': senderRole,
+      'location': location,
+      'isVerified': isVerified,
+    },
+  };
+}
+
+/// DTO for composing introductory message requests
+@immutable
+class SendRequestInput {
+  final String recipientId;
+  final String initialMessage;
+
+  const SendRequestInput({
+    required this.recipientId,
+    required this.initialMessage,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'recipientId': recipientId,
+    'initialMessage': initialMessage,
   };
 }

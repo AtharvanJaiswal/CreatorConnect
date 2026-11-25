@@ -33,7 +33,28 @@ abstract class ChatRepository {
   Future<void> acceptRequest(String conversationId);
 
   /// Declines and discards an inbound message request (SCR-E02, SCR-E05)
-  Future<void> declineRequest(String conversationId);
+  Future<void> declineRequest(String conversationId, {String? reason});
+
+  /// Submits an introductory message request (max 500 characters)
+  Future<MessageRequestItem> createMessageRequest({
+    required String recipientId,
+    required String initialMessage,
+  });
+
+  /// Lists inbound or outbound message requests
+  Future<List<MessageRequestItem>> getMessageRequests({
+    String direction = 'incoming',
+    String status = 'PENDING',
+  });
+
+  /// Cancels an outgoing pending message request
+  Future<void> cancelMessageRequest(String requestId);
+
+  /// Generates a short-lived download URL for an attachment
+  Future<String?> getAttachmentDownloadUrl({
+    required String conversationId,
+    required String attachmentId,
+  });
 
   /// Deletes a message either locally or for everyone (DLG-E09)
   Future<void> deleteMessage(

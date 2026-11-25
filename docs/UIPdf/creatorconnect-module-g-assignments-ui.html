@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreatorConnect — Module G: Assignments &amp; Projects UI Specification</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   CREATORCONNECT — DESIGN TOKENS (MODULE G: ASSIGNMENTS & PROJECTS)
+   Client-Approved Design System: Cream, Mustard Yellow, Dark Ink
+   ============================================================ */
+:root{
+  color-scheme: light;
+  --bg-primary:#FAF6EF;
+  --bg-secondary:#F2ECE1;
+  --surface:#FFFFFF;
+  --surface-elevated:#FFFFFF;
+  --primary:#FFD64A;
+  --primary-press:#F0C52F;
+  --secondary:#C9B6F7;
+  --accent:#FFB6C8;
+  --c-yellow:#FFD64A;
+  --c-pink:#FFB6C8;
+  --c-lavender:#C9B6F7;
+  --c-mint:#B6E09B;
+  --c-sky:#A6CCF7;
+  --c-peach:#FFC9A3;
+  --text-primary:#14110F;
+  --text-secondary:#6F675E;
+  --text-muted:#A39A8F;
+  --text-on-primary:#14110F;
+  --border:#E7E0D5;
+  --divider:#EFE9DF;
+  --disabled:#D8D1C6;
+  --success:#2E9E6B;
+  --success-bg:#E6F4EC;
+  --warning:#C98A16;
+  --warning-bg:#FBF1DC;
+  --error:#D8483C;
+  --error-bg:#FBE9E7;
+  --sp-xs:4px; --sp-sm:8px; --sp-md:16px; --sp-lg:24px;
+  --sp-xl:32px; --sp-2xl:48px; --sp-3xl:64px;
+  --r-button:999px;
+  --r-input:16px;
+  --r-card:28px;
+  --r-modal:32px;
+  --r-image:24px;
+  --r-chip:999px;
+  --bw:1.5px;
+  --bw-divider:1px;
+  --bw-focus:2px;
+  --sh-sm:0 1px 2px rgba(20,17,15,.05);
+  --sh-md:0 4px 16px rgba(20,17,15,.07);
+  --sh-lg:0 12px 32px rgba(20,17,15,.10);
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{
+  margin:0;background:#EDE7DC;color:var(--text-primary);
+  font-family:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1240px;margin:0 auto;padding:40px 20px 80px}
+
+/* Document Chrome */
+.doc-head{margin-bottom:40px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px}
+.doc-title{font-size:clamp(32px,5vw,50px);font-weight:800;letter-spacing:-.025em;line-height:1.02;margin:0 0 12px}
+.doc-title em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;letter-spacing:-.01em}
+.doc-sub{font-size:15px;color:var(--text-secondary);max-width:760px;line-height:1.55;margin:0}
+.sec{margin:64px 0 0}
+.sec-head{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid var(--text-primary);padding-bottom:10px;margin-bottom:24px;flex-wrap:wrap}
+.sec-n{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--text-muted)}
+.sec-t{font-size:22px;font-weight:800;letter-spacing:-.01em;margin:0}
+.sec-note{font-size:13px;color:var(--text-secondary);margin-left:auto}
+
+/* Token display */
+.tok-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.sw{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.sw-c{height:54px}
+.sw-b{padding:8px 10px}
+.sw-n{font-size:11.5px;font-weight:700}
+.sw-v{font-size:10.5px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+
+/* Phone frames */
+.screens{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:36px 26px}
+.sc-item{display:flex;flex-direction:column;gap:12px}
+.sc-cap{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.sc-id{font-size:10px;font-weight:800;letter-spacing:.1em;color:#fff;background:var(--text-primary);padding:3px 8px;border-radius:999px}
+.sc-name{font-size:14px;font-weight:700}
+.sc-desc{font-size:12px;color:var(--text-secondary);line-height:1.45}
+
+.phone{
+  width:100%;max-width:330px;aspect-ratio:375/812;margin:0 auto;
+  background:var(--bg-primary);border-radius:38px;
+  border:9px solid #14110F;overflow:hidden;position:relative;
+  box-shadow:var(--sh-lg);
+}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg-primary)}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:34%;height:22px;background:#14110F;border-radius:0 0 14px 14px;z-index:20}
+.statusbar{height:34px;flex-shrink:0;display:flex;align-items:flex-end;justify-content:space-between;padding:0 18px 3px;font-size:10px;font-weight:700;position:relative;z-index:10}
+.pad{padding:0 18px}
+.grow{flex:1;min-height:0;overflow-y:auto}
+.flexcol{display:flex;flex-direction:column}
+
+/* Typography styles */
+.h-display{font-size:28px;font-weight:800;letter-spacing:-.03em;line-height:1.04;margin:0}
+.h-lg{font-size:22px;font-weight:800;letter-spacing:-.025em;line-height:1.1;margin:0}
+.h-md{font-size:17px;font-weight:800;letter-spacing:-.01em;margin:0}
+.body{font-size:12.5px;line-height:1.5;color:var(--text-secondary);margin:0}
+.small{font-size:11px;line-height:1.4;color:var(--text-muted);margin:0}
+.lbl{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted)}
+
+/* Button components */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  height:44px;border-radius:var(--r-button);font-size:13px;font-weight:700;
+  border:none;width:100%;cursor:pointer;font-family:inherit;
+}
+.btn-primary{background:var(--primary);color:var(--text-on-primary)}
+.btn-dark{background:var(--text-primary);color:#fff}
+.btn-outline{background:transparent;border:var(--bw) solid var(--text-primary);color:var(--text-primary)}
+.btn-ghost{background:transparent;color:var(--text-primary);font-weight:600}
+.btn-sm{height:34px;font-size:12px;padding:0 14px;width:auto;flex-shrink:0;white-space:nowrap}
+.btn-xs{height:26px;font-size:10.5px;padding:0 10px;border-radius:999px;width:auto;flex-shrink:0;white-space:nowrap}
+.btn-disabled{background:var(--disabled);color:#fff}
+
+/* Bottom Nav */
+.bottomnav{
+  height:54px;background:#FFFFFF;border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-around;
+  padding:0 8px;flex-shrink:0;position:relative;z-index:10;
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:2px;color:var(--text-muted);cursor:pointer;position:relative;
+}
+.nav-item.on{color:var(--text-primary)}
+.nav-dot{width:4px;height:4px;border-radius:999px;background:var(--text-primary);position:absolute;bottom:-6px}
+.nav-fab{
+  width:38px;height:38px;border-radius:999px;background:var(--primary);
+  border:2px solid #14110F;display:flex;align-items:center;justify-content:center;
+  color:#14110F;font-weight:900;font-size:18px;margin-top:-14px;box-shadow:0 3px 8px rgba(0,0,0,0.12);
+}
+
+/* ============================================================
+   ASSIGNMENTS & PROJECTS SPECIFIC UI COMPONENTS
+   ============================================================ */
+
+/* Opportunity / Assignment Card */
+.asgn-card{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:20px;padding:13px 14px;margin-bottom:10px;
+  position:relative;transition:border-color .15s, box-shadow .15s;
+}
+.asgn-card.featured{border-color:#14110F;background:#FFFDF7;box-shadow:var(--sh-sm)}
+.asgn-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.asgn-brand{display:flex;align-items:center;gap:8px}
+.asgn-avatar{
+  width:32px;height:32px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:13px;flex-shrink:0;
+}
+.asgn-title{font-size:13.5px;font-weight:800;line-height:1.25;margin-top:6px;color:#14110F}
+.asgn-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;align-items:center}
+.asgn-pill{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:999px;
+  background:var(--bg-secondary);color:var(--text-secondary);
+}
+.asgn-pill.highlight{background:#FFF9E6;border:1px solid #FFE486;color:#8C6A0A}
+.asgn-pill.urgent{background:var(--error-bg);color:var(--error);font-weight:800}
+.asgn-pill.success{background:var(--success-bg);color:var(--success);font-weight:800}
+.asgn-footer{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-top:10px;padding-top:8px;border-top:1px solid var(--divider);
+}
+.asgn-budget{font-size:13px;font-weight:900;color:#14110F}
+
+/* Status Timeline / Stepper */
+.milestone-track{display:flex;gap:4px;margin-top:8px}
+.milestone-seg{height:4px;flex:1;border-radius:999px;background:var(--divider)}
+.milestone-seg.done{background:var(--success)}
+.milestone-seg.active{background:var(--primary)}
+
+/* Proposal & Applicant Card */
+.app-card{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:18px;padding:12px;margin-bottom:8px;
+}
+.app-header{display:flex;align-items:center;gap:10px}
+.app-avatar{
+  width:40px;height:40px;border-radius:999px;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:15px;flex-shrink:0;
+}
+.app-pitch{font-size:11.5px;color:var(--text-secondary);line-height:1.45;margin-top:8px;background:var(--bg-secondary);padding:8px 10px;border-radius:10px}
+
+/* Dialogs & Overlays */
+.dlgcard{position:relative;width:100%;max-width:330px;margin:0 auto;border-radius:26px;overflow:hidden;background:var(--bg-primary);border:1px solid var(--border)}
+.dc-dim{position:absolute;inset:0;background:rgba(20,17,15,.55);z-index:15}
+.dc-sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:26px 26px 0 0;padding:4px 18px 18px;z-index:20;max-height:85%;overflow-y:auto}
+.dc-center{position:absolute;left:18px;right:18px;top:50%;transform:translateY(-50%);background:#fff;border-radius:24px;padding:20px;z-index:20;box-shadow:var(--sh-lg);text-align:center}
+.dc-bg{padding:16px;opacity:.45}
+.sh-h{width:36px;height:4px;border-radius:999px;background:var(--disabled);margin:8px auto 12px}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:28px 26px}
+.lrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--divider);font-size:12px}
+.lrow:last-child{border-bottom:none}
+
+.section-tag{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);padding:0 18px}
+.tagpill{display:inline-block;font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px}
+.note{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--primary);border-radius:14px;padding:14px 16px;font-size:13px;line-height:1.55;color:var(--text-secondary)}
+.note b{color:var(--text-primary)}
+.mapping-table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;font-size:12px}
+.mapping-table th{background:var(--bg-secondary);padding:10px 12px;text-align:left;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border)}
+.mapping-table td{padding:10px 12px;border-bottom:1px solid var(--divider);color:var(--text-secondary);vertical-align:top}
+.mapping-table tr:last-child td{border-bottom:none}
+.mapping-table b{color:var(--text-primary)}
+
+@media print{
+  .sc-item,.sw,.note,.dlgcard{break-inside:avoid;page-break-inside:avoid}
+  .sec{break-inside:auto}
+  .sec-head{break-after:avoid;page-break-after:avoid}
+  .screens{break-inside:auto}
+  body{background:#EDE7DC !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ══════════════════════════════════════════════════════
+     DOC HEADER
+══════════════════════════════════════════════════════ -->
+<div class="doc-head">
+  <div class="eyebrow">CreatorConnect · Codly360 · Module G</div>
+  <h1 class="doc-title">Assignments &amp; <em>Projects UI</em></h1>
+  <p class="doc-sub">Full mobile UI specification for Module G: screens G01 through G20 and dialog overlays DLG-G01 through DLG-G08. Built on the approved design system (#FAF6EF cream background, #FFD64A pill buttons, Archivo bold typography, 375×812 phone frames). Covers the dual workflows of Assignment Posting (Brand/Poster cockpit, 5-step brief creation, applicant shortlisting, hiring) and Assignment Application (Creator discovery feed, pitch submission, proposal inspection, milestone tracking, and completion sign-off).</p>
+</div>
+
+<!-- ============ 00 SCOPE & SOW RECONCILIATION ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">00</span><h2 class="sec-t">Scope &amp; SOW Contract Reconciliation</h2></div>
+  <div class="note">
+    <b>SOW Contract Reconciliation:</b> Implements <b>SOW §11 (Assignments &amp; Collaboration Requirements)</b>, <b>SOW §12 (Application System)</b>, <b>SOW §13 (Rule-Based Matchmaking)</b>, and <b>SOW §18 (Milestone Payments)</b>.<br><br>
+    <b>Assignment Lifecycle Supported:</b><br>
+    <code>Draft &rarr; Published &rarr; Applications Received &rarr; Shortlisted &rarr; Selected / In Progress &rarr; Completed &rarr; Closed / Cancelled</code><br><br>
+    <b>Dual Perspectives:</b><br>
+    1. <b>Poster View (Brand / Podcaster / Creator):</b> Create brief, budget &amp; milestone scheduling, applicant review pipeline, shortlisting, candidate selection, revision requests, and sign-off.<br>
+    2. <b>Applicant View (Creator / Production Professional):</b> Filterable opportunity discovery, deep brief inspection, pitch submission with Module F portfolio linking, application status tracking, and deliverable hand-in.
+  </div>
+</div>
+
+<!-- ============ 01 COMPONENT TOKENS ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">01</span><h2 class="sec-t">Module G Components &amp; Tokens</h2><span class="sec-note">Custom assignment widgets</span></div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px">
+      <div class="lbl" style="margin-bottom:8px">OpportunityCard (Feed Preview)</div>
+      <div class="asgn-card" style="margin:0">
+        <div class="asgn-header">
+          <div class="asgn-brand">
+            <div class="asgn-avatar" style="background:#14110F;color:#fff">Z</div>
+            <div>
+              <div style="font-size:12px;font-weight:800">Zara India <svg width="10" height="10" viewBox="0 0 24 24" fill="#2E9E6B"><circle cx="12" cy="12" r="10"/></svg></div>
+              <div style="font-size:9.5px;color:var(--text-muted)">Brand · Mumbai</div>
+            </div>
+          </div>
+          <span class="asgn-pill urgent">2 days left</span>
+        </div>
+        <div class="asgn-title">Summer Reels Campaign 2026</div>
+        <div class="asgn-meta">
+          <span class="asgn-pill highlight">Fashion Reels</span>
+          <span class="asgn-pill">3 Videos</span>
+          <span class="asgn-pill">On-Site</span>
+        </div>
+        <div class="asgn-footer">
+          <span class="asgn-budget">₹10,000 – ₹15,000</span>
+          <div class="btn btn-primary btn-xs">Apply Now</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px">
+      <div class="lbl" style="margin-bottom:8px">MilestoneProgressTrack</div>
+      <div style="background:var(--bg-secondary);padding:12px;border-radius:14px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:800">
+          <span>Milestone 2 of 3</span>
+          <span style="color:var(--warning)">Rough Cut in Review</span>
+        </div>
+        <div class="milestone-track">
+          <div class="milestone-seg done"></div>
+          <div class="milestone-seg active"></div>
+          <div class="milestone-seg"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9.5px;color:var(--text-muted);margin-top:6px">
+          <span>Script Approved</span>
+          <span>Rough Cut</span>
+          <span>Final 4K Master</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px">
+      <div class="lbl" style="margin-bottom:8px">ApplicationStatusBadge</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <span class="asgn-pill" style="background:#FFF9E6;color:#8C6A0A;border:1px solid #FFE486">Applied (Pending)</span>
+        <span class="asgn-pill" style="background:#EBF5FF;color:#0F5298;border:1px solid #C2E0FF">Shortlisted ⭐</span>
+        <span class="asgn-pill success">Hired &amp; Active ✓</span>
+        <span class="asgn-pill" style="background:var(--error-bg);color:var(--error)">Position Filled</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 02 SCREENS: APPLICANT / DISCOVERY WORKFLOW ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">02</span><h2 class="sec-t">Creator Discovery &amp; Application Workflow</h2><span class="sec-note">G01 to G04, G17, G20 · finding briefs &amp; pitching</span></div>
+  <div class="screens">
+
+    <!-- G01: BROWSE ASSIGNMENTS FEED -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px">
+            <h2 class="h-lg" style="font-size:22px">Assignments</h2>
+            <div style="width:34px;height:34px;border-radius:999px;background:var(--surface);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            </div>
+          </div>
+
+          <!-- Search & Filter bar -->
+          <div class="pad" style="margin-top:2px;margin-bottom:8px">
+            <div style="height:40px;background:var(--surface);border:1.5px solid var(--border);border-radius:999px;display:flex;align-items:center;gap:8px;padding:0 12px">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <span style="color:var(--text-muted);font-size:12px;flex:1">Search briefs, brands, skills…</span>
+              <div style="width:26px;height:26px;border-radius:999px;background:#14110F;color:#fff;display:flex;align-items:center;justify-content:center">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Category filter pills -->
+          <div style="display:flex;gap:6px;padding:0 18px 8px;overflow-x:auto">
+            <span class="tagpill" style="background:#14110F;color:#fff">All (24)</span>
+            <span class="tagpill" style="background:var(--surface);border:1px solid var(--border);color:var(--text-secondary)">Fashion (8)</span>
+            <span class="tagpill" style="background:var(--surface);border:1px solid var(--border);color:var(--text-secondary)">Reels Editing (6)</span>
+            <span class="tagpill" style="background:var(--surface);border:1px solid var(--border);color:var(--text-secondary)">Tech (4)</span>
+          </div>
+
+          <!-- Feed Content -->
+          <div class="grow pad" style="padding-top:4px;padding-bottom:12px">
+            <!-- Card 1: Featured -->
+            <div class="asgn-card featured">
+              <div class="asgn-header">
+                <div class="asgn-brand">
+                  <div class="asgn-avatar" style="background:#14110F;color:#fff">Z</div>
+                  <div>
+                    <div style="font-size:12px;font-weight:800">Zara India <svg width="10" height="10" viewBox="0 0 24 24" fill="#2E9E6B"><circle cx="12" cy="12" r="10"/></svg></div>
+                    <div style="font-size:9.5px;color:var(--text-muted)">Verified Brand · Mumbai</div>
+                  </div>
+                </div>
+                <span class="asgn-pill urgent">2 days left</span>
+              </div>
+              <div class="asgn-title">Summer Reels Campaign 2026</div>
+              <p class="body" style="font-size:11px;margin-top:4px;line-height:1.4">Looking for 2 fashion creators to shoot and edit 3 vibrant reels for our summer collection launch.</p>
+              <div class="asgn-meta">
+                <span class="asgn-pill highlight">Fashion Reels</span>
+                <span class="asgn-pill">3 Videos</span>
+                <span class="asgn-pill">Bandra, Mumbai</span>
+              </div>
+              <div class="asgn-footer">
+                <div>
+                  <span class="asgn-budget">₹10,000 – ₹15,000</span>
+                  <div style="font-size:9.5px;color:var(--text-muted)">18 applicants</div>
+                </div>
+                <div class="btn btn-primary btn-xs">Apply Now</div>
+              </div>
+            </div>
+
+            <!-- Card 2: Production -->
+            <div class="asgn-card">
+              <div class="asgn-header">
+                <div class="asgn-brand">
+                  <div class="asgn-avatar" style="background:var(--c-sky);color:#14110F">S</div>
+                  <div>
+                    <div style="font-size:12px;font-weight:800">Studio Frame</div>
+                    <div style="font-size:9.5px;color:var(--text-muted)">Production House · Delhi</div>
+                  </div>
+                </div>
+                <span class="asgn-pill">5 days left</span>
+              </div>
+              <div class="asgn-title">Lead Video Editor for YouTube Docuseries</div>
+              <div class="asgn-meta">
+                <span class="asgn-pill">Premiere Pro</span>
+                <span class="asgn-pill">Long-Form</span>
+                <span class="asgn-pill">Remote</span>
+              </div>
+              <div class="asgn-footer">
+                <div>
+                  <span class="asgn-budget">₹25,000</span>
+                  <div style="font-size:9.5px;color:var(--text-muted)">7 applicants</div>
+                </div>
+                <div class="btn btn-outline btn-xs">View Brief</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bottomnav">
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+            <div class="nav-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span class="nav-dot"></span></div>
+            <div class="nav-fab">+</div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">G01</span><span class="sc-name">Browse Assignments Feed (SCR-028)</span></div>
+      <p class="sc-desc">Explore live collaboration opportunities. Displays budget tiers, deadline urgency tags, location requirements, and quick-apply access.</p>
+    </div>
+
+    <!-- G02: ASSIGNMENT DETAIL SCREEN -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <!-- Top Navigation Bar -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg>
+            <div style="display:flex;gap:10px">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            </div>
+          </div>
+
+          <div class="grow pad" style="padding-top:4px;padding-bottom:16px">
+            <!-- Brand summary header -->
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:44px;height:44px;border-radius:12px;background:#14110F;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px">Z</div>
+              <div>
+                <div style="font-size:14px;font-weight:800;display:flex;align-items:center;gap:4px">
+                  Zara India <svg width="11" height="11" viewBox="0 0 24 24" fill="#2E9E6B"><circle cx="12" cy="12" r="10"/></svg>
+                </div>
+                <div style="font-size:10.5px;color:var(--text-muted)">Posted 2 days ago · Mumbai, MH</div>
+              </div>
+            </div>
+
+            <h2 class="h-lg" style="font-size:20px;margin-top:12px">Summer Reels Campaign 2026</h2>
+
+            <!-- Compensation callout box -->
+            <div style="background:#FFF9E6;border:1.5px solid #FFE486;border-radius:16px;padding:12px 14px;margin-top:10px;display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div style="font-size:10px;font-weight:700;color:#8C6A0A;text-transform:uppercase">Project Budget</div>
+                <div style="font-size:18px;font-weight:900;color:#14110F">₹10,000 – ₹15,000</div>
+              </div>
+              <span class="asgn-pill highlight" style="font-size:10px">Escrow Protected</span>
+            </div>
+
+            <!-- Scope Details -->
+            <div style="margin-top:14px">
+              <span class="lbl">Deliverables &amp; Scope</span>
+              <ul style="padding-left:18px;margin-top:6px;font-size:11.5px;line-height:1.6;color:var(--text-secondary)">
+                <li>3x 9:16 vertical reels featuring 3 summer outfits.</li>
+                <li>Professional lighting and audio sync required.</li>
+                <li>1 round of creative revisions included.</li>
+                <li>Final raw 4K assets delivered via Drive link.</li>
+              </ul>
+            </div>
+
+            <!-- Skills Required -->
+            <div style="margin-top:12px">
+              <span class="lbl">Required Skills</span>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+                <span class="asgn-pill">Fashion Modeling</span>
+                <span class="asgn-pill">Reels Editing</span>
+                <span class="asgn-pill">Color Grading</span>
+                <span class="asgn-pill">Mumbai Based</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Sticky CTA -->
+          <div style="padding:10px 18px 16px;background:#fff;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center">
+            <div class="btn btn-outline btn-sm" style="width:42px;height:42px;padding:0">💬</div>
+            <div class="btn btn-primary btn-sm" style="flex:1;height:42px">Apply for This Brief →</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">G02</span><span class="sc-name">Assignment Detail Screen (SCR-029)</span></div>
+      <p class="sc-desc">Comprehensive project overview for creators. Includes verified client badges, escrow guarantee, deliverable requirements, and apply CTA.</p>
+    </div>
+
+    <!-- G03: SUBMIT APPLICATION / PITCH MODAL -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg>
+            <h3 class="h-md" style="font-size:16px">Submit Your Pitch</h3>
+            <span style="font-size:11px;font-weight:700;color:var(--text-muted)">Clear</span>
+          </div>
+
+          <div class="grow pad" style="padding-top:6px;padding-bottom:14px">
+            <!-- Target Brief Recap -->
+            <div style="background:var(--bg-secondary);border-radius:12px;padding:8px 12px;margin-bottom:12px">
+              <div style="font-size:9.5px;color:var(--text-muted);font-weight:700">APPLYING TO:</div>
+              <div style="font-size:12px;font-weight:800;color:#14110F">Summer Reels Campaign 2026 · Zara India</div>
+            </div>
+
+            <!-- Proposed Rate Input -->
+            <div style="margin-bottom:10px">
+              <span class="lbl" style="display:block;margin-bottom:3px">Your Proposed Fee (INR) <span style="color:var(--error)">*</span></span>
+              <div style="background:var(--surface);border:1.5px solid #14110F;border-radius:12px;height:40px;padding:0 12px;display:flex;align-items:center;gap:6px">
+                <span style="font-weight:900;font-size:14px">₹</span>
+                <input type="text" value="12,000" style="border:none;background:transparent;font-size:13px;font-weight:800;outline:none;width:100%">
+              </div>
+              <div style="font-size:9.5px;color:var(--text-muted);margin-top:3px">Client budget: ₹10,000 – ₹15,000</div>
+            </div>
+
+            <!-- Pitch Letter Textarea -->
+            <div style="margin-bottom:10px">
+              <span class="lbl" style="display:block;margin-bottom:3px">Why are you the right fit? <span style="color:var(--error)">*</span></span>
+              <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:10px;height:84px;font-size:11.5px;color:#14110F;line-height:1.4">
+                Hi Zara team! I have shot 14+ fashion reels with similar summer aesthetic. I have full studio lighting in Bandra and can deliver raw cuts within 48 hours.
+              </div>
+            </div>
+
+            <!-- Portfolio Links from Module F -->
+            <div style="margin-bottom:10px">
+              <span class="lbl" style="display:block;margin-bottom:3px">Attach Portfolio Proofs</span>
+              <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="font-size:14px">📁</span>
+                  <div>
+                    <div style="font-size:11px;font-weight:800">Netflix India Collab Archive</div>
+                    <div style="font-size:9.5px;color:var(--success)">✓ Verified Public Drive</div>
+                  </div>
+                </div>
+                <input type="checkbox" checked style="accent-color:#14110F">
+              </div>
+            </div>
+          </div>
+
+          <div style="padding:10px 18px 16px;background:#fff;border-top:1px solid var(--border)">
+            <div class="btn btn-primary btn-sm">Send Pitch to Zara India →</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">G03</span><span class="sc-name">Submit Application / Pitch Modal (SCR-030)</span></div>
+      <p class="sc-desc">Creator proposal form allowing custom rate quote within budget range, tailored cover message, and one-tap selection of Module F verified portfolio items.</p>
+    </div>
+
+    <!-- G04: MY APPLICATIONS TRACKER -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <div style="padding:8px 18px">
+            <h2 class="h-lg" style="font-size:22px">My Applications</h2>
+          </div>
+
+          <!-- Status Tabs -->
+          <div style="display:flex;gap:6px;padding:0 18px 8px;overflow-x:auto">
+            <span class="tagpill" style="background:#14110F;color:#fff">All (4)</span>
+            <span class="tagpill" style="background:#EBF5FF;color:#0F5298;border:1px solid #C2E0FF">Shortlisted (1)</span>
+            <span class="tagpill" style="background:var(--surface);border:1px solid var(--border);color:var(--text-secondary)">Active (1)</span>
+          </div>
+
+          <div class="grow pad" style="padding-top:4px">
+            <!-- App 1: Shortlisted -->
+            <div class="asgn-card" style="border-left:4px solid #0F5298">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span class="asgn-pill" style="background:#EBF5FF;color:#0F5298;font-weight:800">Shortlisted ⭐</span>
+                <span style="font-size:10px;color:var(--text-muted)">2h ago</span>
+              </div>
+              <div class="asgn-title">Summer Reels Campaign 2026</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Zara India · Quoted ₹12,000</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid var(--divider)">
+                <span style="font-size:10.5px;color:var(--success);font-weight:700">Client reviewed pitch</span>
+                <div class="btn btn-dark btn-xs">Open Chat</div>
+              </div>
+            </div>
+
+            <!-- App 2: Submitted -->
+            <div class="asgn-card">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span class="asgn-pill" style="background:#FFF9E6;color:#8C6A0A">Under Review</span>
+                <span style="font-size:10px;color:var(--text-muted)">1 day ago</span>
+              </div>
+              <div class="asgn-title">Lead Video Editor for YouTube Docuseries</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Studio Frame · Quoted ₹25,000</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid var(--divider)">
+                <span style="font-size:10px;color:var(--text-muted)">7 total applicants</span>
+                <span style="font-size:10px;color:var(--error);font-weight:700;cursor:pointer">Withdraw</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bottomnav">
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+            <div class="nav-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span class="nav-dot"></span></div>
+            <div class="nav-fab">+</div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">G04</span><span class="sc-name">My Applications Tracker (SCR-031)</span></div>
+      <p class="sc-desc">Real-time status monitor for sent applications. Highlights shortlisted pitches, client review timestamps, and withdrawal options.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ 03 SCREENS: POSTER / BRIEF CREATION WIZARD ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">03</span><h2 class="sec-t">Brand Cockpit &amp; Brief Creation Wizard</h2><span class="sec-note">G05 to G10 · 5-step posting pipeline &amp; active briefs</span></div>
+  <div class="screens">
+
+    <!-- G05: BRAND BRIEF COCKPIT -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px">
+            <h2 class="h-lg" style="font-size:22px">My Briefs</h2>
+            <div class="btn btn-primary btn-xs" style="height:30px;font-size:11px">+ Post Brief</div>
+          </div>
+
+          <!-- Active Stats Cards -->
+          <div class="pad" style="margin-top:4px">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+              <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:8px 10px;text-align:center">
+                <div style="font-size:16px;font-weight:900">2</div>
+                <div style="font-size:9.5px;color:var(--text-muted);font-weight:700">ACTIVE</div>
+              </div>
+              <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:8px 10px;text-align:center">
+                <div style="font-size:16px;font-weight:900;color:var(--primary)">41</div>
+                <div style="font-size:9.5px;color:var(--text-muted);font-weight:700">APPLICANTS</div>
+              </div>
+              <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:8px 10px;text-align:center">
+                <div style="font-size:16px;font-weight:900;color:var(--success)">1</div>
+                <div style="font-size:9.5px;color:var(--text-muted);font-weight:700">HIRED</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-tag" style="margin-top:14px;margin-bottom:6px">Live Briefs</div>
+          <div class="grow pad">
+            <!-- Active Brief Card -->
+            <div class="asgn-card" style="border-color:#14110F">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span class="asgn-pill success">Accepting Pitches</span>
+                <span style="font-size:10px;color:var(--error);font-weight:700">Closing in 2 days</span>
+              </div>
+              <div class="asgn-title">Summer Reels Campaign 2026</div>
+              <div style="font-size:10.5px;color:var(--text-muted);margin-top:2px">Budget: ₹10k–₹15k · 3 Deliverables</div>
+
+              <!-- Pipeline count bar -->
+              <div style="background:var(--bg-secondary);border-radius:10px;padding:6px 10px;margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:11px;font-weight:800">34 Received</span>
+                <span style="font-size:11px;font-weight:800;color:#0F5298">8 Shortlisted</span>
+                <span style="font-size:11px;font-weight:800;color:var(--success)">1 Selected</span>
+              </div>
+
+              <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:10px">
+                <div class="btn btn-outline btn-xs">Manage Applicants →</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bottomnav">
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+            <div class="nav-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span class="nav-dot"></span></div>
+            <div class="nav-fab">+</div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">G05</span><span class="sc-name">My Briefs &amp; Cockpit (SCR-032)</span></div>
+      <p class="sc-desc">Brand management console showing total active briefs, candidate pipeline volumes, closing deadlines, and quick navigation to applicants.</p>
+    </div>
+
+    <!-- G06: POST BRIEF STEP 1 -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            <h3 class="h-md" style="font-size:16px">Post a Brief (1/5)</h3>
+            <span style="font-size:11px;font-weight:700;color:var(--text-muted)">Save Draft</span>
+          </div>
+
+          <div class="grow pad" style="padding-top:4px">
+            <span class="lbl" style="display:block;margin-bottom:6px">Select Collaborator Role</span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+              <div style="border:2px solid #14110F;background:#FFF9E6;border-radius:14px;padding:10px;text-align:center">
+                <div style="font-size:18px">✨</div>
+                <div style="font-size:11.5px;font-weight:800;margin-top:2px">Influencer</div>
+              </div>
+              <div style="border:1.5px solid var(--border);background:var(--surface);border-radius:14px;padding:10px;text-align:center">
+                <div style="font-size:18px">🎬</div>
+                <div style="font-size:11.5px;font-weight:800;margin-top:2px">Production Pro</div>
+              </div>
+            </div>
+
+            <span class="lbl" style="display:block;margin-bottom:4px">Primary Subcategory</span>
+            <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;height:40px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <span style="font-size:12px;font-weight:700">Fashion &amp; Lifestyle</span>
+              <span>▼</span>
+            </div>
+
+            <span class="lbl" style="display:block;margin-bottom:6px">Required Skills (Select up to 4)</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span class="tagpill" style="background:#14110F;color:#fff">Reels Editing ✕</span>
+              <span class="tagpill" style="background:#14110F;color:#fff">Styling ✕</span>
+              <span class="tagpill" style="background:var(--surface);border:1px solid var(--border)">+ Color Grading</span>
+              <span class="tagpill" style="background:var(--surface);border:1px solid var(--border)">+ Drone Shoot</span>
+            </div>
+          </div>
+
+          <div style="padding:10px 18px 16px;background:#fff;border-top:1px solid var(--border)">
+            <div class="btn btn-primary btn-sm">Next: Scope &amp; Deliverables &rarr;</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">G06</span><span class="sc-name">Post Brief — Step 1: Role &amp; Taxonomy (SCR-033)</span></div>
+      <p class="sc-desc">Wizard step 1 selecting target role, subcategory taxonomy from Section 6 of SOW, and multiselect required skill chips.</p>
+    </div>
+
+    <!-- G07: POST BRIEF STEP 2 -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg>
+            <h3 class="h-md" style="font-size:16px">Scope &amp; Details (2/5)</h3>
+            <span style="font-size:11px;font-weight:700;color:var(--text-muted)">Save Draft</span>
+          </div>
+
+          <div class="grow pad" style="padding-top:4px">
+            <div style="margin-bottom:10px">
+              <span class="lbl" style="display:block;margin-bottom:3px">Brief Title <span style="color:var(--error)">*</span></span>
+              <div style="background:var(--surface);border:1.5px solid #14110F;border-radius:12px;height:40px;padding:0 12px;display:flex;align-items:center;font-size:12px;font-weight:700">
+                Summer Reels Campaign 2026
+              </div>
+            </div>
+
+            <div style="margin-bottom:10px">
+              <span class="lbl" style="display:block;margin-bottom:3px">Project Description <span style="color:var(--error)">*</span></span>
+              <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:10px;height:70px;font-size:11px;line-height:1.4">
+                We are launching our 2026 Summer Collection across India. Need 2 creators to produce vibrant 60s reels.
+              </div>
+            </div>
+
+            <span class="lbl" style="display:block;margin-bottom:4px">Location Requirement</span>
+            <div style="display:flex;gap:6px;margin-bottom:10px">
+              <span class="tagpill" style="background:#14110F;color:#fff">On-Site (Mumbai)</span>
+              <span class="tagpill" style="background:var(--surface);border:1px solid var(--border)">Remote Work</span>
+            </div>
+          </div>
+
+          <div style="padding:10px 18px 16px;background:#fff;border-top:1px solid var(--border)">
+            <div class="btn btn-primary btn-sm">Next: Budget &amp; Timeline &rarr;</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">G07</span><span class="sc-name">Post Brief — Step 2: Scope &amp; Location (SCR-034)</span></div>
+      <p class="sc-desc">Wizard step 2 defining assignment title, deliverable description, and location modality (On-site vs Remote).</p>
+    </div>
+
+    <!-- G08: POST BRIEF STEP 3 -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg>
+            <h3 class="h-md" style="font-size:16px">Budget &amp; Schedule (3/5)</h3>
+            <span style="font-size:11px;font-weight:700;color:var(--text-muted)">Save Draft</span>
+          </div>
+
+          <div class="grow pad" style="padding-top:4px">
+            <span class="lbl" style="display:block;margin-bottom:4px">Budget Type</span>
+            <div style="display:flex;gap:6px;margin-bottom:12px">
+              <span class="tagpill" style="background:#14110F;color:#fff">Budget Range</span>
+              <span class="tagpill" style="background:var(--surface);border:1px solid var(--border)">Fixed Fee</span>
+              <span class="tagpill" style="background:var(--surface);border:1px solid var(--border)">Negotiable</span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+              <div>
+                <span class="lbl" style="display:block;margin-bottom:2px">Min Budget (INR)</span>
+                <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;height:38px;padding:0 10px;display:flex;align-items:center;font-size:12px;font-weight:800">₹ 10,000</div>
+              </div>
+              <div>
+                <span class="lbl" style="display:block;margin-bottom:2px">Max Budget (INR)</span>
+                <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;height:38px;padding:0 10px;display:flex;align-items:center;font-size:12px;font-weight:800">₹ 15,000</div>
+              </div>
+            </div>
+
+            <span class="lbl" style="display:block;margin-bottom:4px">Application Deadline</span>
+            <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;height:38px;padding:0 12px;display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:12px;font-weight:700">20 Nov 2026 (5 days left)</span>
+              <span>📅</span>
+            </div>
+          </div>
+
+          <div style="padding:10px 18px 16px;background:#fff;border-top:1px solid var(--border)">
+            <div class="btn btn-primary btn-sm">Next: Attachments &rarr;</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">G08</span><span class="sc-name">Post Brief — Step 3: Budget &amp; Timeline (SCR-035)</span></div>
+      <p class="sc-desc">Wizard step 3 configuring compensation range in INR, milestone structure, and application closure date.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ 04 SCREENS: CANDIDATE SELECTION & PIPELINE ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">04</span><h2 class="sec-t">Applicant Review, Shortlisting &amp; Hiring</h2><span class="sec-note">G11 to G13, G15, G16 · pipeline triage &amp; contract execution</span></div>
+  <div class="screens">
+
+    <!-- G11: APPLICANT PIPELINE -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg>
+            <h3 class="h-md" style="font-size:16px">Applicants (34)</h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          </div>
+
+          <!-- Pipeline Filter Tabs -->
+          <div style="display:flex;gap:6px;padding:0 18px 8px;overflow-x:auto">
+            <span class="tagpill" style="background:#14110F;color:#fff">All (34)</span>
+            <span class="tagpill" style="background:#EBF5FF;color:#0F5298;border:1px solid #C2E0FF">Shortlisted (8)</span>
+            <span class="tagpill" style="background:var(--surface);border:1px solid var(--border)">Selected (1)</span>
+          </div>
+
+          <div class="grow pad" style="padding-top:4px">
+            <!-- Candidate 1 -->
+            <div class="app-card">
+              <div class="app-header">
+                <div class="app-avatar" style="background:var(--c-pink)">P</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:800;display:flex;align-items:center;gap:4px">
+                    Priya Sharma <svg width="10" height="10" viewBox="0 0 24 24" fill="#2E9E6B"><circle cx="12" cy="12" r="10"/></svg>
+                  </div>
+                  <div style="font-size:10.5px;color:var(--text-muted)">Fashion Creator · Mumbai · 120K</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-size:13px;font-weight:900">₹12,000</div>
+                  <span class="asgn-pill" style="background:#EBF5FF;color:#0F5298">Shortlisted ⭐</span>
+                </div>
+              </div>
+              <div class="app-pitch">"I have shot 14+ fashion reels with similar summer aesthetic. Can deliver in 48h."</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+                <span style="font-size:10px;color:var(--text-muted)">Attached: 1 Drive Archive</span>
+                <div style="display:flex;gap:6px">
+                  <div class="btn btn-outline btn-xs">Message</div>
+                  <div class="btn btn-primary btn-xs">Select / Hire ✓</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Candidate 2 -->
+            <div class="app-card">
+              <div class="app-header">
+                <div class="app-avatar" style="background:var(--c-mint)">R</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:800">Rhea Kapoor</div>
+                  <div style="font-size:10.5px;color:var(--text-muted)">Lifestyle Creator · 45K</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-size:13px;font-weight:900">₹14,000</div>
+                  <span class="asgn-pill">New</span>
+                </div>
+              </div>
+              <div class="app-pitch">"Would love to collaborate on the Zara Summer Edit!"</div>
+              <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:8px">
+                <div class="btn btn-outline btn-xs">Shortlist ⭐</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">G11</span><span class="sc-name">Applicant Pipeline &amp; Triage (SCR-038)</span></div>
+      <p class="sc-desc">Brand review console displaying applicant proposals, quoted compensation bids, attached portfolio work, and one-tap hiring triggers.</p>
+    </div>
+
+    <!-- G12: PROPOSAL DEEP-DIVE -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg>
+            <h3 class="h-md" style="font-size:16px">Pitch Review</h3>
+            <span style="font-size:11px;font-weight:700;color:var(--error)">Decline</span>
+          </div>
+
+          <div class="grow pad" style="padding-top:4px;padding-bottom:16px">
+            <!-- Creator Profile Header -->
+            <div style="display:flex;align-items:center;gap:12px;background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:12px">
+              <div class="app-avatar" style="background:var(--c-pink);width:48px;height:48px;font-size:18px">P</div>
+              <div>
+                <div style="font-size:14px;font-weight:800">Priya Sharma <svg width="11" height="11" viewBox="0 0 24 24" fill="#2E9E6B"><circle cx="12" cy="12" r="10"/></svg></div>
+                <div style="font-size:11px;color:var(--text-secondary)">Fashion Creator · Mumbai · 4.9 ★ (18 reviews)</div>
+                <div class="asgn-pill highlight" style="margin-top:4px">95% Match Score</div>
+              </div>
+            </div>
+
+            <!-- Pitch Details -->
+            <div style="margin-top:12px">
+              <span class="lbl">Cover Message</span>
+              <p class="body" style="font-size:12px;margin-top:4px;line-height:1.5;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px">
+                "Hi Zara team! I have shot 14+ fashion reels with similar summer aesthetic. I have full studio lighting in Bandra and can deliver raw cuts within 48 hours. Let's make this go viral!"
+              </p>
+            </div>
+
+            <!-- Proof of Work Attachments -->
+            <div style="margin-top:12px">
+              <span class="lbl">Attached Portfolio Sample</span>
+              <div style="background:#FFF9E6;border:1.5px solid #FFE486;border-radius:12px;padding:10px;margin-top:4px;display:flex;align-items:center;justify-content:space-between">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:18px">📁</span>
+                  <div>
+                    <div style="font-size:11.5px;font-weight:800">Netflix India Collab Master</div>
+                    <div style="font-size:9.5px;color:#8C6A0A">Verified Cloud Drive · 2.4M Reach</div>
+                  </div>
+                </div>
+                <span class="btn btn-outline btn-xs" style="height:24px">Inspect ↗</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding:10px 18px 16px;background:#fff;border-top:1px solid var(--border);display:flex;gap:8px">
+            <div class="btn btn-outline btn-sm" style="flex:1">Chat First</div>
+            <div class="btn btn-primary btn-sm" style="flex:1">Hire Priya (₹12k) ✓</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">G12</span><span class="sc-name">Applicant Pitch Inspection (SCR-039)</span></div>
+      <p class="sc-desc">In-depth candidate review view. Features match-scoring algorithms, full cover pitch letters, verified portfolio attachments, and direct hiring action.</p>
+    </div>
+
+    <!-- G13: ACTIVE WORKSPACE & MILESTONE TRACKER -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg>
+            <h3 class="h-md" style="font-size:16px">Project Workspace</h3>
+            <div style="width:28px;height:28px;border-radius:999px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900">💬</div>
+          </div>
+
+          <div class="grow pad" style="padding-top:4px">
+            <!-- Active Project Banner -->
+            <div style="background:#14110F;color:#fff;border-radius:18px;padding:12px 14px;margin-bottom:12px">
+              <span class="asgn-pill highlight" style="background:#FFD64A;color:#14110F">IN PROGRESS</span>
+              <div style="font-size:14px;font-weight:900;margin-top:6px">Summer Reels Campaign 2026</div>
+              <div style="font-size:11px;color:#A39A8F;margin-top:2px">Collaborator: Priya Sharma · ₹12,000 in Escrow</div>
+            </div>
+
+            <!-- Milestone Timeline -->
+            <span class="lbl">Milestone Deliverables</span>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+              <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:10px;display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <div style="font-size:11.5px;font-weight:800">1. Moodboard &amp; Concepts</div>
+                  <div style="font-size:9.5px;color:var(--success)">Approved on 14 Nov</div>
+                </div>
+                <span style="font-size:14px;color:var(--success)">✓</span>
+              </div>
+
+              <div style="background:#FFF9E6;border:1.5px solid #FFD64A;border-radius:12px;padding:10px;display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <div style="font-size:11.5px;font-weight:800">2. Rough Cut Delivery</div>
+                  <div style="font-size:9.5px;color:#8C6A0A">Submitted today · Pending review</div>
+                </div>
+                <div class="btn btn-dark btn-xs" style="height:24px">Review Work</div>
+              </div>
+
+              <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:10px;display:flex;align-items:center;justify-content:space-between;opacity:.6">
+                <div>
+                  <div style="font-size:11.5px;font-weight:800">3. 4K Master &amp; Raw Assets</div>
+                  <div style="font-size:9.5px;color:var(--text-muted)">Due 24 Nov</div>
+                </div>
+                <span style="font-size:12px;color:var(--text-muted)">🔒</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">G13</span><span class="sc-name">Active Workspace &amp; Milestone Tracker (SCR-040)</span></div>
+      <p class="sc-desc">Project delivery dashboard for active collaborations. Tracks progressive milestone submissions, approvals, and escrow releases.</p>
+    </div>
+
+    <!-- G16: PROJECT COMPLETION & SIGN-OFF -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <div class="grow flexcol" style="align-items:center;justify-content:center;text-align:center;padding:0 24px">
+            <div style="width:72px;height:72px;border-radius:24px;background:var(--success-bg);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:36px;margin-bottom:14px">
+              🎉
+            </div>
+            <h2 class="h-lg" style="font-size:22px">Assignment Completed!</h2>
+            <p class="body" style="font-size:12px;margin-top:6px;max-width:240px">
+              All 3 deliverables have been approved. Escrow of <b>₹12,000</b> has been successfully released.
+            </p>
+
+            <!-- Rating prompt box -->
+            <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:14px;width:100%;margin-top:20px">
+              <div style="font-size:12px;font-weight:800">Rate your collaboration</div>
+              <div style="display:flex;justify-content:center;gap:6px;font-size:22px;margin-top:6px;cursor:pointer">
+                <span>⭐</span><span>⭐</span><span>⭐</span><span>⭐</span><span>⭐</span>
+              </div>
+            </div>
+
+            <div style="width:100%;margin-top:16px;display:flex;flex-direction:column;gap:8px">
+              <div class="btn btn-primary btn-sm">Leave a Public Review →</div>
+              <div class="btn btn-outline btn-sm">Download Tax Invoice</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">G16</span><span class="sc-name">Project Completion &amp; Sign-Off (SCR-043)</span></div>
+      <p class="sc-desc">Celebratory delivery sign-off state. Releases escrow funds, generates automated GST invoice, and prompts mutual 2-way reviews.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ 05 DIALOGS & OVERLAYS ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">05</span><h2 class="sec-t">Assignment Dialogs, Overlays &amp; Bottom Sheets</h2><span class="sec-note">DLG-G01 to DLG-G08 · modal interactions</span></div>
+  <div class="dgrid">
+
+    <!-- DLG-G01: FILTER SHEET -->
+    <div class="dlgcard">
+      <div class="dc-dim"></div>
+      <div class="dc-bg"><div style="height:140px"></div></div>
+      <div class="dc-sheet">
+        <div class="sh-h"></div>
+        <h4 style="font-size:13px;margin-bottom:10px">Filter Assignments</h4>
+        <span class="lbl" style="display:block;margin-bottom:4px">Budget Range (INR)</span>
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <span class="tagpill" style="background:#14110F;color:#fff">&lt; ₹10k</span>
+          <span class="tagpill" style="background:var(--surface);border:1px solid var(--border)">₹10k–₹25k</span>
+          <span class="tagpill" style="background:var(--surface);border:1px solid var(--border)">₹25k+</span>
+        </div>
+        <span class="lbl" style="display:block;margin-bottom:4px">Location</span>
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <span class="tagpill" style="background:#14110F;color:#fff">All India</span>
+          <span class="tagpill" style="background:var(--surface);border:1px solid var(--border)">Mumbai</span>
+          <span class="tagpill" style="background:var(--surface);border:1px solid var(--border)">Delhi</span>
+        </div>
+        <div class="btn btn-primary btn-sm">Apply Filters (24)</div>
+      </div>
+      <div style="padding:10px 14px;background:#fff;border-top:1px solid var(--border)"><span class="sc-id">DLG-G01</span> Assignment Filter Sheet</div>
+    </div>
+
+    <!-- DLG-G02: SUCCESS OVERLAY -->
+    <div class="dlgcard">
+      <div class="dc-dim"></div>
+      <div class="dc-bg"><div style="height:140px"></div></div>
+      <div class="dc-center">
+        <div style="font-size:32px;margin-bottom:6px">🚀</div>
+        <h3 class="h-md" style="font-size:16px">Pitch Sent!</h3>
+        <p class="body" style="font-size:11px;margin-top:4px">Zara India will review your proposal and respond within 48 hours.</p>
+        <div class="btn btn-primary btn-xs" style="margin-top:12px;width:100%">Track in Applications →</div>
+      </div>
+      <div style="padding:10px 14px;background:#fff;border-top:1px solid var(--border)"><span class="sc-id">DLG-G02</span> Application Success Confirmation</div>
+    </div>
+
+    <!-- DLG-G04: HIRE CONFIRMATION -->
+    <div class="dlgcard">
+      <div class="dc-dim"></div>
+      <div class="dc-bg"><div style="height:140px"></div></div>
+      <div class="dc-sheet">
+        <div class="sh-h"></div>
+        <h4 style="font-size:13px;margin-bottom:6px">Select &amp; Hire Priya Sharma?</h4>
+        <p class="body" style="font-size:11px;margin-bottom:10px">This locks the ₹12,000 project fee into secure escrow and creates an active project workspace.</p>
+        <div class="btn btn-primary btn-sm">Confirm &amp; Create Contract</div>
+      </div>
+      <div style="padding:10px 14px;background:#fff;border-top:1px solid var(--border)"><span class="sc-id">DLG-G04</span> Hire Candidate Contract Sheet</div>
+    </div>
+
+    <!-- DLG-G08: FREE QUOTA LIMIT -->
+    <div class="dlgcard">
+      <div class="dc-dim"></div>
+      <div class="dc-bg"><div style="height:140px"></div></div>
+      <div class="dc-center">
+        <div style="font-size:24px;margin-bottom:6px">⚡</div>
+        <h3 class="h-md" style="font-size:15px">Monthly Pitch Limit Reached</h3>
+        <p class="body" style="font-size:11px;margin-top:4px">Free tier allows 10 applications per month. Upgrade to Pro for unlimited pitches.</p>
+        <div class="btn btn-primary btn-xs" style="margin-top:12px;width:100%">Upgrade to Pro for ₹499/mo</div>
+      </div>
+      <div style="padding:10px 14px;background:#fff;border-top:1px solid var(--border)"><span class="sc-id">DLG-G08</span> Application Quota Paywall</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ 06 SOW & DATA SPECIFICATION ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">06</span><h2 class="sec-t">Data Mapping &amp; SOW Schema Reconciliation</h2></div>
+
+  <table class="mapping-table">
+    <thead>
+      <tr>
+        <th>Screen ID</th>
+        <th>SOW Clause</th>
+        <th>Required Schema &amp; Data Fields</th>
+        <th>State / Trigger</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>G01</b></td>
+        <td>SOW §11 (Assignments Feed)</td>
+        <td>assignment_id, poster_brand, title, budget_min, budget_max, deadline, skills_tags, location</td>
+        <td>Creator taps Assignments navigation tab</td>
+      </tr>
+      <tr>
+        <td><b>G02</b></td>
+        <td>SOW §11 (Brief Detail)</td>
+        <td>full_description, deliverables_list, brand_rating, verified_status, escrow_flag</td>
+        <td>Creator taps an opportunity card</td>
+      </tr>
+      <tr>
+        <td><b>G03</b></td>
+        <td>SOW §12 (Submit Application)</td>
+        <td>proposed_rate_inr, estimated_days, pitch_text, attached_portfolio_ids[]</td>
+        <td>Creator taps 'Apply for Brief'</td>
+      </tr>
+      <tr>
+        <td><b>G04</b></td>
+        <td>SOW §12 (Application Tracker)</td>
+        <td>application_status (applied, shortlisted, hired, rejected), quoted_rate, client_reviewed_at</td>
+        <td>Creator views 'My Applications' list</td>
+      </tr>
+      <tr>
+        <td><b>G05</b></td>
+        <td>SOW §11 (Poster Cockpit)</td>
+        <td>active_briefs_count, applicants_count, shortlisted_count, budget_allocated</td>
+        <td>Brand views 'My Briefs' dashboard</td>
+      </tr>
+      <tr>
+        <td><b>G06–G10</b></td>
+        <td>SOW §11 (Post Brief Wizard)</td>
+        <td>category_id, subcategory_id, skills[], title, description, location, budget_range, deadline</td>
+        <td>Brand initiates 5-step posting flow</td>
+      </tr>
+      <tr>
+        <td><b>G11</b></td>
+        <td>SOW §11, §12 (Applicant Triage)</td>
+        <td>applicant_profile, match_score, bid_inr, portfolio_links, shortlist_flag</td>
+        <td>Brand reviews applicants for an assignment</td>
+      </tr>
+      <tr>
+        <td><b>G13</b></td>
+        <td>SOW §11, §18 (Milestone Tracker)</td>
+        <td>milestone_title, due_date, status (pending, submitted, approved), escrow_amount</td>
+        <td>Active contracted collaboration workspace</td>
+      </tr>
+      <tr>
+        <td><b>G16</b></td>
+        <td>SOW §11, §16 (Project Completion)</td>
+        <td>final_signoff_at, invoice_pdf_url, rating_prompt_flag</td>
+        <td>Brand approves final milestone deliverable</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note" style="margin-top:24px">
+    <b>Backend Engineering Architecture Note (Fastify + Prisma):</b><br>
+    1. <b>Escrow State Machine:</b> Assignment status transitions follow strict validation: <code>Draft &rarr; Published &rarr; Applications_Open &rarr; In_Progress &rarr; Completed</code>.<br>
+    2. <b>Rate Quoting:</b> Proposed rates are validated to ensure they fall within or close to reasonable client budget boundaries.<br>
+    3. <b>Direct Chat Handoff:</b> When a candidate is selected, an automated trigger initiates an assignment-linked chat room in Module G (Real-Time Chat) with the brief header pinned.
+  </div>
+</div>
+
+</div>
+</body>
+</html>

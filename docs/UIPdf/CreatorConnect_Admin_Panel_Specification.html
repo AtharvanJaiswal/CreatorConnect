@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreatorConnect — Admin Panel Master Specification</title>
+<style>
+:root { color-scheme: light; }
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6;color:#1a1a2e;background:#fff;max-width:1100px;margin:0 auto;padding:40px 48px 80px;}
+@media print{body{padding:0 32px;font-size:12px;}@page{margin:2cm;}}
+
+/* ── Cover ── */
+.cover{text-align:center;padding:80px 0 60px;border-bottom:3px solid #e8a020;margin-bottom:56px;}
+.cover .brand{font-size:52px;font-weight:800;letter-spacing:-1px;color:#1a1a2e;}
+.cover .sub{font-size:32px;font-weight:300;color:#e8a020;margin:8px 0;}
+.cover .title{font-size:20px;color:#666;margin:16px 0 32px;}
+.cover .meta{font-size:13px;color:#999;line-height:2;}
+
+/* ── TOC ── */
+.toc{background:#f8f8fb;border-left:4px solid #1a1a2e;padding:24px 32px;margin-bottom:48px;border-radius:0 8px 8px 0;}
+.toc h2{font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#1a1a2e;margin-bottom:16px;}
+.toc ol{padding-left:20px;}
+.toc li{padding:3px 0;font-size:13px;}
+.toc a{color:#1a1a2e;text-decoration:none;}
+.toc a:hover{color:#e8a020;text-decoration:underline;}
+
+/* ── Headings ── */
+h1{font-size:28px;font-weight:800;color:#1a1a2e;margin:56px 0 16px;padding-bottom:10px;border-bottom:2.5px solid #e8a020;}
+h2{font-size:20px;font-weight:700;color:#1a1a2e;margin:36px 0 12px;}
+h3{font-size:16px;font-weight:700;color:#333;margin:28px 0 8px;}
+h4{font-size:14px;font-weight:700;color:#555;margin:20px 0 6px;text-transform:uppercase;letter-spacing:.06em;}
+
+/* ── Body ── */
+p{margin:8px 0 12px;color:#2c2c2c;}
+ul,ol{margin:8px 0 14px;padding-left:28px;}
+li{margin:4px 0;color:#2c2c2c;}
+
+/* ── Note box ── */
+.note{background:#fff8ec;border-left:4px solid #e8a020;padding:12px 16px;margin:16px 0;border-radius:0 6px 6px 0;font-size:13px;color:#555;font-style:italic;}
+
+/* ── Section label ── */
+.lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#e8a020;margin:28px 0 6px;}
+
+/* ── Tables ── */
+.tbl-wrap{overflow-x:auto;margin:14px 0 24px;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{background:#1a1a2e;color:#fff;font-weight:700;padding:10px 12px;text-align:left;white-space:nowrap;}
+tbody tr:nth-child(even){background:#f5f5f5;}
+tbody tr:nth-child(odd){background:#fff;}
+tbody td{padding:8px 12px;border-bottom:1px solid #e8e8e8;vertical-align:top;}
+tbody tr:hover{background:#fffbe8;}
+
+/* ── Status badges ── */
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;}
+.badge-green{background:#e6f4ec;color:#2e7d52;}
+.badge-amber{background:#fff3cd;color:#856404;}
+.badge-red{background:#fce4e4;color:#c0392b;}
+.badge-blue{background:#e3f0ff;color:#1a5fa1;}
+.badge-grey{background:#eeeeee;color:#555;}
+
+/* ── Page break hint ── */
+.pb{page-break-before:always;}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     COVER
+══════════════════════════════════════════════════════ -->
+<div class="cover">
+  <div class="brand">CREATORCONNECT</div>
+  <div class="sub">Admin Panel</div>
+  <div class="title">Master Specification &amp; Data Handbook</div>
+  <div class="meta">
+    Prepared by: Codly360<br>
+    Client: Anjana<br>
+    Version: 1.0 &nbsp;|&nbsp; November 2026<br>
+    <em>Confidential — Internal Use Only</em>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     TABLE OF CONTENTS
+══════════════════════════════════════════════════════ -->
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <ol>
+    <li><a href="#s1">Purpose and Scope</a></li>
+    <li><a href="#s2">Admin Roles and Access Control (RBAC)</a></li>
+    <li><a href="#s3">Admin Dashboard</a></li>
+    <li><a href="#s4">User Management Module</a></li>
+    <li><a href="#s5">Verification Management Module</a></li>
+    <li><a href="#s6">Assignment Management Module</a></li>
+    <li><a href="#s7">Content Moderation Module</a></li>
+    <li><a href="#s8">Review and Rating Management</a></li>
+    <li><a href="#s9">Subscription and Membership Management</a></li>
+    <li><a href="#s10">Payment Management Module</a></li>
+    <li><a href="#s11">Referral and Reward Management</a></li>
+    <li><a href="#s12">Notification Management Module</a></li>
+    <li><a href="#s13">Dispute Management Module</a></li>
+    <li><a href="#s14">Analytics and Reporting Module</a></li>
+    <li><a href="#s15">Platform Configuration and Settings</a></li>
+    <li><a href="#s16">Admin Panel Screen Inventory</a></li>
+    <li><a href="#s17">Data Entities and Fields Reference</a></li>
+    <li><a href="#s18">Backend API Requirements</a></li>
+    <li><a href="#s19">Technical and Non-Functional Requirements</a></li>
+    <li><a href="#appA">Appendix A: Glossary</a></li>
+    <li><a href="#appB">Appendix B: Change Log</a></li>
+  </ol>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 1
+══════════════════════════════════════════════════════ -->
+<h1 id="s1">1. Purpose and Scope of This Document</h1>
+<p>This document is the single authoritative reference for the CreatorConnect Admin Panel. It captures every data entity the platform manages, every administrative workflow that must be supported, every screen, action, filter, status lifecycle, and business rule that the development team needs to implement in the backend APIs and the web-based Admin Panel UI.</p>
+<p>It serves three audiences simultaneously:</p>
+<ul>
+  <li><strong>Developers</strong> — every table, field, status enum, and API endpoint is explicitly specified before a line of code is written.</li>
+  <li><strong>Designers</strong> — every screen's required data columns, action buttons, filter options, and empty states are enumerated.</li>
+  <li><strong>Client (Anjana / CreatorConnect)</strong> — the delivered system can be verified against this specification during UAT.</li>
+</ul>
+<p>The scope covers the full Admin Panel described in the CreatorConnect Statement of Work (Codly360, 2026): User Management, Verification, Assignment Management, Content Moderation, Review Management, Subscription Management, Payment Management, Referral Management, Notification Management, Analytics &amp; Reporting, Dispute Management, and all Platform Configuration and System Settings.</p>
+<p>This document does not cover the mobile application, user-facing web application, or the backend API architecture in detail — those are addressed in separate specification documents.</p>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 2
+══════════════════════════════════════════════════════ -->
+<h1 id="s2">2. Admin Roles and Access Control (RBAC)</h1>
+<p>The Admin Panel must support role-based access control (RBAC). Not every person who accesses the Admin Panel should be able to see payment data, delete content, or change platform configuration. The following roles must be implemented from day one, with the architecture supporting addition of new roles in future without code changes.</p>
+
+<h2>2.1 Defined Admin Roles</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Role</th><th>Description</th><th>Key Permissions</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Super Admin</strong></td><td>Full system access. Only 1–2 people should hold this role (founders / technical lead).</td><td>All modules, all actions, platform config, role assignment, audit log access</td></tr>
+    <tr><td><strong>Operations Manager</strong></td><td>Day-to-day platform operations. Manages verifications, disputes, escalated reports.</td><td>User mgmt, verification, assignments, disputes, notifications — no config changes</td></tr>
+    <tr><td><strong>Moderation Admin</strong></td><td>Content safety focus. Reviews flagged posts, comments, reviews, chat reports.</td><td>Content moderation, review moderation, user warnings — no payment/subscription data</td></tr>
+    <tr><td><strong>Finance Admin</strong></td><td>Payment reconciliation, subscription oversight, refund decisions.</td><td>Payments, subscriptions, revenue analytics — read-only on users, no moderation</td></tr>
+    <tr><td><strong>Support Admin</strong></td><td>Handles user-submitted support tickets and disputes.</td><td>Dispute module, read-only user profiles, notification sender — no delete access</td></tr>
+    <tr><td><strong>Analytics Viewer</strong></td><td>Business intelligence, investor reporting, growth tracking.</td><td>Read-only access to all analytics dashboards — no actions on any entity</td></tr>
+  </tbody>
+</table></div>
+
+<h2>2.2 Permission Matrix</h2>
+<p>Each module has four permission levels: <strong>None</strong> (module hidden), <strong>View</strong> (read-only), <strong>Edit</strong> (can update/approve/reject), and <strong>Full</strong> (can delete, bulk-action, export).</p>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Module</th><th>Super Admin</th><th>Ops Manager</th><th>Moderation</th><th>Finance</th><th>Support</th><th>Analytics</th></tr></thead>
+  <tbody>
+    <tr><td>User Management</td><td>Full</td><td>Edit</td><td>View</td><td>View</td><td>View</td><td>None</td></tr>
+    <tr><td>Verification</td><td>Full</td><td>Full</td><td>View</td><td>None</td><td>View</td><td>None</td></tr>
+    <tr><td>Assignments</td><td>Full</td><td>Edit</td><td>Edit</td><td>None</td><td>View</td><td>View</td></tr>
+    <tr><td>Content Moderation</td><td>Full</td><td>Edit</td><td>Full</td><td>None</td><td>View</td><td>None</td></tr>
+    <tr><td>Reviews</td><td>Full</td><td>Edit</td><td>Full</td><td>None</td><td>View</td><td>None</td></tr>
+    <tr><td>Subscriptions</td><td>Full</td><td>Edit</td><td>None</td><td>Full</td><td>View</td><td>View</td></tr>
+    <tr><td>Payments</td><td>Full</td><td>View</td><td>None</td><td>Full</td><td>View</td><td>View</td></tr>
+    <tr><td>Referrals</td><td>Full</td><td>Edit</td><td>View</td><td>View</td><td>View</td><td>View</td></tr>
+    <tr><td>Notifications</td><td>Full</td><td>Full</td><td>None</td><td>None</td><td>Edit</td><td>None</td></tr>
+    <tr><td>Disputes</td><td>Full</td><td>Full</td><td>View</td><td>View</td><td>Full</td><td>None</td></tr>
+    <tr><td>Analytics</td><td>Full</td><td>View</td><td>None</td><td>Full</td><td>None</td><td>Full</td></tr>
+    <tr><td>Platform Config</td><td>Full</td><td>None</td><td>None</td><td>None</td><td>None</td><td>None</td></tr>
+    <tr><td>Audit Log</td><td>Full</td><td>View</td><td>None</td><td>None</td><td>None</td><td>None</td></tr>
+  </tbody>
+</table></div>
+
+<h2>2.3 Audit Log Requirements</h2>
+<p>Every destructive or consequential admin action must be recorded in an immutable audit log. Each entry must capture:</p>
+<ul>
+  <li>Timestamp (UTC, millisecond precision)</li>
+  <li>Admin user ID and display name</li>
+  <li>Admin role at time of action</li>
+  <li>Action type (e.g. USER_SUSPENDED, VERIFICATION_APPROVED, PAYMENT_REFUNDED)</li>
+  <li>Target entity type and ID (e.g. user_id: 12345)</li>
+  <li>Previous state — JSON snapshot of changed fields before the action</li>
+  <li>New state — JSON snapshot after the action</li>
+  <li>IP address and device/browser of the admin session</li>
+  <li>Optional reason/comment entered by the admin</li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 3
+══════════════════════════════════════════════════════ -->
+<h1 id="s3">3. Admin Dashboard (Home Screen)</h1>
+<p>The dashboard is the first screen an admin sees after login. It surfaces actionable operational health information — not vanity metrics.</p>
+
+<h2>3.1 KPI Cards (Top Row)</h2>
+<p>Eight live KPI cards, each showing the current value, % change vs. the previous 7-day period, and an inline 7-day sparkline. Cards deep-link to the relevant module.</p>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Card</th><th>Metric</th><th>Deep Link</th></tr></thead>
+  <tbody>
+    <tr><td>Total Users</td><td>All registered accounts (all roles)</td><td>/admin/users</td></tr>
+    <tr><td>New Users (7d)</td><td>Registrations in the last 7 days</td><td>/admin/users?filter=new_7d</td></tr>
+    <tr><td>Active Users (DAU)</td><td>Unique users who performed any action today</td><td>/admin/analytics/dau</td></tr>
+    <tr><td>Pending Verifications</td><td>Verification requests awaiting admin review</td><td>/admin/verification?status=pending</td></tr>
+    <tr><td>Open Disputes</td><td>Disputes with status = open or in_review</td><td>/admin/disputes?status=open</td></tr>
+    <tr><td>Active Assignments</td><td>Assignments with status = published or in_progress</td><td>/admin/assignments?status=active</td></tr>
+    <tr><td>Revenue (MTD)</td><td>Total payment amount received month-to-date (₹)</td><td>/admin/payments/revenue</td></tr>
+    <tr><td>Active Subscriptions</td><td>Users with a currently active paid plan</td><td>/admin/subscriptions?status=active</td></tr>
+  </tbody>
+</table></div>
+
+<h2>3.2 Pending Actions Feed</h2>
+<p>A prioritised feed of items requiring admin attention, sorted by urgency, one-click access to the relevant record:</p>
+<ul>
+  <li>Verification requests submitted more than 48 hours ago and still pending — shown as "Overdue" with a red badge</li>
+  <li>Open disputes with no admin response in 24 hours</li>
+  <li>User accounts auto-flagged by the system (e.g. multiple reports in 24h)</li>
+  <li>Payments flagged for manual review by the payment gateway</li>
+  <li>Subscription renewals that failed and have been retried 3+ times</li>
+  <li>Assignments reported by 3+ users that have not been reviewed</li>
+</ul>
+
+<h2>3.3 Charts Section</h2>
+<ul>
+  <li><strong>User Growth Chart</strong> — Line chart, daily registrations for the last 30 days with cumulative total secondary line. Filterable by role.</li>
+  <li><strong>Revenue Chart</strong> — Bar chart, daily revenue for the last 30 days (subscription vs. one-time payments) with MoM comparison overlay.</li>
+  <li><strong>Assignment Activity Chart</strong> — Stacked bar chart showing assignments created vs. applications submitted vs. assignments completed per day for the last 30 days.</li>
+</ul>
+
+<h2>3.4 Recent Activity Log</h2>
+<p>Scrollable list of the last 50 platform-wide user events, newest first. Each row shows: timestamp, event type, actor (display name + role), and a brief description. Clicking a row opens the relevant admin detail screen.</p>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 4
+══════════════════════════════════════════════════════ -->
+<h1 id="s4">4. User Management Module</h1>
+<p>User Management is the most frequently used module. Every registered account across all roles is managed here — covering the full lifecycle from registration through suspension, deletion, and data export.</p>
+
+<h2>4.1 User List View</h2>
+<h3>4.1.1 Display Columns</h3>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Column</th><th>Data Source</th><th>Sortable</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>Avatar + Name</td><td>users.profile_photo + users.full_name</td><td>Yes (name)</td><td>Clicking opens user detail</td></tr>
+    <tr><td>Handle / Username</td><td>users.username</td><td>Yes</td><td>Shown as @handle</td></tr>
+    <tr><td>Role(s)</td><td>user_roles table</td><td>Yes</td><td>Multi-role users show multiple badges</td></tr>
+    <tr><td>Email</td><td>users.email</td><td>Yes</td><td>Partially masked by default; full visible to Super Admin</td></tr>
+    <tr><td>Phone</td><td>users.phone</td><td>No</td><td>Masked — last 4 digits visible</td></tr>
+    <tr><td>City / State</td><td>profiles.city + profiles.state</td><td>Yes</td><td></td></tr>
+    <tr><td>Verification Status</td><td>profiles.verification_status</td><td>Yes</td><td>Badges: Unverified / Pending / Verified / Rejected</td></tr>
+    <tr><td>Membership</td><td>subscriptions.plan_name</td><td>Yes</td><td>Free / Premium / Brand</td></tr>
+    <tr><td>Joined Date</td><td>users.created_at</td><td>Yes</td><td>Relative time + hover shows exact date</td></tr>
+    <tr><td>Last Active</td><td>users.last_seen_at</td><td>Yes</td><td>Relative time</td></tr>
+    <tr><td>Status</td><td>users.account_status</td><td>Yes</td><td>Active / Suspended / Deactivated / Banned</td></tr>
+    <tr><td>Actions</td><td>UI only</td><td>No</td><td>View, Suspend, Message, More (dropdown)</td></tr>
+  </tbody>
+</table></div>
+
+<h3>4.1.2 Filter Options</h3>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Filter</th><th>Type</th><th>Options / Range</th></tr></thead>
+  <tbody>
+    <tr><td>Account Status</td><td>Multi-select checkbox</td><td>Active, Suspended, Deactivated, Banned</td></tr>
+    <tr><td>Role</td><td>Multi-select checkbox</td><td>Creator/Influencer, Production Professional, Brand/Company, Podcaster</td></tr>
+    <tr><td>Verification Status</td><td>Multi-select checkbox</td><td>Unverified, Pending, Verified, Rejected</td></tr>
+    <tr><td>Membership Plan</td><td>Multi-select checkbox</td><td>Free, Premium, Brand Premium</td></tr>
+    <tr><td>Registration Date</td><td>Date range picker</td><td>From → To</td></tr>
+    <tr><td>Last Active</td><td>Dropdown</td><td>Today, Last 7 days, Last 30 days, Last 90 days, Inactive 90+ days</td></tr>
+    <tr><td>City</td><td>Text search / autocomplete</td><td>Matches against profiles.city</td></tr>
+    <tr><td>State</td><td>Dropdown</td><td>All Indian states + UTs</td></tr>
+    <tr><td>Has Reports</td><td>Toggle (Yes/No)</td><td>Users who have at least one open report against them</td></tr>
+    <tr><td>Profile Completeness</td><td>Range slider</td><td>0–100% (requires backend computed field)</td></tr>
+    <tr><td>OTP Verified</td><td>Toggle</td><td>Yes / No</td></tr>
+    <tr><td>Email Verified</td><td>Toggle</td><td>Yes / No</td></tr>
+  </tbody>
+</table></div>
+
+<h3>4.1.3 Search</h3>
+<p>Global search bar. Searches across full name, username/handle, email address, and phone number (last 4 digits). Real-time results debounced at 300ms. Case-insensitive, partial-match support.</p>
+
+<h3>4.1.4 Bulk Actions</h3>
+<p>Row-level checkboxes with a "Select All" toggle. When rows are selected, a bulk-actions toolbar appears:</p>
+<ul>
+  <li><strong>Send Notification</strong> — Opens the notification composer pre-filled with selected user IDs as recipients.</li>
+  <li><strong>Export to CSV</strong> — Exports selected users' non-sensitive fields. Requires Super Admin permission for PII.</li>
+  <li><strong>Suspend Selected</strong> — Triggers the suspension flow for all selected accounts. Requires reason and confirmation dialog.</li>
+  <li><strong>Assign Tag / Label</strong> — Applies an internal admin tag (e.g. "VIP Creator", "Watch List") — never visible to users.</li>
+</ul>
+
+<h2>4.2 User Detail View</h2>
+<p>Clicking any user row opens a full-page User Detail view, organised into collapsible tabs. A sticky header always shows: profile photo, full name, @username, verification badge, role(s), account status badge, membership plan, and quick-action buttons (Edit, Send Message, Suspend, Ban, Impersonate [Super Admin only]).</p>
+
+<h3>4.2.1 Tab: Profile Information</h3>
+<p>All data from the users and profiles tables in read-only format: full name, username, email, phone, city, state, language(s), primary category, subcategory(ies), skills, bio, availability, rate/pricing, User ID (UUID), registration date, last login, login method, OTP/email verification status, internal admin tags, and admin notes (editable).</p>
+
+<h3>4.2.2 Tab: Roles</h3>
+<p>All roles assigned to this user with: role type, date added, activation method (self-registered / admin-assigned), and a Remove Role button. "Add Role" button with dropdown to assign additional roles.</p>
+
+<h3>4.2.3 Tab: Social Accounts</h3>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Field</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>Platform</td><td>Instagram, YouTube, Facebook, LinkedIn, X, etc.</td></tr>
+    <tr><td>Username / Handle</td><td>As entered by the user or returned by OAuth</td></tr>
+    <tr><td>Profile URL</td><td>Stored URL to the social profile</td></tr>
+    <tr><td>Follower Count</td><td>Last fetched value (if available via API)</td></tr>
+    <tr><td>Connection Method</td><td>OAuth or Code-in-Bio</td></tr>
+    <tr><td>Connected Date</td><td>Timestamp when the account was linked</td></tr>
+    <tr><td>Verification Status</td><td>Unverified / Pending / Verified / Rejected / Expired</td></tr>
+    <tr><td>Last Verified Date</td><td>Date of the most recent successful verification</td></tr>
+    <tr><td>Admin Actions</td><td>Mark as Verified, Reject, Remove, View Evidence</td></tr>
+  </tbody>
+</table></div>
+
+<h3>4.2.4 Tab: Portfolio</h3>
+<p>Read-only view of portfolio items. Each item shows: title, type (image/video/document/link), thumbnail/preview, description, associated project/client name, date added, and visibility. Admins can flag or remove individual items.</p>
+
+<h3>4.2.5 Tab: Assignments</h3>
+<p>Two sub-tabs: "Posted Assignments" (assignments this user has created) and "Applications" (assignments this user has applied to). Each is a paginated table with key details and links to the full assignment record.</p>
+
+<h3>4.2.6 Tab: Reviews &amp; Ratings</h3>
+<p>All reviews given and received by this user. Each row: reviewer name (linked), reviewee name (linked), star rating, review text, associated assignment (if any), review date, and admin status (visible/hidden/reported). Admins can hide any review directly from this tab.</p>
+
+<h3>4.2.7 Tab: Subscription &amp; Payment History</h3>
+<p>Full subscription and payment history. Each record shows: plan name, amount, payment date, payment method, Razorpay transaction ID, status, and a link to the full payment record. Total lifetime value (LTV) is shown at the top.</p>
+
+<h3>4.2.8 Tab: Activity Log</h3>
+<p>Chronological log of significant user actions: registrations, logins, profile updates, assignments created/applied to, messages sent (count), subscription changes, verification requests, referrals, reports filed, reports received. Auditable lifecycle events only.</p>
+
+<h3>4.2.9 Tab: Reports &amp; Flags</h3>
+<p>All reports filed against this user (by others) and by this user (against others). Each report shows: reporter, type, description, date, and current status. Admins can update any report's status from this tab.</p>
+
+<h3>4.2.10 Admin Notes</h3>
+<p>Private, timestamped notes visible only to admins. Append-only — notes are attributed to the admin who wrote them and cannot be edited after submission. Used for recording decisions, escalation context, and institutional knowledge.</p>
+
+<h2>4.3 Account Status Management</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Status</th><th>Meaning</th><th>User Impact</th></tr></thead>
+  <tbody>
+    <tr><td><span class="badge badge-green">active</span></td><td>Normal functioning account</td><td>Full platform access</td></tr>
+    <tr><td><span class="badge badge-amber">suspended</span></td><td>Temporary access block. Admin or system-triggered.</td><td>Cannot login. Sees suspension message with reason and expected lift date.</td></tr>
+    <tr><td><span class="badge badge-grey">deactivated</span></td><td>User-initiated account deactivation.</td><td>Cannot login. Can reactivate by logging in. Data retained 90 days.</td></tr>
+    <tr><td><span class="badge badge-red">banned</span></td><td>Permanent ban for serious violations.</td><td>Cannot login. Cannot re-register with same phone/email. Data retained per legal requirement.</td></tr>
+    <tr><td><span class="badge badge-amber">pending_verification</span></td><td>Account created but phone/email not yet verified.</td><td>Very limited access — cannot create profile or post. Prompted to verify.</td></tr>
+    <tr><td><span class="badge badge-amber">under_review</span></td><td>Account flagged for admin review.</td><td>Read-only access. Cannot post, apply, or message. Banner shown to user.</td></tr>
+  </tbody>
+</table></div>
+
+<h3>4.3.1 Suspension Workflow</h3>
+<p>When an admin clicks "Suspend", a modal dialog appears with these required fields:</p>
+<ul>
+  <li><strong>Reason (dropdown):</strong> Spam, Harassment, Fake Account, Verification Fraud, Payment Fraud, Repeated Policy Violations, Under Investigation, Other</li>
+  <li><strong>Additional Notes</strong> (textarea, optional but encouraged)</li>
+  <li><strong>Duration:</strong> Temporary (1 / 3 / 7 / 14 / 30 days / Custom dates) or Indefinite</li>
+  <li><strong>Notify User</strong> (toggle, default ON) — sends in-app notification and email with reason and expected lift date</li>
+  <li><strong>Confirm:</strong> Admin must retype the user's username to confirm</li>
+</ul>
+<p>The system automatically lifts temporary suspensions at the specified end time and restores status to "active" without requiring further admin action.</p>
+
+<h3>4.3.2 Ban Workflow</h3>
+<p>Banning is permanent and requires additional safeguards:</p>
+<ul>
+  <li>Mandatory "Reason for Permanent Ban" text field — minimum 20 characters.</li>
+  <li>The system adds the user's email and phone to a blocklist table to prevent re-registration.</li>
+  <li>Requires approval from a second admin if the acting admin is below Super Admin level (two-party authorisation).</li>
+  <li>Confirmation dialog requires the admin to type "BAN [username]" exactly.</li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 5
+══════════════════════════════════════════════════════ -->
+<h1 id="s5">5. Verification Management Module</h1>
+<p>Verification is a core trust mechanism on CreatorConnect. Users submit evidence to prove their identity and social media presence. The admin team reviews this evidence and makes an approve or reject decision.</p>
+
+<h2>5.1 Verification Queue Columns</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Column</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>Request ID</td><td>Auto-generated ID (e.g. VRF-00412)</td></tr>
+    <tr><td>User</td><td>Avatar + name + @username, role badge</td></tr>
+    <tr><td>Verification Type</td><td>Profile Identity / Social Account / Brand Verification / Document Verification</td></tr>
+    <tr><td>Platform(s)</td><td>Social platforms submitted (if social type)</td></tr>
+    <tr><td>Submitted At</td><td>Timestamp of submission</td></tr>
+    <tr><td>Time in Queue</td><td>Elapsed time. Colour-coded: green &lt;24h, amber 24–48h, red &gt;48h</td></tr>
+    <tr><td>Priority</td><td>Normal / High / Urgent (auto-escalated if &gt;48h)</td></tr>
+    <tr><td>Status</td><td>Pending / Under Review / Approved / Rejected / More Info Requested</td></tr>
+    <tr><td>Assigned To</td><td>Which admin this request is assigned to, if any</td></tr>
+    <tr><td>Actions</td><td>Review, Assign, Quick Approve, Quick Reject</td></tr>
+  </tbody>
+</table></div>
+
+<h2>5.2 Verification Request Detail View</h2>
+<h3>5.2.1 Left Panel: Submitted Evidence</h3>
+<p>For Social Account Verification: claimed profile URL (clickable), screenshot(s) uploaded by user (zoomable lightbox), if Code-in-Bio — the generated verification code and screenshot showing it in the bio, if OAuth — the confirmed username and profile data returned by the API, follower count at time of submission.</p>
+<p>For Document / Identity Verification: uploaded document images at full resolution (no thumbnails), document type as declared by the user.</p>
+
+<h3>5.2.2 Right Panel: User Context</h3>
+<p>User profile summary, previous verification decisions for the same platform, any open reports or suspensions, account age and activity summary (assignments, reviews received).</p>
+
+<h3>5.2.3 Decision Actions</h3>
+<ol>
+  <li><strong>Approve</strong> — Verification badge applied to public profile immediately. User notified.</li>
+  <li><strong>Reject</strong> — Requires a rejection reason (dropdown) and an explanatory message shown to the user. Reasons: Insufficient evidence, Screenshots unclear, Profile not found, Follower count mismatch, Account appears inactive, Unable to verify via code-in-bio, Document unreadable, Document does not match profile, Suspected fraud.</li>
+  <li><strong>Request More Information</strong> — Sends a custom message to the user explaining what additional evidence is needed. Status moves to "More Info Requested". User can re-submit.</li>
+  <li><strong>Escalate</strong> — Assigns to a Senior Admin with an escalation note.</li>
+</ol>
+
+<h2>5.3 Verification Status Lifecycle</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Status</th><th>Triggered By</th><th>Next Possible States</th></tr></thead>
+  <tbody>
+    <tr><td>pending</td><td>User submits verification request</td><td>under_review, approved, rejected</td></tr>
+    <tr><td>under_review</td><td>Admin opens the request</td><td>approved, rejected, more_info_requested, escalated</td></tr>
+    <tr><td>more_info_requested</td><td>Admin requests more evidence</td><td>pending (when user re-submits)</td></tr>
+    <tr><td>escalated</td><td>Admin escalates</td><td>under_review, approved, rejected</td></tr>
+    <tr><td>approved</td><td>Admin approves</td><td>revoked (if fraud discovered later)</td></tr>
+    <tr><td>rejected</td><td>Admin rejects</td><td>pending (after 7-day cooldown)</td></tr>
+    <tr><td>revoked</td><td>Admin revokes previously approved verification</td><td>pending (if user re-applies)</td></tr>
+    <tr><td>expired</td><td>System: approved social verifications expire after 180 days (configurable)</td><td>pending (user must re-verify)</td></tr>
+  </tbody>
+</table></div>
+
+<h2>5.4 Verification Analytics</h2>
+<ul>
+  <li>Average time-to-decision (last 7d, 30d, 90d)</li>
+  <li>Approval rate by verification type</li>
+  <li>Most common rejection reasons (ranked)</li>
+  <li>Admin performance: requests reviewed per admin per day, average decision time per admin</li>
+  <li>Backlog trend: pending count over the last 30 days</li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 6
+══════════════════════════════════════════════════════ -->
+<h1 id="s6">6. Assignment Management Module</h1>
+<p>Assignments are the core transaction unit of CreatorConnect — collaboration opportunities posted by brands, creators, or professionals. The admin team must be able to review, moderate, and manage the full assignment lifecycle.</p>
+
+<h2>6.1 Assignment List Columns</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Column</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>Assignment ID</td><td>e.g. ASN-01234</td></tr>
+    <tr><td>Title</td><td>Assignment title, truncated to 60 chars with tooltip</td></tr>
+    <tr><td>Posted By</td><td>User avatar + name + role</td></tr>
+    <tr><td>Category</td><td>Primary category from platform taxonomy</td></tr>
+    <tr><td>Status</td><td>Colour-coded badge</td></tr>
+    <tr><td>Budget</td><td>Range (e.g. ₹5,000–₹15,000) or "Negotiable"</td></tr>
+    <tr><td>Applications</td><td>Count of total applications received</td></tr>
+    <tr><td>Posted Date</td><td>Relative time (hover for exact)</td></tr>
+    <tr><td>Deadline</td><td>Application deadline date, red if within 48 hours</td></tr>
+    <tr><td>Flags/Reports</td><td>Count of user reports against this assignment, red if &gt;0</td></tr>
+    <tr><td>Actions</td><td>View, Edit, Close, Remove, Flag</td></tr>
+  </tbody>
+</table></div>
+
+<h2>6.2 Assignment Status Lifecycle</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Status</th><th>Who Triggers</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>draft</td><td>Poster</td><td>Saved but not publicly visible</td></tr>
+    <tr><td>published</td><td>Poster</td><td>Live and accepting applications</td></tr>
+    <tr><td>paused</td><td>Poster</td><td>Temporarily hidden; applications suspended</td></tr>
+    <tr><td>applications_closed</td><td>Poster (auto or manual)</td><td>No new applications; existing ones still visible</td></tr>
+    <tr><td>in_progress</td><td>Poster (after selecting applicant)</td><td>Collaboration underway</td></tr>
+    <tr><td>completed</td><td>Poster</td><td>Work delivered and accepted</td></tr>
+    <tr><td>closed</td><td>Poster</td><td>Ended without selecting anyone</td></tr>
+    <tr><td>cancelled</td><td>Poster</td><td>Cancelled before selection</td></tr>
+    <tr><td>removed_by_admin</td><td>Admin</td><td>Removed for policy violation; not visible to any user</td></tr>
+    <tr><td>under_review</td><td>System / Admin</td><td>Flagged; hidden from discovery pending decision</td></tr>
+  </tbody>
+</table></div>
+
+<h2>6.3 Admin Actions on Assignments</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Action</th><th>Description</th><th>Permission</th></tr></thead>
+  <tbody>
+    <tr><td>View Full Content</td><td>See all fields including private fields</td><td>View</td></tr>
+    <tr><td>Edit</td><td>Modify any field (e.g. remove policy-violating content without full removal)</td><td>Edit</td></tr>
+    <tr><td>Pause</td><td>Force-pause the assignment. Poster is notified.</td><td>Edit</td></tr>
+    <tr><td>Remove (Soft)</td><td>Set status to removed_by_admin. Data retained. Poster notified with reason.</td><td>Edit</td></tr>
+    <tr><td>Delete (Hard)</td><td>Permanently delete the assignment and all applications. Irreversible.</td><td>Full (Super Admin only)</td></tr>
+    <tr><td>Warn Poster</td><td>Send a formal warning to the posting user, referencing this record.</td><td>Edit</td></tr>
+    <tr><td>Feature Assignment</td><td>Pin to top of discovery for a specified duration (platform promotion).</td><td>Edit</td></tr>
+    <tr><td>Clear Reports</td><td>Mark all reports against this assignment as reviewed-no-action (frivolous reports).</td><td>Edit</td></tr>
+  </tbody>
+</table></div>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 7
+══════════════════════════════════════════════════════ -->
+<h1 id="s7">7. Content Moderation Module</h1>
+<p>User-generated content (UGC) includes profile bios, assignment descriptions, portfolio items, comments, and chat messages. The Content Moderation module aggregates all reported content in one unified queue.</p>
+
+<h2>7.1 Report Queue Columns</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Column</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>Report ID</td><td>e.g. RPT-00213</td></tr>
+    <tr><td>Content Type</td><td>Profile Bio / Assignment / Portfolio Item / Comment / Chat Message / Review / User Account</td></tr>
+    <tr><td>Reported Content</td><td>Preview snippet (120 chars). Click opens full view.</td></tr>
+    <tr><td>Content Author</td><td>Who created the reported content</td></tr>
+    <tr><td>Reporter(s)</td><td>Who filed the report. Multiple reports show "3 reports" badge.</td></tr>
+    <tr><td>Report Reason</td><td>Spam, Harassment, Misinformation, Explicit Content, Fake Profile, Hate Speech, IP Violation, Other</td></tr>
+    <tr><td>Filed Date</td><td>First report timestamp</td></tr>
+    <tr><td>Status</td><td>Open / Under Review / Action Taken / Dismissed</td></tr>
+    <tr><td>Actions</td><td>Review, Assign, Dismiss All, Quick Remove</td></tr>
+  </tbody>
+</table></div>
+
+<h2>7.2 Moderation Decision Actions</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Action</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>Dismiss (No Action)</td><td>Report not substantiated. All reports closed. Content remains visible.</td></tr>
+    <tr><td>Warn Content Author</td><td>Formal warning issued. Content remains visible. Warning logged to account.</td></tr>
+    <tr><td>Remove Content Only</td><td>Content hidden from public view. Author notified with reason.</td></tr>
+    <tr><td>Remove Content + Warn</td><td>Content removed and formal warning issued simultaneously.</td></tr>
+    <tr><td>Remove Content + Suspend User</td><td>Content removed and account suspended. Opens suspension modal pre-filled with report reason.</td></tr>
+    <tr><td>Escalate to Senior Admin</td><td>Forward to Senior Admin with escalation note.</td></tr>
+  </tbody>
+</table></div>
+
+<h2>7.3 Automated Moderation Triggers</h2>
+<ul>
+  <li>3 or more unique users report the same content within 24 hours → content auto-hidden pending admin review</li>
+  <li>A user receives 5 or more reports in 7 days → account status auto-set to "under_review", admin notified</li>
+  <li>Content containing a blocklisted keyword (admin-configurable) → auto-flagged for review before publication</li>
+  <li>Chat message containing phone number, email, or URL in the first 3 messages of a new conversation → flagged (anti-bypass control)</li>
+  <li>Profile bio containing contact information or external links → flagged for review before profile is made public</li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 8
+══════════════════════════════════════════════════════ -->
+<h1 id="s8">8. Review and Rating Management</h1>
+<p>Ratings and reviews directly affect discoverability and reputation. The admin team needs strong tools to prevent abuse (fake reviews, review bombing, revenge reviews) while protecting legitimate feedback.</p>
+
+<h2>8.1 Review List Columns</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Column</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>Review ID</td><td>e.g. REV-00891</td></tr>
+    <tr><td>Reviewer</td><td>Who wrote the review (name + role)</td></tr>
+    <tr><td>Reviewee</td><td>Who is being reviewed (name + role)</td></tr>
+    <tr><td>Rating</td><td>1–5 star display (numeric value stored)</td></tr>
+    <tr><td>Review Text</td><td>Truncated preview; clicking expands full text</td></tr>
+    <tr><td>Associated Assignment</td><td>Link to the assignment this review relates to, if any</td></tr>
+    <tr><td>Submitted Date</td><td>Timestamp</td></tr>
+    <tr><td>Status</td><td>Visible / Hidden by Admin / Under Review / Flagged</td></tr>
+    <tr><td>Reports</td><td>Count of user reports against this review</td></tr>
+    <tr><td>Actions</td><td>View, Hide, Unhide, Delete, Flag</td></tr>
+  </tbody>
+</table></div>
+
+<h2>8.2 Review Abuse Detection — Auto-Flag Rules</h2>
+<ul>
+  <li>Reviewer and reviewee have no completed assignment connecting them → "No prior collaboration detected"</li>
+  <li>Reviewer submits 3 or more reviews in a 24-hour window → "High review velocity"</li>
+  <li>Multiple reviews from the same IP address within 1 hour → "Same-IP cluster"</li>
+  <li>1-star review submitted within 1 hour of a dispute being opened → "Dispute-correlated"</li>
+  <li>Review contains contact information, URLs, or competitor names → "Spam content"</li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 9
+══════════════════════════════════════════════════════ -->
+<h1 id="s9">9. Subscription and Membership Management</h1>
+
+<h2>9.1 Membership Plans Configuration</h2>
+<p>Super Admins must be able to manage membership plans without developer involvement. The plan configuration screen supports: creating new plans (name, description, price, billing period, features, usage limits), editing existing plans, disabling plans (no new subscriptions; existing subscribers continue), and archiving plans once all subscribers have churned.</p>
+
+<h2>9.2 Current Plan Definitions</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Plan</th><th>Target User</th><th>Key Benefits</th><th>Price</th></tr></thead>
+  <tbody>
+    <tr><td>Free</td><td>All users</td><td>Basic profile, limited discovery, limited applications per month</td><td>₹0 / month</td></tr>
+    <tr><td>Creator Premium</td><td>Creators / Influencers / Podcasters / Professionals</td><td>Verified badge eligibility, unlimited applications, featured in discovery, unlimited portfolio, priority in search</td><td>Admin-configured</td></tr>
+    <tr><td>Brand Premium</td><td>Brands / Companies</td><td>Unlimited assignment posts, applicant shortlisting tools, priority support, advanced analytics</td><td>Admin-configured</td></tr>
+  </tbody>
+</table></div>
+
+<h2>9.3 Subscriber List Columns</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Column</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>User</td><td>Name + role + avatar</td></tr>
+    <tr><td>Plan</td><td>Current plan name</td></tr>
+    <tr><td>Status</td><td>Active / Past Due / Cancelled / Expired / Trial</td></tr>
+    <tr><td>Started</td><td>Subscription start date</td></tr>
+    <tr><td>Renews / Expires</td><td>Next renewal (Active) or expiry (Cancelled/Expired)</td></tr>
+    <tr><td>Amount</td><td>Last payment amount in INR</td></tr>
+    <tr><td>Payment Method</td><td>UPI / Card / Net Banking — last 4 digits for card</td></tr>
+    <tr><td>Razorpay Sub ID</td><td>Subscription ID from Razorpay for reference</td></tr>
+    <tr><td>Actions</td><td>View, Cancel, Extend, Grant Complimentary, Refund</td></tr>
+  </tbody>
+</table></div>
+
+<h2>9.4 Admin Subscription Actions</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Action</th><th>Description</th><th>Who Can</th></tr></thead>
+  <tbody>
+    <tr><td>Cancel Subscription</td><td>Cancels at the end of the current billing period. Access retained until period ends.</td><td>Finance Admin, Super Admin</td></tr>
+    <tr><td>Cancel Immediately</td><td>Cancels without waiting; access revoked immediately. Use only for fraud/ban cases.</td><td>Super Admin only</td></tr>
+    <tr><td>Extend Subscription</td><td>Extends end date by a specified number of days at no charge. Used for support goodwill.</td><td>Finance Admin, Super Admin</td></tr>
+    <tr><td>Grant Complimentary Plan</td><td>Free subscription to a specified plan for a specified period. No payment required. Logged separately.</td><td>Ops Manager, Super Admin</td></tr>
+    <tr><td>Refund Payment</td><td>Initiates a refund for the most recent subscription payment via Razorpay.</td><td>Finance Admin, Super Admin</td></tr>
+    <tr><td>Change Plan</td><td>Admin-initiated plan change (upgrade or downgrade). Proration per business rules.</td><td>Finance Admin, Super Admin</td></tr>
+  </tbody>
+</table></div>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 10
+══════════════════════════════════════════════════════ -->
+<h1 id="s10">10. Payment Management Module</h1>
+<p>All financial transactions flow through Razorpay. The Admin Panel provides a reconciliation and oversight layer that combines Razorpay transaction data with CreatorConnect business context.</p>
+
+<h2>10.1 Transaction List Columns</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Column</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>Transaction ID</td><td>Internal ID (e.g. TXN-09812)</td></tr>
+    <tr><td>Razorpay Order ID</td><td>razorpay order_id for reference</td></tr>
+    <tr><td>Razorpay Payment ID</td><td>razorpay payment_id</td></tr>
+    <tr><td>User</td><td>Payer name + role</td></tr>
+    <tr><td>Purpose</td><td>Subscription Purchase / Renewal / Profile Boost / Verification Fee / Other</td></tr>
+    <tr><td>Plan / Product</td><td>The specific plan or product paid for</td></tr>
+    <tr><td>Amount (Gross)</td><td>INR amount before Razorpay fees</td></tr>
+    <tr><td>Razorpay Fee</td><td>Fee charged by Razorpay (fetched via API)</td></tr>
+    <tr><td>Net Amount</td><td>Amount after fees</td></tr>
+    <tr><td>Method</td><td>UPI / Credit Card / Debit Card / Net Banking / Wallet</td></tr>
+    <tr><td>Status</td><td>Created / Authorised / Captured / Refunded / Partially Refunded / Failed</td></tr>
+    <tr><td>Date</td><td>Transaction timestamp</td></tr>
+    <tr><td>Actions</td><td>View, Issue Refund, Flag, Download Receipt</td></tr>
+  </tbody>
+</table></div>
+
+<h2>10.2 Refund Workflow</h2>
+<ol>
+  <li>Admin clicks "Issue Refund" on a transaction.</li>
+  <li>Modal shows: original amount, eligible refund amount, reason dropdown (Customer Request / Fraud / Duplicate Payment / Technical Error / Admin Goodwill / Other), and an optional note.</li>
+  <li>Admin confirms. Backend calls the Razorpay Refund API.</li>
+  <li>Transaction status updates to "Refunded" on Razorpay confirmation. If it fails, admin sees the error and must retry or contact Razorpay.</li>
+  <li>User is notified of the refund via in-app notification and email (notification toggle on the refund modal).</li>
+  <li>Refund action is logged in the audit log with reason.</li>
+</ol>
+
+<h2>10.3 Revenue Dashboard Metrics</h2>
+<ul>
+  <li>Total Revenue (MTD) — gross payments captured this month</li>
+  <li>Total Revenue (Last 30d) — rolling 30-day window</li>
+  <li>Revenue by Plan — which subscription plans are generating revenue (pie chart + table)</li>
+  <li>Revenue by Payment Method — UPI vs Card vs NB vs Wallet (bar chart)</li>
+  <li>Daily Revenue Chart — bar chart for the last 30 days</li>
+  <li>Refund Rate — (total refund amount / total captured amount) × 100</li>
+  <li>Failed Payment Rate — (failed count / total attempted count) × 100</li>
+  <li>MoM Growth — % change in revenue vs. previous calendar month</li>
+  <li>Export — CSV or PDF download</li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 11
+══════════════════════════════════════════════════════ -->
+<h1 id="s11">11. Referral and Reward Management</h1>
+
+<h2>11.1 Programme Configuration (Super Admin)</h2>
+<ul>
+  <li>Reward type: Account credit / Free subscription days / Cash (Razorpay payout) / Badge / Custom</li>
+  <li>Qualifying action for the referred user: Register only / Verify phone / Complete profile / Purchase subscription / Post first assignment / Apply to first assignment</li>
+  <li>Reward amounts for referrer (Tier 1) and optionally referred user (Tier 2)</li>
+  <li>Maximum referrals per user (cap per month / all time)</li>
+  <li>Programme active/inactive toggle and blackout dates</li>
+</ul>
+
+<h2>11.2 Referral List Columns</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Column</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>Referral ID</td><td>e.g. REF-02211</td></tr>
+    <tr><td>Referrer</td><td>User who shared the referral link/code</td></tr>
+    <tr><td>Referred User</td><td>User who registered via the referral</td></tr>
+    <tr><td>Referral Code Used</td><td>The specific code/link token</td></tr>
+    <tr><td>Referred Date</td><td>When the referred user registered</td></tr>
+    <tr><td>Qualifying Action</td><td>Whether the referred user completed the qualifying action</td></tr>
+    <tr><td>Status</td><td>Pending / Qualified / Reward Issued / Rejected / Fraud Suspected</td></tr>
+    <tr><td>Reward</td><td>Reward type and amount/duration</td></tr>
+    <tr><td>Actions</td><td>View, Issue Reward Manually, Reject, Flag as Fraud</td></tr>
+  </tbody>
+</table></div>
+
+<h2>11.3 Fraud Detection Rules</h2>
+<ul>
+  <li>More than 5 referrals from the same IP address</li>
+  <li>Referred users who register but never log in after registration ("ghost accounts")</li>
+  <li>Referred users whose phone OTP verification fails multiple times</li>
+  <li>Referrer who generates more than 20 referrals in a single day</li>
+  <li>Referred users who share the same device fingerprint as the referrer</li>
+  <li>Reward claimed but referred user's account deactivated within 7 days of qualifying</li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 12
+══════════════════════════════════════════════════════ -->
+<h1 id="s12">12. Notification Management Module</h1>
+
+<h2>12.1 Notification Composer</h2>
+<h3>Recipient Selection</h3>
+<p>All users, specific role(s), specific membership plan(s), specific users (search/bulk paste), users matching a saved filter, geographic segment (state or city).</p>
+
+<h3>Channel Selection</h3>
+<p>Push Notification (FCM), In-App Notification, Email — any combination of these three.</p>
+
+<h3>Content Fields</h3>
+<ul>
+  <li>Title (max 65 characters for push compatibility)</li>
+  <li>Body / Message (up to 500 characters for push; unlimited for email)</li>
+  <li>Deep Link / CTA URL — the screen the notification navigates to when tapped (optional)</li>
+  <li>Image attachment (optional — for rich push and email)</li>
+  <li>Email Subject Line (separate from push title, only shown when email channel is selected)</li>
+</ul>
+
+<h3>Scheduling</h3>
+<p>Send now, schedule for later (date + time picker), or send in user's local timezone (useful for "good morning" type notifications — FCM sends at the specified clock time in each user's local timezone).</p>
+
+<h3>Preview Requirement</h3>
+<p>Before sending, the admin must see a preview panel showing how the notification will look on Android (push + in-app), iOS (push + in-app), and in email. Required to prevent formatting errors reaching all users.</p>
+
+<h2>12.2 Sent Notifications Log Columns</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Column</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>Title</td><td>Notification title</td></tr>
+    <tr><td>Recipient Segment</td><td>Description of who was targeted</td></tr>
+    <tr><td>Recipient Count</td><td>Number of users sent the notification</td></tr>
+    <tr><td>Channels</td><td>Icons showing which channels were used</td></tr>
+    <tr><td>Sent By</td><td>Admin who sent it</td></tr>
+    <tr><td>Sent At</td><td>Timestamp</td></tr>
+    <tr><td>Delivery Rate</td><td>(delivered / sent) × 100%</td></tr>
+    <tr><td>Open Rate</td><td>Email: (opened / delivered) × 100%. Push: (tapped / delivered) × 100%.</td></tr>
+    <tr><td>Actions</td><td>View Full, Resend, Clone</td></tr>
+  </tbody>
+</table></div>
+
+<h2>12.3 Notification Templates</h2>
+<p>All system-generated notifications (e.g. "Your verification has been approved") are managed via editable templates. The Template Manager lets admins: view all templates organised by trigger event, edit title and body text using {{variable}} placeholders (e.g. {{user_name}}, {{assignment_title}}), preview each template with example values, enable or disable individual notification types globally, and set per-template channel settings (push-only, email-only, or both).</p>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 13
+══════════════════════════════════════════════════════ -->
+<h1 id="s13">13. Dispute Management Module</h1>
+<p>Disputes arise from assignment delivery disagreements, payment conflicts, communication breakdowns, or fraud accusations. The Admin Panel provides a structured resolution workflow.</p>
+
+<h2>13.1 Dispute List Columns</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Column</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>Dispute ID</td><td>e.g. DSP-00342</td></tr>
+    <tr><td>Type</td><td>Assignment Dispute / Payment Dispute / Profile Fraud / Harassment / Other</td></tr>
+    <tr><td>Complainant</td><td>User who filed the dispute</td></tr>
+    <tr><td>Respondent</td><td>User the dispute is filed against</td></tr>
+    <tr><td>Related Assignment</td><td>Link to assignment record, if applicable</td></tr>
+    <tr><td>Filed Date</td><td>Timestamp of initial filing</td></tr>
+    <tr><td>Status</td><td>Open / Assigned / Under Investigation / Awaiting Response / Resolved / Closed / Escalated</td></tr>
+    <tr><td>Assigned Admin</td><td>The admin handling this dispute</td></tr>
+    <tr><td>Priority</td><td>Low / Normal / High / Urgent</td></tr>
+  </tbody>
+</table></div>
+
+<h2>13.2 Dispute Detail View</h2>
+<p>The detail view presents the dispute in a structured case-file format: dispute header (ID, type, status, priority, assigned admin), complainant section (profile summary, statement, submitted evidence, requested resolution), respondent section (profile, response statement, evidence, position), related records (assignment link, messages between the parties, payment transactions), chronological timeline of all actions, and append-only admin notes.</p>
+
+<h2>13.3 Resolution Actions</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Action</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>Assign to Self</td><td>Admin takes ownership of the dispute.</td></tr>
+    <tr><td>Assign to Another Admin</td><td>Route to a different admin with optional note.</td></tr>
+    <tr><td>Request Response from Respondent</td><td>Sends a notification asking the respondent to submit their side within 48 hours.</td></tr>
+    <tr><td>Request More Evidence</td><td>Sends a notification to either party asking for specific evidence.</td></tr>
+    <tr><td>Resolve — In Favour of Complainant</td><td>Mark dispute resolved in favour of complainant. Specify remediation (warning to respondent, content removal, subscription extension, etc.).</td></tr>
+    <tr><td>Resolve — In Favour of Respondent</td><td>Dispute dismissed. Both parties notified.</td></tr>
+    <tr><td>Resolve — Mutual Resolution</td><td>Both parties reached agreement. Admin closes with no action.</td></tr>
+    <tr><td>Escalate</td><td>Forward to Super Admin with escalation notes.</td></tr>
+    <tr><td>Close Without Resolution</td><td>Close the dispute without a ruling (e.g. both parties no longer active).</td></tr>
+  </tbody>
+</table></div>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 14
+══════════════════════════════════════════════════════ -->
+<h1 id="s14">14. Analytics and Reporting Module</h1>
+<p>All analytics data is filterable by date range: 7 days / 30 days / 90 days / 12 months / custom.</p>
+
+<h2>14.1 User Analytics</h2>
+<h3>Acquisition</h3>
+<ul>
+  <li>Total registered users (all-time, breakable by role)</li>
+  <li>New registrations per day (line chart)</li>
+  <li>Registration method: Email+Password / Google Sign-In / Phone OTP</li>
+  <li>Verification funnel: Registered → Phone OTP Verified → Email Verified → Profile Complete (conversion rates at each step)</li>
+  <li>Geographic distribution: users by state and city (heatmap + ranked table)</li>
+</ul>
+<h3>Engagement</h3>
+<ul>
+  <li>Daily Active Users (DAU), Weekly Active Users (WAU), Monthly Active Users (MAU)</li>
+  <li>DAU/MAU ratio — a measure of stickiness (target &gt;20%)</li>
+  <li>Session length distribution</li>
+  <li>Most-used features: ranked list by usage event count (profile views, search queries, assignment applications, chat messages)</li>
+</ul>
+<h3>Retention</h3>
+<ul>
+  <li>D1, D7, D30 retention cohorts — % of users who returned on day 1, 7, and 30 after registration</li>
+  <li>Churn rate: (users active last month but not this month) / (total active users last month)</li>
+  <li>Role-specific retention: separate cohort tables for Creator, Brand, Professional, Podcaster</li>
+</ul>
+
+<h2>14.2 Assignment Analytics</h2>
+<ul>
+  <li>Assignments created per day (line chart)</li>
+  <li>Assignments by status distribution (pie chart)</li>
+  <li>Average applications per assignment (overall and by category)</li>
+  <li>Assignment completion rate</li>
+  <li>Most popular categories by assignment count and application count</li>
+  <li>Average time-to-first-application and average time-to-hire</li>
+</ul>
+
+<h2>14.3 Revenue Analytics</h2>
+<ul>
+  <li>Total revenue by month for the last 12 months (bar chart)</li>
+  <li>Revenue breakdown: Subscription vs. one-time payments</li>
+  <li>ARPU (Average Revenue Per User)</li>
+  <li>MRR (Monthly Recurring Revenue) trend</li>
+  <li>Subscriber count by plan over time</li>
+  <li>Churn rate by plan</li>
+  <li>Payment failure rate and retry success rate</li>
+</ul>
+
+<h2>14.4 Platform Health Metrics</h2>
+<ul>
+  <li>Push notification delivery rate (% of FCM sends that were delivered)</li>
+  <li>Email delivery rate and bounce rate</li>
+  <li>Report volume trend (content moderation load)</li>
+  <li>Average time-to-resolution for disputes and verifications</li>
+</ul>
+
+<h2>14.5 Scheduled Reports</h2>
+<p>Three default scheduled reports, fully configurable by admins (metrics, frequency, recipients, format — PDF / Excel / CSV):</p>
+<ul>
+  <li><strong>Daily Operations Summary</strong> — new users, new assignments, pending verifications, open disputes, revenue. Sent to Ops Manager every morning.</li>
+  <li><strong>Weekly Growth Report</strong> — acquisition, retention, assignment activity, revenue trend. Sent to stakeholders every Monday.</li>
+  <li><strong>Monthly Business Review</strong> — full analytics export, cohort analysis, all KPIs. Sent to founders on the 1st of each month.</li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 15
+══════════════════════════════════════════════════════ -->
+<h1 id="s15">15. Platform Configuration and Settings</h1>
+<p>Restricted to Super Admins. Controls platform operational rules without requiring a developer to change code or deploy a release.</p>
+
+<h2>15.1 Categories and Subcategories Manager</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Category</th><th>Subcategories (examples)</th></tr></thead>
+  <tbody>
+    <tr><td>Influencers &amp; Creators</td><td>Lifestyle Influencer, Travel Creator, Tech Reviewer, Food Blogger, Fitness Influencer, Fashion &amp; Beauty, Gaming, Comedy &amp; Entertainment, Motivation &amp; Self-Help, Finance &amp; Business, Education</td></tr>
+    <tr><td>Podcasters</td><td>True Crime, Business &amp; Entrepreneurship, Technology, Health &amp; Wellness, Sports, Comedy, News &amp; Politics, Culture &amp; Society, Education, Spirituality</td></tr>
+    <tr><td>Production Professionals</td><td>Videographer, Photographer, Video Editor, Reel Editor, Thumbnail Designer, Motion Graphics Artist, Drone Operator, Lighting &amp; Set Designer, Production Assistant, Scriptwriter, Voice-Over Artist, Colorist, Sound Designer</td></tr>
+    <tr><td>Marketing &amp; Growth</td><td>Digital Marketing Strategist, SEO Specialist, Social Media Manager, Performance Marketer, Brand Strategist, Campaign Manager, Content Strategist, Community Manager</td></tr>
+    <tr><td>Brands &amp; Companies</td><td>D2C Brand, E-Commerce, FMCG, Technology, Fashion, Food &amp; Beverage, Health &amp; Wellness, Finance &amp; Fintech, Automotive, Entertainment</td></tr>
+  </tbody>
+</table></div>
+<p>The Category Manager allows Super Admins to: add new categories and subcategories, rename existing ones, reorder them (drag-and-drop), enable/disable individual entries, and add associated skill tags to any subcategory.</p>
+
+<h2>15.2 Feature Flags</h2>
+<p>A feature-flag system allowing Super Admins to turn platform features on or off without a code release. Each flag has a name, description, current state (on/off), and optionally a percentage rollout (e.g. enable for 20% of users).</p>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Flag Name</th><th>Description</th><th>Default</th></tr></thead>
+  <tbody>
+    <tr><td>referral_programme_enabled</td><td>Enables the referral programme for all users</td><td>ON</td></tr>
+    <tr><td>portfolio_drive_links</td><td>Allows portfolio items via Google Drive link</td><td>ON</td></tr>
+    <tr><td>brand_verification_enabled</td><td>Allows brands to submit verification requests</td><td>ON</td></tr>
+    <tr><td>oauth_instagram</td><td>Enables Instagram OAuth connection</td><td>OFF (pending approval)</td></tr>
+    <tr><td>oauth_youtube</td><td>Enables YouTube OAuth connection</td><td>OFF (pending approval)</td></tr>
+    <tr><td>premium_subscription_purchase</td><td>Allows users to purchase premium plans via Razorpay</td><td>OFF (until pricing finalised)</td></tr>
+    <tr><td>ai_recommendations</td><td>Enables AI-powered matchmaking recommendations (Phase 2)</td><td>OFF</td></tr>
+    <tr><td>community_feed</td><td>Enables the community/feed section (Section 4.5 Community Page)</td><td>OFF</td></tr>
+    <tr><td>admin_impersonation</td><td>Allows Super Admin to impersonate a user account for support</td><td>OFF</td></tr>
+    <tr><td>maintenance_mode</td><td>Takes the entire app offline with a custom maintenance message</td><td>OFF</td></tr>
+  </tbody>
+</table></div>
+
+<h2>15.3 Membership Plan Limits Configuration</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Parameter</th><th>Description</th><th>Free Default</th><th>Premium Default</th></tr></thead>
+  <tbody>
+    <tr><td>max_portfolio_items</td><td>Maximum portfolio items a user can add</td><td>5</td><td>Unlimited</td></tr>
+    <tr><td>max_monthly_applications</td><td>Maximum assignment applications per 30-day rolling window</td><td>10</td><td>Unlimited</td></tr>
+    <tr><td>max_active_assignments</td><td>Maximum simultaneously active/published assignments (for posters)</td><td>1</td><td>10</td></tr>
+    <tr><td>max_social_accounts</td><td>Maximum social accounts that can be linked</td><td>2</td><td>10</td></tr>
+    <tr><td>profile_boost_credits</td><td>Monthly profile boost credits (0 = no boosts)</td><td>0</td><td>3</td></tr>
+    <tr><td>search_priority</td><td>Position boost in search results (0 = no boost)</td><td>0</td><td>2</td></tr>
+    <tr><td>verification_eligible</td><td>Whether user can submit verification requests</td><td>No</td><td>Yes</td></tr>
+  </tbody>
+</table></div>
+
+<h2>15.4 Content Moderation Settings</h2>
+<ul>
+  <li><strong>Keyword Blocklist</strong> — a table of blocked words and phrases. When UGC contains a blocklisted term, it is auto-flagged before publication. Admins can add, remove, and test blocklist entries.</li>
+  <li><strong>Auto-suspension threshold</strong> — number of accepted reports to trigger an automatic account suspension for review.</li>
+  <li><strong>Report cooling-off period</strong> — minimum time before a user can file a new report against the same content.</li>
+  <li><strong>Minimum review text length</strong> — enforce a character minimum for reviews (prevents single-emoji reviews).</li>
+</ul>
+
+<h2>15.5 App Version Management</h2>
+<ul>
+  <li>Minimum supported Android version — users on lower versions see an "Update Required" screen</li>
+  <li>Minimum supported iOS version — same</li>
+  <li>Recommended version — users on lower versions see a non-blocking update prompt</li>
+  <li>Maintenance mode toggle — takes the entire app offline with custom message and expected back-online time</li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 16
+══════════════════════════════════════════════════════ -->
+<h1 id="s16">16. Admin Panel Screen Inventory</h1>
+<p>Complete, numbered inventory of every screen and modal in the Admin Panel. This is the definitive checklist for design and development.</p>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Screen ID</th><th>Screen Name</th><th>Module</th><th>Min Auth Level</th></tr></thead>
+  <tbody>
+    <tr><td>ADM-01</td><td>Login</td><td>Auth</td><td>Public</td></tr>
+    <tr><td>ADM-02</td><td>Forgot Password</td><td>Auth</td><td>Public</td></tr>
+    <tr><td>ADM-03</td><td>Two-Factor Auth Verification (TOTP)</td><td>Auth</td><td>Public</td></tr>
+    <tr><td>ADM-04</td><td>Main Dashboard</td><td>Dashboard</td><td>All admins</td></tr>
+    <tr><td>ADM-05</td><td>User List</td><td>User Mgmt</td><td>View+</td></tr>
+    <tr><td>ADM-06</td><td>User Detail — Profile Tab</td><td>User Mgmt</td><td>View+</td></tr>
+    <tr><td>ADM-07</td><td>User Detail — Roles Tab</td><td>User Mgmt</td><td>Edit+</td></tr>
+    <tr><td>ADM-08</td><td>User Detail — Social Accounts Tab</td><td>User Mgmt</td><td>View+</td></tr>
+    <tr><td>ADM-09</td><td>User Detail — Portfolio Tab</td><td>User Mgmt</td><td>View+</td></tr>
+    <tr><td>ADM-10</td><td>User Detail — Assignments Tab</td><td>User Mgmt</td><td>View+</td></tr>
+    <tr><td>ADM-11</td><td>User Detail — Reviews Tab</td><td>User Mgmt</td><td>View+</td></tr>
+    <tr><td>ADM-12</td><td>User Detail — Subscription &amp; Payment Tab</td><td>User Mgmt</td><td>Finance+</td></tr>
+    <tr><td>ADM-13</td><td>User Detail — Activity Log Tab</td><td>User Mgmt</td><td>View+</td></tr>
+    <tr><td>ADM-14</td><td>User Detail — Reports &amp; Flags Tab</td><td>User Mgmt</td><td>Edit+</td></tr>
+    <tr><td>ADM-15</td><td>User Suspend Modal</td><td>User Mgmt</td><td>Edit+</td></tr>
+    <tr><td>ADM-16</td><td>User Ban Modal (2-party confirm)</td><td>User Mgmt</td><td>Super Admin</td></tr>
+    <tr><td>ADM-17</td><td>Verification Queue</td><td>Verification</td><td>View+</td></tr>
+    <tr><td>ADM-18</td><td>Verification Request Detail — Social</td><td>Verification</td><td>Edit+</td></tr>
+    <tr><td>ADM-19</td><td>Verification Request Detail — Document</td><td>Verification</td><td>Edit+</td></tr>
+    <tr><td>ADM-20</td><td>Verification Decision Modal</td><td>Verification</td><td>Edit+</td></tr>
+    <tr><td>ADM-21</td><td>Verification Analytics</td><td>Verification</td><td>View+</td></tr>
+    <tr><td>ADM-22</td><td>Assignment List</td><td>Assignments</td><td>View+</td></tr>
+    <tr><td>ADM-23</td><td>Assignment Detail</td><td>Assignments</td><td>View+</td></tr>
+    <tr><td>ADM-24</td><td>Assignment Edit Modal</td><td>Assignments</td><td>Edit+</td></tr>
+    <tr><td>ADM-25</td><td>Assignment Remove Confirmation Modal</td><td>Assignments</td><td>Edit+</td></tr>
+    <tr><td>ADM-26</td><td>Application List (Global View)</td><td>Assignments</td><td>View+</td></tr>
+    <tr><td>ADM-27</td><td>Application Detail</td><td>Assignments</td><td>View+</td></tr>
+    <tr><td>ADM-28</td><td>Report Queue</td><td>Moderation</td><td>View+</td></tr>
+    <tr><td>ADM-29</td><td>Report Detail</td><td>Moderation</td><td>Edit+</td></tr>
+    <tr><td>ADM-30</td><td>Moderation Decision Modal</td><td>Moderation</td><td>Edit+</td></tr>
+    <tr><td>ADM-31</td><td>Moderation Statistics</td><td>Moderation</td><td>View+</td></tr>
+    <tr><td>ADM-32</td><td>Review List</td><td>Reviews</td><td>View+</td></tr>
+    <tr><td>ADM-33</td><td>Review Detail &amp; Decision</td><td>Reviews</td><td>Edit+</td></tr>
+    <tr><td>ADM-34</td><td>Subscription List</td><td>Subscriptions</td><td>Finance+</td></tr>
+    <tr><td>ADM-35</td><td>Subscription Detail</td><td>Subscriptions</td><td>Finance+</td></tr>
+    <tr><td>ADM-36</td><td>Subscription Plan Manager</td><td>Subscriptions</td><td>Super Admin</td></tr>
+    <tr><td>ADM-37</td><td>Subscription Action Modal</td><td>Subscriptions</td><td>Finance+</td></tr>
+    <tr><td>ADM-38</td><td>Transaction List</td><td>Payments</td><td>Finance+</td></tr>
+    <tr><td>ADM-39</td><td>Transaction Detail</td><td>Payments</td><td>Finance+</td></tr>
+    <tr><td>ADM-40</td><td>Refund Modal</td><td>Payments</td><td>Finance+</td></tr>
+    <tr><td>ADM-41</td><td>Revenue Dashboard</td><td>Payments</td><td>Finance+</td></tr>
+    <tr><td>ADM-42</td><td>Referral List</td><td>Referrals</td><td>View+</td></tr>
+    <tr><td>ADM-43</td><td>Referral Detail</td><td>Referrals</td><td>View+</td></tr>
+    <tr><td>ADM-44</td><td>Referral Programme Config</td><td>Referrals</td><td>Super Admin</td></tr>
+    <tr><td>ADM-45</td><td>Notification Composer</td><td>Notifications</td><td>Edit+</td></tr>
+    <tr><td>ADM-46</td><td>Sent Notifications Log</td><td>Notifications</td><td>View+</td></tr>
+    <tr><td>ADM-47</td><td>Notification Templates Manager</td><td>Notifications</td><td>Super Admin</td></tr>
+    <tr><td>ADM-48</td><td>Dispute List</td><td>Disputes</td><td>View+</td></tr>
+    <tr><td>ADM-49</td><td>Dispute Detail (Case File View)</td><td>Disputes</td><td>Edit+</td></tr>
+    <tr><td>ADM-50</td><td>Dispute Resolution Modal</td><td>Disputes</td><td>Edit+</td></tr>
+    <tr><td>ADM-51</td><td>User Analytics Dashboard</td><td>Analytics</td><td>View+</td></tr>
+    <tr><td>ADM-52</td><td>Discovery &amp; Search Analytics</td><td>Analytics</td><td>View+</td></tr>
+    <tr><td>ADM-53</td><td>Assignment Analytics</td><td>Analytics</td><td>View+</td></tr>
+    <tr><td>ADM-54</td><td>Revenue Analytics</td><td>Analytics</td><td>Finance+</td></tr>
+    <tr><td>ADM-55</td><td>Platform Health Dashboard</td><td>Analytics</td><td>Super Admin</td></tr>
+    <tr><td>ADM-56</td><td>Scheduled Reports Manager</td><td>Analytics</td><td>Super Admin</td></tr>
+    <tr><td>ADM-57</td><td>Category &amp; Taxonomy Manager</td><td>Config</td><td>Super Admin</td></tr>
+    <tr><td>ADM-58</td><td>Feature Flag Manager</td><td>Config</td><td>Super Admin</td></tr>
+    <tr><td>ADM-59</td><td>Membership Limits Config</td><td>Config</td><td>Super Admin</td></tr>
+    <tr><td>ADM-60</td><td>Content Moderation Settings</td><td>Config</td><td>Super Admin</td></tr>
+    <tr><td>ADM-61</td><td>Notification Settings</td><td>Config</td><td>Super Admin</td></tr>
+    <tr><td>ADM-62</td><td>App Version Manager</td><td>Config</td><td>Super Admin</td></tr>
+    <tr><td>ADM-63</td><td>Admin User List</td><td>Admin Mgmt</td><td>Super Admin</td></tr>
+    <tr><td>ADM-64</td><td>Admin User Detail / Edit Role</td><td>Admin Mgmt</td><td>Super Admin</td></tr>
+    <tr><td>ADM-65</td><td>Admin Invite Modal</td><td>Admin Mgmt</td><td>Super Admin</td></tr>
+    <tr><td>ADM-66</td><td>Audit Log Viewer</td><td>Audit</td><td>Super Admin</td></tr>
+    <tr><td>ADM-67</td><td>Audit Log Entry Detail</td><td>Audit</td><td>Super Admin</td></tr>
+    <tr><td>ADM-68</td><td>Admin Profile &amp; 2FA Settings</td><td>Profile</td><td>All admins (own only)</td></tr>
+  </tbody>
+</table></div>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 17
+══════════════════════════════════════════════════════ -->
+<h1 id="s17">17. Data Entities and Fields Reference</h1>
+<p>Every data entity the Admin Panel reads from and writes to. These serve as the bridge between the product specification and the Prisma schema. All entities are stored in Supabase PostgreSQL.</p>
+
+<h2>17.1 users</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>id</td><td>UUID</td><td>Primary key. Supabase Auth UID.</td></tr>
+    <tr><td>username</td><td>VARCHAR(50)</td><td>Unique handle. Lowercase, alphanumeric + underscore.</td></tr>
+    <tr><td>email</td><td>VARCHAR(255)</td><td>Unique. From Auth provider.</td></tr>
+    <tr><td>phone</td><td>VARCHAR(20)</td><td>E.164 format. Used for OTP auth.</td></tr>
+    <tr><td>full_name</td><td>VARCHAR(255)</td><td>Display name.</td></tr>
+    <tr><td>account_status</td><td>ENUM</td><td>active | suspended | deactivated | banned | pending_verification | under_review</td></tr>
+    <tr><td>suspension_reason</td><td>VARCHAR(500)</td><td>Nullable. Set when status = suspended or banned.</td></tr>
+    <tr><td>suspension_ends_at</td><td>TIMESTAMPTZ</td><td>Nullable. Auto-lift timestamp for temporary suspensions.</td></tr>
+    <tr><td>is_phone_verified</td><td>BOOLEAN</td><td>TRUE after OTP verification.</td></tr>
+    <tr><td>is_email_verified</td><td>BOOLEAN</td><td>TRUE after email link click.</td></tr>
+    <tr><td>last_seen_at</td><td>TIMESTAMPTZ</td><td>Updated on every authenticated API call.</td></tr>
+    <tr><td>admin_tags</td><td>TEXT[]</td><td>Array of internal admin-only labels.</td></tr>
+    <tr><td>created_at</td><td>TIMESTAMPTZ</td><td>Registration timestamp.</td></tr>
+    <tr><td>updated_at</td><td>TIMESTAMPTZ</td><td>Last modification timestamp.</td></tr>
+  </tbody>
+</table></div>
+
+<h2>17.2 profiles</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>id</td><td>UUID</td><td>FK → users.id (1:1)</td></tr>
+    <tr><td>profile_photo_url</td><td>TEXT</td><td>Cloudflare R2 URL</td></tr>
+    <tr><td>bio</td><td>TEXT</td><td>Max 300 characters. No contact info allowed.</td></tr>
+    <tr><td>city</td><td>VARCHAR(100)</td><td></td></tr>
+    <tr><td>state</td><td>VARCHAR(100)</td><td></td></tr>
+    <tr><td>primary_category_id</td><td>UUID</td><td>FK → categories.id</td></tr>
+    <tr><td>subcategory_ids</td><td>UUID[]</td><td>FK array → subcategories.id</td></tr>
+    <tr><td>skills</td><td>TEXT[]</td><td>Array of skill tags</td></tr>
+    <tr><td>languages</td><td>TEXT[]</td><td>Languages spoken</td></tr>
+    <tr><td>availability</td><td>ENUM</td><td>available | busy | unavailable</td></tr>
+    <tr><td>rate_min</td><td>INTEGER</td><td>Min rate in INR (nullable)</td></tr>
+    <tr><td>rate_max</td><td>INTEGER</td><td>Max rate in INR (nullable)</td></tr>
+    <tr><td>rate_unit</td><td>ENUM</td><td>per_post | per_day | per_month | per_project | negotiable</td></tr>
+    <tr><td>verification_status</td><td>ENUM</td><td>unverified | pending | verified | rejected | revoked</td></tr>
+    <tr><td>completion_percentage</td><td>SMALLINT</td><td>Computed field: 0–100</td></tr>
+  </tbody>
+</table></div>
+
+<h2>17.3 verification_requests</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>id</td><td>UUID</td><td>Primary key</td></tr>
+    <tr><td>user_id</td><td>UUID</td><td>FK → users.id</td></tr>
+    <tr><td>type</td><td>ENUM</td><td>social_account | identity_document | brand_document</td></tr>
+    <tr><td>platform</td><td>VARCHAR(50)</td><td>e.g. "instagram", "youtube"</td></tr>
+    <tr><td>claimed_username</td><td>VARCHAR(255)</td><td>The username the user claims</td></tr>
+    <tr><td>claimed_url</td><td>TEXT</td><td>Profile URL provided</td></tr>
+    <tr><td>method</td><td>ENUM</td><td>oauth | code_in_bio | document_upload</td></tr>
+    <tr><td>evidence_urls</td><td>TEXT[]</td><td>Cloudflare R2 URLs for uploaded screenshots/docs</td></tr>
+    <tr><td>oauth_data</td><td>JSONB</td><td>Nullable. OAuth API response payload.</td></tr>
+    <tr><td>verification_code</td><td>VARCHAR(20)</td><td>Nullable. Code-in-bio token generated by platform.</td></tr>
+    <tr><td>status</td><td>ENUM</td><td>pending | under_review | more_info_requested | escalated | approved | rejected | revoked | expired</td></tr>
+    <tr><td>assigned_admin_id</td><td>UUID</td><td>FK → admin_users.id. Nullable.</td></tr>
+    <tr><td>decision_at</td><td>TIMESTAMPTZ</td><td>When the approve/reject decision was made</td></tr>
+    <tr><td>rejection_reason</td><td>VARCHAR(500)</td><td>Nullable. Filled on rejection.</td></tr>
+    <tr><td>decision_notes</td><td>TEXT</td><td>Internal admin notes on the decision</td></tr>
+    <tr><td>submitted_at</td><td>TIMESTAMPTZ</td><td>Request creation time</td></tr>
+  </tbody>
+</table></div>
+
+<h2>17.4 assignments</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>id</td><td>UUID</td><td>Primary key</td></tr>
+    <tr><td>poster_id</td><td>UUID</td><td>FK → users.id</td></tr>
+    <tr><td>title</td><td>VARCHAR(200)</td><td></td></tr>
+    <tr><td>description</td><td>TEXT</td><td></td></tr>
+    <tr><td>category_id</td><td>UUID</td><td>FK → categories.id</td></tr>
+    <tr><td>required_skills</td><td>TEXT[]</td><td></td></tr>
+    <tr><td>budget_min</td><td>INTEGER</td><td>INR. Nullable.</td></tr>
+    <tr><td>budget_max</td><td>INTEGER</td><td>INR. Nullable.</td></tr>
+    <tr><td>is_negotiable</td><td>BOOLEAN</td><td></td></tr>
+    <tr><td>deadline</td><td>TIMESTAMPTZ</td><td>Application deadline</td></tr>
+    <tr><td>media_urls</td><td>TEXT[]</td><td>Cloudflare R2 URLs for attachments</td></tr>
+    <tr><td>status</td><td>ENUM</td><td>draft | published | paused | applications_closed | in_progress | completed | closed | cancelled | removed_by_admin | under_review</td></tr>
+    <tr><td>admin_removed_reason</td><td>VARCHAR(500)</td><td>Nullable. Set when admin removes.</td></tr>
+    <tr><td>is_featured</td><td>BOOLEAN</td><td>Admin-set featured flag</td></tr>
+    <tr><td>featured_until</td><td>TIMESTAMPTZ</td><td>Nullable. Auto-unfeature date.</td></tr>
+    <tr><td>views_count</td><td>INTEGER</td><td>Cached view count</td></tr>
+    <tr><td>applications_count</td><td>INTEGER</td><td>Cached application count</td></tr>
+    <tr><td>created_at</td><td>TIMESTAMPTZ</td><td></td></tr>
+  </tbody>
+</table></div>
+
+<h2>17.5 Key Supporting Tables</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Table</th><th>Purpose</th><th>Key Fields</th></tr></thead>
+  <tbody>
+    <tr><td>applications</td><td>Assignment applications</td><td>id, assignment_id, applicant_id, cover_text, portfolio_links, status (pending|shortlisted|accepted|rejected|withdrawn), applied_at</td></tr>
+    <tr><td>reviews</td><td>Post-collaboration ratings and reviews</td><td>id, reviewer_id, reviewee_id, assignment_id, rating (1–5), text, is_visible, flagged_at, admin_hidden_by</td></tr>
+    <tr><td>subscriptions</td><td>User subscription records</td><td>id, user_id, plan_id, status (active|past_due|cancelled|expired|trial), razorpay_subscription_id, started_at, renews_at, cancelled_at</td></tr>
+    <tr><td>payments</td><td>Individual payment transactions</td><td>id, user_id, subscription_id (nullable), purpose, amount, currency, razorpay_order_id, razorpay_payment_id, status, refund_id (nullable), created_at</td></tr>
+    <tr><td>referrals</td><td>Referral tracking records</td><td>id, referrer_id, referred_user_id, code, status (pending|qualified|reward_issued|rejected|fraud_suspected), reward_issued_at</td></tr>
+    <tr><td>reports</td><td>User-filed content reports</td><td>id, reporter_id, content_type, content_id, reason, description, status (open|under_review|action_taken|dismissed), created_at</td></tr>
+    <tr><td>disputes</td><td>Formal dispute records</td><td>id, complainant_id, respondent_id, type, description, assignment_id (nullable), status, assigned_admin_id, resolved_at, resolution_notes</td></tr>
+    <tr><td>admin_audit_log</td><td>Immutable admin action log</td><td>id, admin_id, action_type, target_type, target_id, previous_state (jsonb), new_state (jsonb), ip_address, created_at</td></tr>
+    <tr><td>admin_notes</td><td>Admin-only notes on user accounts</td><td>id, user_id, author_admin_id, note_text, created_at — append-only, no UPDATE</td></tr>
+    <tr><td>notifications</td><td>Sent notification records</td><td>id, sender_admin_id (nullable), recipient_type, recipient_ids (array), title, body, channels (array), sent_at, delivery_count, open_count</td></tr>
+    <tr><td>feature_flags</td><td>Platform feature toggle configuration</td><td>id, flag_name, description, is_enabled, rollout_percentage, updated_by_admin_id, updated_at</td></tr>
+    <tr><td>membership_plans</td><td>Subscription plan definitions</td><td>id, name, price_inr, billing_period, features (jsonb), limits (jsonb), is_active, is_archived, created_at</td></tr>
+    <tr><td>categories</td><td>Platform category taxonomy</td><td>id, name, slug, is_active, sort_order, parent_id (nullable for subcategories), created_at</td></tr>
+    <tr><td>social_accounts</td><td>User-linked social media accounts</td><td>id, user_id, platform, username, profile_url, follower_count, verification_status, connected_at, verified_at</td></tr>
+    <tr><td>portfolio_items</td><td>User portfolio entries</td><td>id, user_id, title, type (image|video|document|link), media_url, description, project_name, is_public, created_at</td></tr>
+  </tbody>
+</table></div>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 18
+══════════════════════════════════════════════════════ -->
+<h1 id="s18">18. Backend API Requirements for the Admin Panel</h1>
+<p>All Admin Panel interactions must go through dedicated, authenticated admin API endpoints on the Fastify backend. Admin endpoints must be clearly namespaced at <code>/api/admin/...</code> and must never share route handlers with the user-facing API.</p>
+
+<div class="note">All admin API endpoints must: require a valid admin JWT (issued only via /api/admin/auth/login), enforce RBAC middleware matching the permission matrix in Section 2.2, and write to the audit log on any state-changing operation.</div>
+
+<h2>18.1 Authentication Endpoints</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>POST</td><td>/api/admin/auth/login</td><td>Admin login (email + password). Returns JWT + refresh token. Logs IP.</td></tr>
+    <tr><td>POST</td><td>/api/admin/auth/totp/verify</td><td>Verify TOTP code for 2FA. Returns full session JWT on success.</td></tr>
+    <tr><td>POST</td><td>/api/admin/auth/logout</td><td>Invalidate session. Logs logout event.</td></tr>
+    <tr><td>POST</td><td>/api/admin/auth/refresh</td><td>Refresh expired JWT using refresh token.</td></tr>
+    <tr><td>POST</td><td>/api/admin/auth/forgot-password</td><td>Send password reset link to admin email.</td></tr>
+  </tbody>
+</table></div>
+
+<h2>18.2 User Management API</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>GET</td><td>/api/admin/users</td><td>Paginated, filtered user list. Supports all filters from Section 4.1.2.</td></tr>
+    <tr><td>GET</td><td>/api/admin/users/:id</td><td>Full user detail record.</td></tr>
+    <tr><td>PATCH</td><td>/api/admin/users/:id/status</td><td>Update account status. Body: { status, reason, ends_at }.</td></tr>
+    <tr><td>PATCH</td><td>/api/admin/users/:id/tags</td><td>Update admin tags on a user.</td></tr>
+    <tr><td>POST</td><td>/api/admin/users/:id/notes</td><td>Add an admin note to a user.</td></tr>
+    <tr><td>GET</td><td>/api/admin/users/:id/notes</td><td>Get all admin notes for a user.</td></tr>
+    <tr><td>GET</td><td>/api/admin/users/:id/activity</td><td>Get user activity log.</td></tr>
+    <tr><td>GET</td><td>/api/admin/users/:id/reports</td><td>Get all reports involving this user.</td></tr>
+    <tr><td>POST</td><td>/api/admin/users/bulk-status</td><td>Bulk status update. Body: { user_ids, status, reason }.</td></tr>
+    <tr><td>GET</td><td>/api/admin/users/export</td><td>Export filtered users to CSV. Super Admin permission required.</td></tr>
+  </tbody>
+</table></div>
+
+<h2>18.3 Verification API</h2>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>GET</td><td>/api/admin/verifications</td><td>Paginated verification queue with filters.</td></tr>
+    <tr><td>GET</td><td>/api/admin/verifications/:id</td><td>Full verification request detail.</td></tr>
+    <tr><td>PATCH</td><td>/api/admin/verifications/:id/decision</td><td>Make a decision. Body: { decision: approve|reject|more_info|escalate, reason, notes }.</td></tr>
+    <tr><td>PATCH</td><td>/api/admin/verifications/:id/assign</td><td>Assign to an admin. Body: { admin_id }.</td></tr>
+    <tr><td>GET</td><td>/api/admin/verifications/analytics</td><td>Verification analytics summary.</td></tr>
+  </tbody>
+</table></div>
+
+<h2>18.4 Remaining Module APIs (Pattern)</h2>
+<p>The following modules each require a standard set of endpoints following the same pattern (GET list with filters, GET detail, PATCH for actions, POST for creation where applicable):</p>
+<ul>
+  <li><strong>Assignments:</strong> /api/admin/assignments — includes feature, force-status changes, removal.</li>
+  <li><strong>Applications:</strong> /api/admin/applications — includes admin endorsement or flag.</li>
+  <li><strong>Reports (Moderation):</strong> /api/admin/reports — includes all moderation decision endpoints.</li>
+  <li><strong>Reviews:</strong> /api/admin/reviews — includes hide, unhide, delete, flag.</li>
+  <li><strong>Subscriptions:</strong> /api/admin/subscriptions — includes cancel, extend, grant-complimentary, change-plan.</li>
+  <li><strong>Payments:</strong> /api/admin/payments — includes refund initiation (calls Razorpay API), download receipt.</li>
+  <li><strong>Referrals:</strong> /api/admin/referrals — includes manual reward issuance and fraud-flag.</li>
+  <li><strong>Notifications:</strong> /api/admin/notifications — compose (POST), schedule (POST), log (GET), templates (GET/PATCH).</li>
+  <li><strong>Disputes:</strong> /api/admin/disputes — includes assign, respond, resolve.</li>
+  <li><strong>Analytics:</strong> /api/admin/analytics/:metric — parameterised analytics endpoints returning aggregated data.</li>
+  <li><strong>Config:</strong> /api/admin/config/* — feature flags, plans, categories, moderation settings.</li>
+  <li><strong>Audit Log:</strong> /api/admin/audit-log — paginated, filterable, read-only.</li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 19
+══════════════════════════════════════════════════════ -->
+<h1 id="s19">19. Technical and Non-Functional Requirements</h1>
+
+<h2>19.1 Admin Panel Technology</h2>
+<ul>
+  <li><strong>Framework:</strong> React (Next.js) or plain React — consistent with the web application where possible to allow code sharing.</li>
+  <li><strong>UI Component Library:</strong> A mature component library recommended (e.g. Ant Design Pro, shadcn/ui + Tailwind) to accelerate development of data-heavy admin UIs.</li>
+  <li><strong>Authentication:</strong> Separate admin user table with JWT issued by the Fastify backend. Admin accounts are distinct from user accounts.</li>
+  <li><strong>Hosting:</strong> Vercel or separate deployment as per final architecture decision.</li>
+</ul>
+
+<h2>19.2 Security Requirements</h2>
+<ul>
+  <li><strong>2FA is mandatory</strong> for all admin accounts. TOTP (Google Authenticator compatible). No admin login without 2FA.</li>
+  <li><strong>Session timeout:</strong> Admin sessions expire after 4 hours of inactivity; active sessions expire after 12 hours regardless.</li>
+  <li><strong>IP allowlisting:</strong> Super Admin access should optionally require IP whitelisting (configurable). If the requesting IP is not on the whitelist, the Super Admin account cannot be accessed.</li>
+  <li>All admin API calls must be over HTTPS with valid SSL certificate (via Cloudflare).</li>
+  <li><strong>Password requirements:</strong> Minimum 12 characters, at least one uppercase, one lowercase, one digit, one special character.</li>
+  <li><strong>Brute-force protection:</strong> Account locked for 15 minutes after 5 consecutive failed login attempts. Super Admin is notified by email of any lockout.</li>
+  <li>The admin panel frontend must never expose a full user email, phone, or government ID number in the browser DOM without an explicit "reveal" action that is logged in the audit log.</li>
+</ul>
+
+<h2>19.3 Performance Requirements</h2>
+<ul>
+  <li>All list views must load in under 2 seconds for datasets up to 100,000 records. All queries must use appropriate database indexes.</li>
+  <li>All list views must implement server-side pagination (default 25 records per page, max 100 per page). No client-side pagination over large datasets.</li>
+  <li>Dashboard KPI cards must load in under 1 second. Use Redis (Upstash) caching for aggregated analytics data with a TTL of 5 minutes.</li>
+  <li>File downloads (CSV exports, PDF receipts) must be generated asynchronously for large datasets (&gt;1,000 rows) — the admin is shown a progress indicator and receives a download link when ready.</li>
+</ul>
+
+<h2>19.4 Accessibility and Usability</h2>
+<ul>
+  <li>Fully usable on desktop (1280px+) and reasonably usable on tablet (768px+). Mobile responsiveness is not required for the admin panel.</li>
+  <li>All tables must support keyboard navigation.</li>
+  <li>All destructive actions (delete, ban, refund) must require a confirmation step — either a confirmation dialog or typing a specific string.</li>
+  <li>All bulk actions must display a summary ("You are about to suspend 47 users. This will…") before executing.</li>
+  <li>All forms must have clear error states with specific messages (not generic "Something went wrong").</li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════════
+     APPENDIX A
+══════════════════════════════════════════════════════ -->
+<h1 id="appA">Appendix A: Glossary</h1>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Term</th><th>Definition</th></tr></thead>
+  <tbody>
+    <tr><td>RBAC</td><td>Role-Based Access Control — assigning permissions to roles rather than individual users.</td></tr>
+    <tr><td>TOTP</td><td>Time-Based One-Time Password — the 2FA standard used by Google Authenticator.</td></tr>
+    <tr><td>FCM</td><td>Firebase Cloud Messaging — Google's push notification service for mobile push.</td></tr>
+    <tr><td>DLT</td><td>Distributed Ledger Technology — the Indian telecom regulatory requirement for SMS OTP senders.</td></tr>
+    <tr><td>SOW</td><td>Statement of Work — the master project agreement between Codly360 and Anjana.</td></tr>
+    <tr><td>UAT</td><td>User Acceptance Testing — the client's formal testing phase before final sign-off.</td></tr>
+    <tr><td>LTV</td><td>Lifetime Value — total revenue generated by a single user account over their entire relationship with the platform.</td></tr>
+    <tr><td>MRR</td><td>Monthly Recurring Revenue — the predictable subscription revenue expected each month.</td></tr>
+    <tr><td>ARPU</td><td>Average Revenue Per User — total revenue divided by total active users for a given period.</td></tr>
+    <tr><td>DAU / WAU / MAU</td><td>Daily / Weekly / Monthly Active Users — standard engagement metrics.</td></tr>
+    <tr><td>Soft Delete</td><td>Marking a record as deleted without physically removing it. Data is retained for audit and legal purposes.</td></tr>
+    <tr><td>R2</td><td>Cloudflare R2 — the S3-compatible object storage service used for all media on CreatorConnect.</td></tr>
+    <tr><td>UGC</td><td>User-Generated Content — any content created and published by platform users (bios, assignments, reviews, comments, portfolio items).</td></tr>
+    <tr><td>RBAC Middleware</td><td>A backend middleware layer that checks the requesting admin's role against the required permission level before executing any handler.</td></tr>
+  </tbody>
+</table></div>
+
+<!-- ══════════════════════════════════════════════════════
+     APPENDIX B
+══════════════════════════════════════════════════════ -->
+<h1 id="appB">Appendix B: Change Log</h1>
+<div class="tbl-wrap"><table>
+  <thead><tr><th>Version</th><th>Date</th><th>Author</th><th>Changes</th></tr></thead>
+  <tbody>
+    <tr><td>1.0</td><td>November 2026</td><td>Codly360</td><td>Initial release. All 19 sections authored from SOW, Module C–F UI references, Screen Catalogue, and Business Overview documents.</td></tr>
+  </tbody>
+</table></div>
+
+<p style="text-align:center;color:#aaa;font-size:12px;margin-top:60px;padding-top:24px;border-top:1px solid #eee;">
+  END OF DOCUMENT — CreatorConnect Admin Panel Master Specification v1.0 — Codly360 — Confidential
+</p>
+
+</body>
+</html>

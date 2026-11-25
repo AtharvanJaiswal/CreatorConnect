@@ -8,6 +8,7 @@ import '../bottom_sheets/d11_profile_more_options_sheet.dart';
 import 'd09_creator_public_profile_screen.dart';
 import '../../../../core/widgets/safe_image.dart';
 import '../../../chat/presentation/controllers/chat_controllers.dart';
+import '../../../chat/presentation/bottom_sheets/dlg_send_message_request_sheet.dart';
 
 class D10BrandPublicProfileScreen extends ConsumerWidget {
   final String brandId;
@@ -360,13 +361,16 @@ class D10BrandPublicProfileScreen extends ConsumerWidget {
       if (context.mounted) {
         Navigator.pushNamed(context, '/chat', arguments: conv.id);
       }
-    } catch (e) {
+    } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not start conversation: ${e.toString().split('\n').first}'),
-            backgroundColor: AppColors.error,
-          ),
+        DlgSendMessageRequestSheet.show(
+          context,
+          recipientId: targetUserId,
+          recipientName: profile.name,
+          recipientHandle: profile.handle,
+          recipientAvatar: profile.avatarUrl,
+          recipientRole: 'BRAND',
+          isVerified: profile.isVerified,
         );
       }
     }

@@ -26,6 +26,16 @@ class ChatRemoteDataSource {
 
   ChatRemoteDataSource({Dio? dio}) : _dio = dio ?? ApiClient.createDio();
 
+  Future<String> _resolveCurrentUserId() async {
+    try {
+      final cachedId = await AuthLocalDataSource().getCurrentUserId();
+      if (cachedId != null && cachedId.isNotEmpty) {
+        return cachedId;
+      }
+    } catch (_) {}
+    return Supabase.instance.client.auth.currentUser?.id ?? '';
+  }
+
   // ---------------------------------------------------------------------------
   // 1. Fetch Conversations (SCR-E01, SCR-E02)
   // ---------------------------------------------------------------------------
@@ -34,11 +44,40 @@ class ChatRemoteDataSource {
     ChatTab tab = ChatTab.primary,
     String? query,
   }) async {
+    if (tab == ChatTab.requests) {
+      try {
+        final reqResponse = await _dio.get(
+          '/api/v1/chat/requests',
+          queryParameters: {'direction': 'incoming', 'status': 'PENDING'},
+        );
+        if (reqResponse.statusCode == 200 && reqResponse.data != null) {
+          final data = reqResponse.data;
+          final list = (data is List ? data : (data is Map && data['items'] is List ? data['items'] : [])) as List<dynamic>;
+          final requestItems = list.map((e) {
+            final req = MessageRequestItem.fromJson(e as Map<String, dynamic>);
+            return ConversationItem.fromMessageRequest(req);
+          }).toList();
+
+          if (query != null && query.trim().isNotEmpty) {
+            final q = query.toLowerCase().trim();
+            return requestItems.where((conv) {
+              return conv.peerName.toLowerCase().contains(q) ||
+                  conv.peerHandle.toLowerCase().contains(q) ||
+                  conv.lastMessage.toLowerCase().contains(q);
+            }).toList();
+          }
+          return requestItems;
+        }
+      } catch (_) {
+        // Fallback to conversation list filter if requests route fails
+      }
+    }
+
     final response = await _dio.get('/api/v1/conversations');
     if (response.statusCode == 200 && response.data != null) {
       final data = response.data;
       final list = (data is List ? data : (data is Map && data['items'] is List ? data['items'] : [])) as List<dynamic>;
-      final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
+      final currentUserId = await _resolveCurrentUserId();
       final items = list.map((e) => ConversationItem.fromJson(e as Map<String, dynamic>, currentUserId: currentUserId)).toList();
       return _filterConversations(items, tab: tab, query: query);
     }
@@ -81,7 +120,7 @@ class ChatRemoteDataSource {
       data: {'recipientId': recipientId},
     );
     if ((response.statusCode == 200 || response.statusCode == 201) && response.data != null) {
-      final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
+      final currentUserId = await _resolveCurrentUserId();
       return ConversationItem.fromJson(
         response.data as Map<String, dynamic>,
         currentUserId: currentUserId,
@@ -102,7 +141,7 @@ class ChatRemoteDataSource {
     if (!_isUuid(conversationId)) return null;
     final response = await _dio.get('/api/v1/conversations/$conversationId');
     if (response.statusCode == 200 && response.data != null) {
-      final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
+      final currentUserId = await _resolveCurrentUserId();
       return ConversationItem.fromJson(response.data as Map<String, dynamic>, currentUserId: currentUserId);
     }
     return null;
@@ -124,7 +163,7 @@ class ChatRemoteDataSource {
     if (response.statusCode == 200 && response.data != null) {
       final data = response.data;
       final list = (data is List ? data : (data is Map && data['items'] is List ? data['items'] : [])) as List<dynamic>;
-      final effectiveUid = currentUserId ?? await AuthLocalDataSource().getCurrentUserId() ?? Supabase.instance.client.auth.currentUser?.id ?? '';
+      final effectiveUid = currentUserId ?? await _resolveCurrentUserId();
       return list.map((e) => ChatMessage.fromJson(
         e as Map<String, dynamic>,
         currentUserId: effectiveUid,
@@ -207,16 +246,84 @@ class ChatRemoteDataSource {
   }
 
   // ---------------------------------------------------------------------------
-  // 6. Accept / Decline Request (SCR-E02, SCR-E05)
+  // 6. Accept / Decline / Create Message Request (SCR-E02, SCR-E05)
   // ---------------------------------------------------------------------------
 
-  Future<void> acceptRequest(String conversationId) async {
-    // Read mark and sync
-    await markConversationRead(conversationId);
+  Future<void> acceptRequest(String requestIdOrConversationId) async {
+    if (_isUuid(requestIdOrConversationId)) {
+      try {
+        final response = await _dio.post('/api/v1/chat/requests/$requestIdOrConversationId/accept');
+        if (response.statusCode == 200) {
+          return;
+        }
+      } catch (_) {
+        // If not a request ID or already accepted, fallback to marking conversation read
+      }
+    }
+    await markConversationRead(requestIdOrConversationId);
   }
 
-  Future<void> declineRequest(String conversationId) async {
-    // Optionally block or leave
+  Future<void> declineRequest(String requestIdOrConversationId, {String? reason}) async {
+    if (_isUuid(requestIdOrConversationId)) {
+      try {
+        await _dio.post(
+          '/api/v1/chat/requests/$requestIdOrConversationId/decline',
+          data: {if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim()},
+        );
+      } catch (_) {}
+    }
+  }
+
+  Future<MessageRequestItem> createMessageRequest({
+    required String recipientId,
+    required String initialMessage,
+  }) async {
+    final trimmed = initialMessage.trim();
+    if (trimmed.isEmpty || trimmed.length > 500) {
+      throw ArgumentError('Introductory message must be between 1 and 500 characters.');
+    }
+
+    final response = await _dio.post(
+      '/api/v1/chat/requests',
+      data: {
+        'recipientId': recipientId,
+        'initialMessage': trimmed,
+      },
+    );
+
+    if ((response.statusCode == 200 || response.statusCode == 201) && response.data != null) {
+      return MessageRequestItem.fromJson(response.data as Map<String, dynamic>);
+    }
+
+    throw DioException(
+      requestOptions: response.requestOptions,
+      response: response,
+      error: 'Failed to create message request',
+    );
+  }
+
+  Future<List<MessageRequestItem>> getMessageRequests({
+    String direction = 'incoming',
+    String status = 'PENDING',
+  }) async {
+    final response = await _dio.get(
+      '/api/v1/chat/requests',
+      queryParameters: {
+        'direction': direction,
+        'status': status,
+      },
+    );
+
+    if (response.statusCode == 200 && response.data != null) {
+      final data = response.data;
+      final list = (data is List ? data : (data is Map && data['items'] is List ? data['items'] : [])) as List<dynamic>;
+      return list.map((e) => MessageRequestItem.fromJson(e as Map<String, dynamic>)).toList();
+    }
+    return [];
+  }
+
+  Future<void> cancelMessageRequest(String requestId) async {
+    await _dio.post('/api/v1/chat/requests/$requestId/cancel');
   }
 
   // ---------------------------------------------------------------------------
@@ -228,7 +335,11 @@ class ChatRemoteDataSource {
     String messageId, {
     required bool forEveryone,
   }) async {
-    // Optionally send deletion request if backend route available
+    if (forEveryone && _isUuid(conversationId) && _isUuid(messageId)) {
+      try {
+        await _dio.delete('/api/v1/conversations/$conversationId/messages/$messageId');
+      } catch (_) {}
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -238,7 +349,7 @@ class ChatRemoteDataSource {
   Future<void> blockUser(String targetUserId, {String? reason}) async {
     await _dio.post('/api/v1/blocks', data: {
       'targetUserId': targetUserId,
-      if (reason != null) 'reason': reason,
+      if (reason != null && reason.isNotEmpty) 'reason': reason,
     });
   }
 
@@ -252,12 +363,48 @@ class ChatRemoteDataSource {
     String? details,
     String? conversationId,
   }) async {
+    final category = _resolveReportCategory(reason);
     await _dio.post('/api/v1/reports', data: {
       'targetId': targetUserId,
       'targetType': 'USER',
-      'reason': reason,
-      if (details != null) 'details': details,
+      'category': category,
+      'details': details ?? reason,
     });
+  }
+
+  String _resolveReportCategory(String reason) {
+    final lower = reason.toLowerCase();
+    if (lower.contains('payment') || lower.contains('scam') || lower.contains('off-platform')) {
+      return 'SCAM';
+    } else if (lower.contains('harass') || lower.contains('abusive')) {
+      return 'HARASSMENT';
+    } else if (lower.contains('spam') || lower.contains('advertising')) {
+      return 'SPAM';
+    } else if (lower.contains('inappropriate') || lower.contains('copyright') || lower.contains('media')) {
+      return 'INAPPROPRIATE_CONTENT';
+    } else if (lower.contains('file') || lower.contains('malicious') || lower.contains('virus')) {
+      return 'MALICIOUS_FILE';
+    }
+    return 'OTHER';
+  }
+
+  // ---------------------------------------------------------------------------
+  // 9b. Attachment Download Presigned URL (SCR-E07)
+  // ---------------------------------------------------------------------------
+
+  Future<String?> getAttachmentDownloadUrl({
+    required String conversationId,
+    required String attachmentId,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/api/v1/conversations/$conversationId/attachments/$attachmentId/download',
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        return response.data['downloadUrl'] as String?;
+      }
+    } catch (_) {}
+    return null;
   }
 
   // ---------------------------------------------------------------------------

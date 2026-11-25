@@ -66,6 +66,21 @@ import 'features/applications_invites/presentation/screens/h05_invites_inbox_scr
 import 'features/applications_invites/presentation/screens/h06_invite_detail_screen.dart';
 import 'features/applications_invites/presentation/screens/h07_sent_invites_screen.dart';
 
+// Module N: Settings & Account Management
+import 'features/settings/presentation/screens/settings_home_screen.dart';
+import 'features/settings/presentation/screens/account_details_screen.dart';
+import 'features/settings/presentation/screens/notification_preferences_screen.dart';
+import 'features/settings/presentation/screens/privacy_visibility_screen.dart';
+import 'features/settings/presentation/screens/blocked_users_screen.dart';
+import 'features/settings/presentation/screens/manage_roles_screen.dart';
+import 'features/settings/presentation/screens/security_devices_screen.dart';
+import 'features/settings/presentation/screens/help_center_screen.dart';
+import 'features/settings/presentation/screens/contact_support_screen.dart';
+import 'features/settings/presentation/screens/legal_policies_screen.dart';
+import 'features/settings/presentation/screens/about_creatorconnect_screen.dart';
+import 'features/settings/presentation/screens/deactivate_account_screen.dart';
+import 'features/settings/presentation/screens/delete_account_screen.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -167,6 +182,21 @@ class _CreatorConnectAppState extends State<CreatorConnectApp> {
         '/applications/my': (context) => const H02MyApplicationsScreen(),
         '/invites/inbox': (context) => const H05InvitesInboxScreen(),
         '/invites/sent': (context) => const H07SentInvitesScreen(),
+
+        // Module N: Settings & Account Management
+        '/settings': (context) => const SettingsHomeScreen(),
+        '/settings/account-details': (context) => const AccountDetailsScreen(),
+        '/settings/notifications': (context) => const NotificationPreferencesScreen(),
+        '/settings/privacy': (context) => const PrivacyVisibilityScreen(),
+        '/settings/blocked-users': (context) => const BlockedUsersScreen(),
+        '/settings/roles': (context) => const ManageRolesScreen(),
+        '/settings/security': (context) => const SecurityDevicesScreen(),
+        '/settings/help': (context) => const HelpCenterScreen(),
+        '/settings/support': (context) => const ContactSupportScreen(),
+        '/settings/legal': (context) => const LegalPoliciesScreen(),
+        '/settings/about': (context) => const AboutCreatorConnectScreen(),
+        '/settings/deactivate': (context) => const DeactivateAccountScreen(),
+        '/settings/delete-account': (context) => const DeleteAccountScreen(),
       },
       onGenerateRoute: (settings) {
         UserRole? extractRole(Object? rawArgs) {

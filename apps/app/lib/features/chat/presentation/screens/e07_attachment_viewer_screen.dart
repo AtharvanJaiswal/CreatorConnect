@@ -4,6 +4,9 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/safe_image.dart';
 import '../../domain/entities/chat_entities.dart';
 
+import '../../domain/repositories/chat_repository.dart';
+import '../../data/repositories/chat_repository_impl.dart';
+
 /// SCR-E07: Full Screen Chat Attachment Preview & Media Viewer (SOW §7.1)
 /// Supports documents (PDF), photos/moodboards, video clips, and brief references
 /// uploaded via Cloudflare R2 storage with complete metadata (size, type, pages, sender, timestamp).
@@ -11,12 +14,16 @@ class E07AttachmentViewerScreen extends StatefulWidget {
   final MessageAttachment attachment;
   final String? sentBy;
   final String? timestamp;
+  final String? conversationId;
+  final ChatRepository? repository;
 
   const E07AttachmentViewerScreen({
     super.key,
     required this.attachment,
     this.sentBy,
     this.timestamp,
+    this.conversationId,
+    this.repository,
   });
 
   @override
@@ -28,12 +35,24 @@ class _E07AttachmentViewerScreenState extends State<E07AttachmentViewerScreen> {
 
   Future<void> _handleDownload() async {
     setState(() => _isDownloading = true);
-    await Future.delayed(const Duration(milliseconds: 600));
+    String? authorizedUrl;
+
+    if (widget.conversationId != null && widget.attachment.id.isNotEmpty) {
+      try {
+        final repo = widget.repository ?? ChatRepositoryImpl();
+        authorizedUrl = await repo.getAttachmentDownloadUrl(
+          conversationId: widget.conversationId!,
+          attachmentId: widget.attachment.id,
+        );
+      } catch (_) {}
+    }
+
     if (mounted) {
       setState(() => _isDownloading = false);
+      final urlMsg = authorizedUrl != null ? 'Download authorized.' : 'Attachment saved.';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Saved "${widget.attachment.fileName}" to device downloads.'),
+          content: Text('$urlMsg "${widget.attachment.fileName}"'),
           backgroundColor: AppColors.success,
         ),
       );

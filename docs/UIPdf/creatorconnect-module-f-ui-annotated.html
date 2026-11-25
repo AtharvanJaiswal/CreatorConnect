@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreatorConnect — Module F: Portfolio &amp; Showcase UI (Annotated)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme: light;
+  --bg-primary:#FAF6EF;
+  --bg-secondary:#F2ECE1;
+  --surface:#FFFFFF;
+  --surface-elevated:#FFFFFF;
+  --primary:#FFD64A;
+  --primary-press:#F0C52F;
+  --secondary:#C9B6F7;
+  --accent:#FFB6C8;
+  --c-yellow:#FFD64A;
+  --c-pink:#FFB6C8;
+  --c-lavender:#C9B6F7;
+  --c-mint:#B6E09B;
+  --c-sky:#A6CCF7;
+  --c-peach:#FFC9A3;
+  --text-primary:#14110F;
+  --text-secondary:#6F675E;
+  --text-muted:#A39A8F;
+  --text-on-primary:#14110F;
+  --border:#E7E0D5;
+  --divider:#EFE9DF;
+  --disabled:#D8D1C6;
+  --success:#2E9E6B;
+  --success-bg:#E6F4EC;
+  --warning:#C98A16;
+  --warning-bg:#FBF1DC;
+  --error:#D8483C;
+  --error-bg:#FBE9E7;
+  --sp-xs:4px; --sp-sm:8px; --sp-md:16px; --sp-lg:24px;
+  --sp-xl:32px; --sp-2xl:48px; --sp-3xl:64px;
+  --r-button:999px;
+  --r-input:16px;
+  --r-card:28px;
+  --r-modal:32px;
+  --r-image:24px;
+  --r-chip:999px;
+  --bw:1.5px;
+  --bw-focus:2px;
+  --sh-sm:0 1px 2px rgba(20,17,15,.05);
+  --sh-md:0 4px 16px rgba(20,17,15,.07);
+  --sh-lg:0 12px 32px rgba(20,17,15,.10);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{
+  margin:0;background:#EDE7DC;color:var(--text-primary);
+  font-family:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1240px;margin:0 auto;padding:40px 20px 80px}
+.doc-head{margin-bottom:40px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px}
+.doc-title{font-size:clamp(32px,5vw,50px);font-weight:800;letter-spacing:-.025em;line-height:1.02;margin:0 0 12px}
+.doc-title em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;letter-spacing:-.01em}
+.doc-sub{font-size:15px;color:var(--text-secondary);max-width:720px;line-height:1.55;margin:0}
+.sec{margin:64px 0 0}
+.sec-head{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid var(--text-primary);padding-bottom:10px;margin-bottom:24px;flex-wrap:wrap}
+.sec-n{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--text-muted)}
+.sec-t{font-size:22px;font-weight:800;letter-spacing:-.01em;margin:0}
+.sec-note{font-size:13px;color:var(--text-secondary);margin-left:auto}
+.screens{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:36px 26px}
+.sc-item{display:flex;flex-direction:column;gap:12px}
+.sc-cap{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.sc-id{font-size:10px;font-weight:800;letter-spacing:.1em;color:#fff;background:var(--text-primary);padding:3px 8px;border-radius:999px}
+.sc-name{font-size:14px;font-weight:700}
+.sc-desc{font-size:12px;color:var(--text-secondary);line-height:1.45}
+.meta-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-top:8px;font-size:11.5px;line-height:1.45}
+.meta-box b{color:var(--text-primary)}
+.phone{
+  width:100%;max-width:330px;aspect-ratio:375/812;margin:0 auto;
+  background:var(--bg-primary);border-radius:38px;
+  border:9px solid #14110F;overflow:hidden;position:relative;
+  box-shadow:var(--sh-lg);
+}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg-primary)}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:34%;height:22px;background:#14110F;border-radius:0 0 14px 14px;z-index:20}
+.statusbar{height:34px;flex-shrink:0;display:flex;align-items:flex-end;justify-content:space-between;padding:0 18px 3px;font-size:10px;font-weight:700;position:relative;z-index:10}
+.pad{padding:0 18px}
+.grow{flex:1;min-height:0;overflow-y:auto}
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  height:48px;border-radius:var(--r-button);font-size:14px;font-weight:700;
+  border:none;width:100%;cursor:pointer;font-family:inherit;
+}
+.btn-primary{background:var(--primary);color:var(--text-on-primary)}
+.btn-dark{background:var(--text-primary);color:#fff}
+.btn-outline{background:transparent;border:var(--bw) solid var(--text-primary);color:var(--text-primary)}
+.btn-ghost{background:transparent;color:var(--text-primary);font-weight:600}
+.btn-sm{height:34px;font-size:12px;padding:0 14px;width:auto;flex-shrink:0;white-space:nowrap}
+.btn-xs{height:28px;font-size:11px;padding:0 12px;border-radius:999px;width:auto;flex-shrink:0;white-space:nowrap}
+.h-lg{font-size:24px;font-weight:800;letter-spacing:-.025em;line-height:1.1;margin:0}
+.h-md{font-size:17px;font-weight:800;letter-spacing:-.01em;margin:0}
+.body{font-size:13px;line-height:1.5;color:var(--text-secondary);margin:0}
+.small{font-size:11px;line-height:1.4;color:var(--text-muted);margin:0}
+.lbl{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted)}
+.port-card{
+  background:var(--surface);border:1.5px solid var(--border);border-radius:18px;
+  overflow:hidden;position:relative;display:flex;flex-direction:column;
+  box-shadow:var(--sh-sm);cursor:pointer;
+}
+.port-card.pinned{border-color:#14110F;background:#FFFDF7}
+.port-thumb{
+  width:100%;aspect-ratio:4/3;background:var(--bg-secondary);position:relative;
+  overflow:hidden;display:flex;align-items:center;justify-content:center;
+}
+.port-thumb.video{aspect-ratio:16/9}
+.port-badge{
+  position:absolute;top:8px;left:8px;padding:3px 8px;border-radius:999px;
+  font-size:9px;font-weight:800;background:rgba(20,17,15,0.75);color:#fff;
+  display:inline-flex;align-items:center;gap:3px;
+}
+.port-body{padding:10px 12px;display:flex;flex-direction:column;gap:3px}
+.port-title{font-size:12.5px;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.port-meta{font-size:10px;color:var(--text-muted);display:flex;align-items:center;gap:4px}
+.filterchip{
+  display:inline-flex;align-items:center;gap:5px;background:var(--text-primary);
+  color:#fff;border-radius:999px;padding:5px 11px;font-size:11px;font-weight:700;white-space:nowrap;
+}
+.filterchip.outline{
+  background:var(--surface);color:var(--text-primary);border:1.5px solid var(--border);
+}
+.brand-badge{
+  display:inline-flex;align-items:center;gap:4px;background:#FFF9E6;
+  border:1px solid #FFE486;color:#8C6A0A;font-size:9.5px;font-weight:800;
+  padding:2px 7px;border-radius:999px;
+}
+.bottomnav{
+  height:54px;background:#FFFFFF;border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-around;
+  padding:0 8px;flex-shrink:0;position:relative;z-index:10;
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:2px;color:var(--text-muted);cursor:pointer;position:relative;
+}
+.nav-item.on{color:var(--text-primary)}
+.nav-dot{width:4px;height:4px;border-radius:999px;background:var(--text-primary);position:absolute;bottom:-6px}
+.nav-fab{
+  width:38px;height:38px;border-radius:999px;background:var(--primary);
+  border:2px solid #14110F;display:flex;align-items:center;justify-content:center;
+  color:#14110F;font-weight:900;font-size:18px;margin-top:-14px;box-shadow:0 3px 8px rgba(0,0,0,0.12);
+}
+.dlgcard{position:relative;width:100%;max-width:330px;margin:0 auto;border-radius:26px;overflow:hidden;background:var(--bg-primary);border:1px solid var(--border)}
+.dc-dim{position:absolute;inset:0;background:rgba(20,17,15,.55);z-index:15}
+.dc-sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:26px 26px 0 0;padding:4px 18px 18px;z-index:20;max-height:85%;overflow-y:auto}
+.dc-center{position:absolute;left:18px;right:18px;top:50%;transform:translateY(-50%);background:#fff;border-radius:26px;padding:20px;z-index:20;box-shadow:var(--sh-lg)}
+.dc-bg{padding:16px;opacity:.5}
+.sh-h{width:36px;height:4px;border-radius:999px;background:var(--disabled);margin:8px auto 12px}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:28px 26px}
+.lrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--divider);font-size:12px}
+.lrow:last-child{border-bottom:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="doc-head">
+  <div class="eyebrow">CreatorConnect · Codly360 · Module F (Annotated Production UI)</div>
+  <h1 class="doc-title">Portfolio Showcase, <em>Cloud Drives &amp; Detailed Purpose Specifications</em></h1>
+  <p class="doc-sub">Fully annotated production screen catalogue detailing target audiences, primary user journeys, business purposes, and SOW compliance for every screen and dialog in Module F.</p>
+</div>
+
+<!-- ============ 01 SCREENS — CORE PORTFOLIO & DRIVE UPLOAD ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">01</span><h2 class="sec-t">Core Portfolio &amp; Cloud Drive Screens</h2><span class="sec-note">F01 to F03 · creation &amp; management</span></div>
+  <div class="screens">
+
+    <!-- F01 -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px">
+            <h2 class="h-lg">My Portfolio</h2>
+            <div style="width:34px;height:34px;border-radius:999px;background:var(--primary);border:1.5px solid #14110F;display:flex;align-items:center;justify-content:center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            </div>
+          </div>
+          <div class="pad" style="margin-bottom:8px">
+            <div style="background:#FFFDF7;border:1.5px solid var(--border);border-radius:14px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="font-size:11px;font-weight:800">Pro Showcase Active ⭐</div>
+                <div style="font-size:9.5px;color:var(--text-muted)">Cloud Drive &amp; Direct Uploads</div>
+              </div>
+              <span style="font-size:10px;font-weight:800;color:#2E9E6B">Level 1 Unlocked</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;padding:0 18px 8px;overflow-x:auto">
+            <span class="filterchip" style="font-size:10.5px">All (7)</span>
+            <span class="filterchip outline" style="font-size:10.5px">Drive Links (3)</span>
+          </div>
+          <div class="grow pad" style="padding-top:4px;padding-bottom:14px">
+            <div class="port-card pinned" style="margin-bottom:10px">
+              <div class="port-thumb video" style="background:linear-gradient(135deg, #14110F 0%, #333 100%)">
+                <span class="port-badge" style="background:var(--primary);color:#14110F;border:1px solid #14110F">★ Pinned Hero</span>
+                <span class="port-badge" style="top:auto;bottom:8px;left:8px;background:#4285F4">📁 Google Drive Link</span>
+              </div>
+              <div class="port-body">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span class="brand-badge">Netflix India Collab ✓</span>
+                  <span style="font-size:9.5px;color:var(--success);font-weight:800">2.4M Reach</span>
+                </div>
+                <div class="port-title" style="font-size:13.5px;margin-top:2px">Full Campaign Master Archive</div>
+              </div>
+            </div>
+          </div>
+          <div class="bottomnav">
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+            <div class="nav-fab">+</div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="nav-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg><span class="nav-dot"></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">F01</span><span class="sc-name">Portfolio Showcase — Grid View (SCR-024)</span></div>
+      <div class="meta-box">
+        <b>Who sees this:</b> Creator / Production Professional (Owner view).<br>
+        <b>Purpose:</b> Central dashboard for managing work samples, pinned hero assets, quota tracking, and cloud drive archives.<br>
+        <b>Key Action:</b> Tap '+' to add new project or link.
+      </div>
+    </div>
+
+    <!-- F02 -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          <div style="padding:10px 18px"><h2 class="h-lg">My Portfolio</h2></div>
+          <div class="grow flexcol" style="align-items:center;justify-content:center;text-align:center;padding:0 24px">
+            <div style="width:72px;height:72px;border-radius:24px;background:var(--c-mint);border:2px solid #14110F;display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            </div>
+            <h3 class="h-md" style="font-size:18px">Showcase your best craft</h3>
+            <p class="body" style="font-size:12px;margin-top:6px;max-width:240px">Add your first project or public cloud folder to unlock Level 1 and apply to briefs.</p>
+            <div style="width:100%;margin-top:20px;display:flex;flex-direction:column;gap:8px">
+              <div class="btn btn-primary btn-sm">Add Public Drive Link +</div>
+              <div class="btn btn-outline btn-sm">Upload Direct Media</div>
+            </div>
+          </div>
+          <div class="bottomnav">
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+            <div class="nav-fab">+</div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="nav-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg><span class="nav-dot"></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">F02</span><span class="sc-name">Portfolio — Empty Starter State</span></div>
+      <div class="meta-box">
+        <b>Who sees this:</b> Newly registered Creators &amp; Production Professionals with 0 portfolio items.<br>
+        <b>Purpose:</b> Educates the user on the Level 1 unlock condition and provides frictionless one-tap buttons to upload their first project.
+      </div>
+    </div>
+
+    <!-- F03 -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg>
+            <div style="font-size:14px;font-weight:900">Add Public Cloud Link</div>
+            <span style="font-size:12px;font-weight:700;color:var(--text-muted)">Step 1</span>
+          </div>
+          <div class="grow pad" style="padding-top:6px">
+            <span class="lbl" style="display:block;margin-bottom:6px">Cloud Provider</span>
+            <div style="display:flex;gap:6px;margin-bottom:12px">
+              <span class="filterchip" style="font-size:10.5px">Google Drive</span>
+              <span class="filterchip outline" style="font-size:10.5px">Dropbox</span>
+            </div>
+            <span class="lbl" style="display:block;margin-bottom:4px">Public Folder / File URL <span style="color:var(--error)">*</span></span>
+            <div style="background:var(--surface);border:1.5px solid #14110F;border-radius:14px;height:42px;padding:0 12px;display:flex;align-items:center;gap:8px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F675E" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              <input type="text" value="https://drive.google.com/drive/folders/..." style="border:none;background:transparent;width:100%;font-size:11px;font-family:inherit;font-weight:700;outline:none">
+            </div>
+            <div style="font-size:9.5px;color:var(--success);margin-top:4px">✓ Public sharing permission verified</div>
+          </div>
+          <div style="padding:10px 18px 18px;background:#fff;border-top:1px solid var(--border)">
+            <div class="btn btn-primary btn-sm">Continue to Metadata &rarr;</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">F03</span><span class="sc-name">Public Drive Link Input (SCR-025)</span></div>
+      <div class="meta-box">
+        <b>Who sees this:</b> Creators adding large multi-gigabyte production archives.<br>
+        <b>Purpose:</b> Bypasses file size limits by allowing direct linking to public cloud folders with automated permission validation.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ 02 SCREENS — DETAILED VIEWERS & EDITING ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">02</span><h2 class="sec-t">Detailed Inspection &amp; Management Screens</h2><span class="sec-note">F06 to F08 · viewing &amp; collaboration</span></div>
+  <div class="screens">
+
+    <!-- F06 -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar" style="color:#fff;z-index:25"><span>9:41</span><span>●●● ▮</span></div>
+          <div class="grow" style="overflow-y:auto;position:relative">
+            <div style="height:210px;background:#14110F;position:relative;display:flex;align-items:center;justify-content:center">
+              <div style="position:absolute;top:38px;left:14px;z-index:30">
+                <div style="width:32px;height:32px;border-radius:999px;background:rgba(20,17,15,0.6);display:flex;align-items:center;justify-content:center">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+                </div>
+              </div>
+              <div style="text-align:center;color:#fff;padding:0 20px">
+                <div style="font-size:32px;margin-bottom:8px">📁</div>
+                <div style="font-size:14px;font-weight:900">Google Drive Archive Viewer</div>
+                <div style="font-size:10.5px;color:#A39A8F;margin-top:2px">14 items · 1.4 GB Raw Footage</div>
+              </div>
+              <span class="port-badge" style="bottom:10px;right:12px;left:auto;background:#4285F4">Public Drive Folder</span>
+            </div>
+            <div class="pad" style="padding-top:12px;padding-bottom:16px">
+              <span class="brand-badge">Netflix India Collab ✓</span>
+              <h2 class="h-md" style="font-size:18px;margin-top:6px">Full Campaign Master Archive</h2>
+              <div style="margin-top:10px">
+                <span class="lbl">In-Depth Scope &amp; Deliverables</span>
+                <p class="body" style="font-size:11.5px;margin-top:3px">Complete raw camera footage, color profiles, and final master renders for Netflix India's promotional campaign.</p>
+              </div>
+              <div style="margin-top:12px">
+                <div class="btn btn-outline btn-sm">Open Folder in Browser ↗</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;padding:8px 18px 12px;background:#fff;border-top:1px solid var(--border);flex-shrink:0">
+            <div class="btn btn-outline btn-sm" style="flex:1">Message Creator</div>
+            <div class="btn btn-primary btn-sm" style="flex:1">Hire for Work</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">F06</span><span class="sc-name">Fullscreen Drive Viewer (SCR-027)</span></div>
+      <div class="meta-box">
+        <b>Who sees this:</b> Brands, Companies &amp; Collaborators inspecting a creator's portfolio item.<br>
+        <b>Purpose:</b> Provides deep project context, verified brand badges, and direct conversion CTAs (Message / Hire).
+      </div>
+    </div>
+
+    <!-- F07 -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg>
+            <div style="font-size:14px;font-weight:900">Edit Project Details</div>
+            <span style="font-size:11px;font-weight:700;color:var(--error)">Delete</span>
+          </div>
+          <div class="grow pad" style="padding-top:6px;padding-bottom:14px">
+            <div style="margin-bottom:8px">
+              <span class="lbl" style="display:block;margin-bottom:3px">Project Title</span>
+              <div style="background:var(--surface);border:1.5px solid #14110F;border-radius:12px;height:38px;padding:0 10px;display:flex;align-items:center;font-size:12px;font-weight:700">Full Campaign Master Archive</div>
+            </div>
+            <div style="margin-bottom:8px">
+              <span class="lbl" style="display:block;margin-bottom:3px">Drive Link / URL</span>
+              <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:12px;height:38px;padding:0 10px;display:flex;align-items:center;font-size:11px">https://drive.google.com/drive/folders/1xyz</div>
+            </div>
+            <div style="margin-bottom:8px">
+              <span class="lbl" style="display:block;margin-bottom:3px">Verified Brand Partnership</span>
+              <div style="background:#FFF9E6;border:1.5px solid #FFE486;border-radius:12px;padding:6px 10px;display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:11px;font-weight:800">Netflix India ✓</span>
+                <span style="font-size:10px;color:var(--text-muted);font-weight:700">Change</span>
+              </div>
+            </div>
+          </div>
+          <div style="padding:10px 18px 18px;background:#fff;border-top:1px solid var(--border)">
+            <div class="btn btn-primary btn-sm">Save Changes</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">F07</span><span class="sc-name">Edit Project Form (SCR-026)</span></div>
+      <div class="meta-box">
+        <b>Who sees this:</b> Creator (Owner editing their own work sample).<br>
+        <b>Purpose:</b> Allows modifying project metadata, updating cloud URLs, and managing brand attribution tags.
+      </div>
+    </div>
+
+    <!-- F08 -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg>
+            <div style="font-size:14px;font-weight:900">Creator Portfolio</div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/></svg>
+          </div>
+          <div class="grow pad" style="padding-top:4px">
+            <div style="display:flex;gap:6px;margin-bottom:10px">
+              <span class="filterchip" style="font-size:10px">All Work (5)</span>
+              <span class="filterchip outline" style="font-size:10px">Cloud Folders (2)</span>
+            </div>
+            <div class="port-card" style="margin-bottom:8px">
+              <div class="port-thumb" style="background:var(--c-sky)">
+                <span class="port-badge" style="background:#4285F4">Google Drive</span>
+              </div>
+              <div class="port-body">
+                <div class="port-title">Brand Commercial Archive</div>
+                <div class="port-meta"><span>Netflix India</span></div>
+              </div>
+            </div>
+            <div class="port-card">
+              <div class="port-thumb" style="background:var(--c-mint)">
+                <span class="port-badge">Reel</span>
+              </div>
+              <div class="port-body">
+                <div class="port-title">Fashion Lookbook</div>
+                <div class="port-meta"><span>Zara India</span></div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:10px 18px 14px;background:#fff;border-top:1px solid var(--border)">
+            <div class="btn btn-primary btn-sm">Hire Creator</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">F08</span><span class="sc-name">Client Public View Showcase (SCR-024)</span></div>
+      <div class="meta-box">
+        <b>Who sees this:</b> External Brands &amp; Clients browsing a creator's profile.<br>
+        <b>Purpose:</b> Clean public-facing showcase highlighting verified cloud folders and direct collaboration triggers.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ 03 DIALOGS CATALOGUE WITH ANNOTATIONS ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">03</span><h2 class="sec-t">Portfolio Dialogs &amp; Action Sheets (Annotated)</h2><span class="sec-note">DLG-F01 to DLG-F04</span></div>
+  <div class="dgrid">
+
+    <!-- DLG-F01 -->
+    <div class="sc-item">
+      <div class="dlgcard" style="height:320px">
+        <div class="dc-bg"><div class="port-card"></div></div>
+        <div class="dc-dim"></div>
+        <div class="dc-center">
+          <div style="width:40px;height:40px;border-radius:999px;background:var(--error-bg);color:var(--error);display:flex;align-items:center;justify-content:center;margin:0 auto 8px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </div>
+          <h3 class="h-md" style="font-size:15px;text-align:center">Delete project archive?</h3>
+          <p class="body" style="font-size:11px;text-align:center;margin-top:4px">This will remove the link and metadata from your profile.</p>
+          <div style="margin-top:12px">
+            <div class="btn btn-sm" style="background:var(--error);color:#fff">Delete Project</div>
+            <div class="btn btn-ghost btn-sm" style="margin-top:2px">Cancel</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id" style="background:#B08B3A">DLG-F01</span><span class="sc-name">Delete Confirmation Modal</span></div>
+      <div class="meta-box">
+        <b>Who triggers:</b> Creator tapping 'Delete' on edit screen.<br>
+        <b>Purpose:</b> Destructive confirmation guarding against accidental project removal.
+      </div>
+    </div>
+
+    <!-- DLG-F02 -->
+    <div class="sc-item">
+      <div class="dlgcard" style="height:320px">
+        <div class="dc-bg"><div class="port-card"></div></div>
+        <div class="dc-dim"></div>
+        <div class="dc-sheet">
+          <div class="sh-h"></div>
+          <div style="width:36px;height:36px;border-radius:999px;background:var(--warning-bg);color:var(--warning);display:flex;align-items:center;justify-content:center;margin-bottom:6px">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <h3 class="h-md" style="font-size:15px">Check Link Permissions</h3>
+          <p class="body" style="font-size:11px;margin-top:4px">We couldn't verify public access to this Google Drive folder. Please ensure access is set to <b>"Anyone with the link can view"</b>.</p>
+          <div style="margin-top:12px">
+            <div class="btn btn-primary btn-sm">Re-test Permission</div>
+            <div class="btn btn-ghost btn-sm" style="margin-top:2px">Change URL</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id" style="background:#B08B3A">DLG-F02</span><span class="sc-name">Drive Permission Alert Sheet</span></div>
+      <div class="meta-box">
+        <b>Who triggers:</b> System validation when a cloud drive link returns 403/Forbidden.<br>
+        <b>Purpose:</b> Instructs creator to fix sharing permissions so brands can view files.
+      </div>
+    </div>
+
+    <!-- DLG-F03 -->
+    <div class="sc-item">
+      <div class="dlgcard" style="height:320px">
+        <div class="dc-bg"><div class="port-card"></div></div>
+        <div class="dc-dim"></div>
+        <div class="dc-sheet">
+          <div class="sh-h"></div>
+          <h3 class="h-md" style="font-size:15px">Pro Showcase Upgrade</h3>
+          <p class="body" style="font-size:11px;margin-top:4px">Free tier allows up to 10 project items. Upgrade to Pro for unlimited cloud folders and 4K media.</p>
+          <div style="margin-top:12px">
+            <div class="btn btn-primary btn-sm">Upgrade for ₹499/mo</div>
+            <div class="btn btn-ghost btn-sm" style="margin-top:2px">Maybe Later</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id" style="background:#B08B3A">DLG-F03</span><span class="sc-name">Storage Quota Paywall Sheet</span></div>
+      <div class="meta-box">
+        <b>Who triggers:</b> Creator attempting to add an 11th portfolio item on Free tier.<br>
+        <b>Purpose:</b> SOW §17 monetization gateway offering Pro membership upgrade.
+      </div>
+    </div>
+
+    <!-- DLG-F04 -->
+    <div class="sc-item">
+      <div class="dlgcard" style="height:320px">
+        <div class="dc-bg"><div class="port-card"></div></div>
+        <div class="dc-dim"></div>
+        <div class="dc-sheet">
+          <div class="sh-h"></div>
+          <h3 class="h-md" style="font-size:15px">Tag Verified Brand</h3>
+          <div style="background:var(--bg-secondary);border:1.5px solid var(--border);border-radius:10px;height:36px;padding:0 8px;display:flex;align-items:center;gap:6px;margin:8px 0">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <span style="font-size:11px;font-weight:700">Netflix</span>
+          </div>
+          <div class="lrow">
+            <div style="width:22px;height:22px;border-radius:4px;background:#14110F;color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900">N</div>
+            <div style="flex:1"><b style="font-size:11px">Netflix India</b> <span style="font-size:9px;color:var(--success)">✓ Verified</span></div>
+            <span class="btn btn-outline btn-xs" style="height:22px">Select</span>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id" style="background:#B08B3A">DLG-F04</span><span class="sc-name">Brand Tag Selector Sheet</span></div>
+      <div class="meta-box">
+        <b>Who triggers:</b> Creator linking a project to a commercial client.<br>
+        <b>Purpose:</b> Connects work samples to verified platform brand accounts.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div>
+</body>
+</html>

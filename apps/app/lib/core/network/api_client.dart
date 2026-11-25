@@ -35,10 +35,10 @@ class ApiClient {
     };
   }
 
-  /// Fast probe across local candidate hosts (192.168.1.42 Wi-Fi LAN, 127.0.0.1 adb reverse, 10.0.2.2 emulator).
+  /// Fast probe across local candidate hosts (192.168.1.104 Wi-Fi LAN, 127.0.0.1 adb reverse, 10.0.2.2 emulator).
   static Future<void> probeBestLocalHost() async {
     if (kIsWeb || EnvironmentConfig.currentEnv != AppEnvironment.local) return;
-    const candidates = ['192.168.1.42', '127.0.0.1', '10.0.2.2', '192.168.1.108'];
+    const candidates = ['192.168.1.104', '192.168.1.103', '127.0.0.1', '10.0.2.2', '192.168.1.42', '192.168.1.108'];
     final tempDio = Dio(
       BaseOptions(
         connectTimeout: const Duration(milliseconds: 1500),
