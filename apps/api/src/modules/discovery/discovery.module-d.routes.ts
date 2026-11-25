@@ -25,6 +25,14 @@ export const discoveryModuleDRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get<{ Querystring: { role?: string } }>(
     '/api/v1/home/dashboard',
     {
+      preHandler: [
+        fastify.rateLimit({
+          endpoint: 'home-dashboard',
+          max: 120,
+          windowSeconds: 60,
+          onRedisFailure: 'bounded-fallback',
+        }),
+      ],
       schema: {
         description:
           'Returns role-specific stats, pending alerts, recommended profiles, and active briefs',

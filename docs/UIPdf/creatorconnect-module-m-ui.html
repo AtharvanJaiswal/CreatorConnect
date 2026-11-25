@@ -3,177 +3,248 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CreatorConnect — Module M: Referrals &amp; Rewards UI/UX Design System</title>
+<title>CreatorConnect — Module M: Referrals &amp; Rewards UI/UX Design System (INR ₹) · Onboarding &amp; Auth Aesthetic</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ============================================================
-   CREATORCONNECT — DESIGN TOKENS
-   Identical to Module C, D, E, F, G, N, J, K approved design system
+   CREATORCONNECT — DESIGN TOKENS (Strictly from Onboarding Auth UI)
    ============================================================ */
-:root{
+:root {
   color-scheme: light;
-  --bg-primary:#FAF6EF;
-  --bg-secondary:#F2ECE1;
-  --surface:#FFFFFF;
-  --surface-elevated:#FFFFFF;
-  --primary:#FFD64A;
-  --primary-press:#F0C52F;
-  --secondary:#C9B6F7;
-  --accent:#FFB6C8;
-  --c-yellow:#FFD64A;
-  --c-pink:#FFB6C8;
-  --c-lavender:#C9B6F7;
-  --c-mint:#B6E09B;
-  --c-sky:#A6CCF7;
-  --c-peach:#FFC9A3;
-  --c-gold:#E6A100;
-  --text-primary:#14110F;
-  --text-secondary:#6F675E;
-  --text-muted:#A39A8F;
-  --text-on-primary:#14110F;
-  --border:#E7E0D5;
-  --divider:#EFE9DF;
-  --disabled:#D8D1C6;
-  --success:#2E9E6B;
-  --success-bg:#E6F4EC;
-  --warning:#C98A16;
-  --warning-bg:#FBF1DC;
-  --error:#D8483C;
-  --error-bg:#FBE9E7;
-  --sp-xs:4px; --sp-sm:8px; --sp-md:16px; --sp-lg:24px;
-  --sp-xl:32px; --sp-2xl:48px; --sp-3xl:64px;
-  --r-button:999px;
-  --r-input:16px;
-  --r-card:28px;
-  --r-modal:32px;
-  --r-image:24px;
-  --r-chip:999px;
-  --bw:1.5px;
-  --bw-divider:1px;
-  --bw-focus:2px;
-  --sh-sm:0 1px 2px rgba(20,17,15,.05);
-  --sh-md:0 4px 16px rgba(20,17,15,.07);
-  --sh-lg:0 12px 32px rgba(20,17,15,.10);
+  --bg-primary: #FAF6EF;
+  --bg-secondary: #F2ECE1;
+  --surface: #FFFFFF;
+  --surface-elevated: #FFFFFF;
+  --primary: #FFD64A;
+  --primary-press: #F0C52F;
+  --secondary: #C9B6F7;
+  --accent: #FFB6C8;
+  --accent-mint: #B6E09B;
+  --accent-sky: #A6CCF7;
+  --c-gold: #E6A100;
+  --text-primary: #14110F;
+  --text-secondary: #6F675E;
+  --text-muted: #A39A8F;
+  --text-on-primary: #14110F;
+  --border: #E7E0D5;
+  --divider: #EFE9DF;
+  --disabled: #D8D1C6;
+  --success: #2E9E6B;
+  --success-bg: #E6F4EC;
+  --warning: #C98A16;
+  --warning-bg: #FBF1DC;
+  --error: #D8483C;
+  --error-bg: #FBE9E7;
+  --sp-xs: 4px; --sp-sm: 8px; --sp-md: 16px; --sp-lg: 24px;
+  --sp-xl: 32px; --sp-2xl: 48px; --sp-3xl: 64px;
+  --r-button: 999px;
+  --r-input: 16px;
+  --r-card: 28px;
+  --r-modal: 32px;
+  --r-image: 24px;
+  --r-chip: 999px;
+  --bw: 1.5px;
+  --sh-sm: 0 1px 2px rgba(20,17,15,.05);
+  --sh-md: 0 4px 16px rgba(20,17,15,.07);
+  --sh-lg: 0 12px 32px rgba(20,17,15,.10);
 }
 
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-body{
-  margin:0;background:#EDE7DC;color:var(--text-primary);
-  font-family:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
-  -webkit-font-smoothing:antialiased;
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0; background: #EDE7DC; color: var(--text-primary);
+  font-family: 'Archivo', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
-.wrap{max-width:1240px;margin:0 auto;padding:40px 20px 80px}
+.wrap { max-width: 1260px; margin: 0 auto; padding: 40px 20px 80px; }
 
-/* Doc chrome */
-.doc-head{margin-bottom:40px}
-.eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px}
-.doc-title{font-size:clamp(32px,5vw,50px);font-weight:800;letter-spacing:-.025em;line-height:1.02;margin:0 0 12px}
-.doc-title em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;letter-spacing:-.01em}
-.doc-sub{font-size:15px;color:var(--text-secondary);max-width:750px;line-height:1.55;margin:0}
-.sec{margin:64px 0 0}
-.sec-head{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid var(--text-primary);padding-bottom:10px;margin-bottom:24px;flex-wrap:wrap}
-.sec-n{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--text-muted)}
-.sec-t{font-size:22px;font-weight:800;letter-spacing:-.01em;margin:0}
-.sec-note{font-size:13px;color:var(--text-secondary);margin-left:auto}
+/* Doc chrome matching Onboarding Auth UI spec */
+.doc-head { margin-bottom: 40px; }
+.eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
+.doc-title { font-size: clamp(32px, 5vw, 50px); font-weight: 800; letter-spacing: -.025em; line-height: 1.05; margin: 0 0 12px; }
+.doc-title em { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; letter-spacing: -.01em; color: var(--c-gold); }
+.doc-sub { font-size: 15px; color: var(--text-secondary); max-width: 780px; line-height: 1.55; margin: 0; }
+.sec { margin: 64px 0 0; }
+.sec-head { display: flex; align-items: baseline; gap: 12px; border-bottom: 2px solid var(--text-primary); padding-bottom: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+.sec-n { font-size: 12px; font-weight: 800; letter-spacing: .1em; color: var(--text-muted); }
+.sec-t { font-size: 22px; font-weight: 800; letter-spacing: -.01em; margin: 0; }
+.sec-note { font-size: 13px; color: var(--text-secondary); margin-left: auto; }
 
-/* Token display */
-.tok-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
-.sw{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
-.sw-c{height:54px}
-.sw-b{padding:8px 10px}
-.sw-n{font-size:11.5px;font-weight:700}
-.sw-v{font-size:10.5px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+/* Token swatches */
+.tok-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.sw { background: var(--surface); border: 1.5px solid var(--border); border-radius: 18px; overflow: hidden; box-shadow: var(--sh-sm); }
+.sw-c { height: 48px; }
+.sw-b { padding: 10px 12px; }
+.sw-n { font-size: 11px; font-weight: 800; }
+.sw-v { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
 
-/* Phone frames */
-.screens{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:36px 26px}
-.sc-item{display:flex;flex-direction:column;gap:12px}
-.sc-cap{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.sc-id{font-size:10px;font-weight:800;letter-spacing:.1em;color:#fff;background:var(--text-primary);padding:3px 8px;border-radius:999px}
-.sc-name{font-size:14px;font-weight:700}
-.sc-desc{font-size:12px;color:var(--text-secondary);line-height:1.45}
+/* Phone frames (Strictly matching Onboarding Auth aesthetic) */
+.screens { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 48px 28px; }
+.sc-item { display: flex; flex-direction: column; gap: 12px; }
+.sc-cap { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.sc-id { font-size: 10px; font-weight: 800; letter-spacing: .1em; color: #fff; background: var(--text-primary); padding: 3px 8px; border-radius: 999px; }
+.sc-name { font-size: 14px; font-weight: 800; }
+.sc-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.45; }
 
-.phone{
-  width:100%;max-width:330px;aspect-ratio:375/812;margin:0 auto;
-  background:var(--bg-primary);border-radius:38px;
-  border:9px solid #14110F;overflow:hidden;position:relative;
-  box-shadow:var(--sh-lg);
+.phone {
+  width: 100%; max-width: 335px; aspect-ratio: 375/812; margin: 0 auto;
+  background: var(--bg-primary); border-radius: 38px;
+  border: 9px solid #14110F; overflow: hidden; position: relative;
+  box-shadow: var(--sh-lg); display: flex; flex-direction: column;
 }
-.screen{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg-primary)}
-.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:34%;height:22px;background:#14110F;border-radius:0 0 14px 14px;z-index:20}
-.statusbar{height:34px;flex-shrink:0;display:flex;align-items:flex-end;justify-content:space-between;padding:0 18px 3px;font-size:10px;font-weight:700;position:relative;z-index:10}
-.pad{padding:0 18px}
-.grow{flex:1;min-height:0;overflow-y:auto}
-
-/* Typography styles */
-.h-lg{font-size:24px;font-weight:800;letter-spacing:-.025em;line-height:1.1;margin:0}
-.h-md{font-size:17px;font-weight:800;letter-spacing:-.01em;margin:0}
-.body{font-size:13px;line-height:1.5;color:var(--text-secondary);margin:0}
-.small{font-size:11px;line-height:1.4;color:var(--text-muted);margin:0}
-.lbl{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted)}
-
-/* Button components */
-.btn{
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  height:48px;border-radius:var(--r-button);font-size:14px;font-weight:700;
-  border:none;width:100%;cursor:pointer;font-family:inherit;
+.screen {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  overflow: hidden; background: var(--bg-primary);
 }
-.btn-primary{background:var(--primary);color:var(--text-on-primary)}
-.btn-dark{background:var(--text-primary);color:#fff}
-.btn-outline{background:transparent;border:var(--bw) solid var(--text-primary);color:var(--text-primary)}
-.btn-ghost{background:transparent;color:var(--text-primary);font-weight:600}
-.btn-sm{height:34px;font-size:12px;padding:0 14px;width:auto;flex-shrink:0;white-space:nowrap}
-.btn-xs{height:28px;font-size:11px;padding:0 12px;border-radius:999px;width:auto;flex-shrink:0;white-space:nowrap}
-.btn-danger{background:var(--error);color:#fff}
+.notch {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 34%; height: 22px; background: #14110F; border-radius: 0 0 14px 14px;
+  z-index: 40; pointer-events: none;
+}
+.statusbar {
+  height: 38px; flex-shrink: 0; display: flex; align-items: flex-end;
+  justify-content: space-between; padding: 0 18px 4px; font-size: 10px;
+  font-weight: 800; position: relative; z-index: 30; background: var(--bg-primary);
+}
+.app-header {
+  height: 48px; flex-shrink: 0; display: flex; align-items: center;
+  justify-content: space-between; padding: 0 16px; border-bottom: 1.5px solid var(--border);
+  background: var(--bg-primary); position: relative; z-index: 25;
+}
+.app-header .title { font-size: 14px; font-weight: 800; letter-spacing: -.01em; }
+.app-header .action { font-size: 12px; font-weight: 700; color: var(--text-primary); cursor: pointer; }
 
-/* Bottom Nav */
-.bottomnav{
-  height:54px;background:#FFFFFF;border-top:1px solid var(--border);
-  display:flex;align-items:center;justify-content:space-around;
-  padding:0 8px;flex-shrink:0;position:relative;z-index:10;
-}
-.nav-item{
-  display:flex;flex-direction:column;align-items:center;
-  justify-content:center;gap:2px;color:var(--text-muted);cursor:pointer;position:relative;
-}
-.nav-item.on{color:var(--text-primary)}
-.nav-dot{width:4px;height:4px;border-radius:999px;background:var(--text-primary);position:absolute;bottom:-6px}
-.nav-fab{
-  width:38px;height:38px;border-radius:999px;background:var(--primary);
-  border:2px solid #14110F;display:flex;align-items:center;justify-content:center;
-  color:#14110F;font-weight:900;font-size:18px;margin-top:-14px;box-shadow:0 3px 8px rgba(0,0,0,0.12);
+/* Scrollable viewport with bottom nav padding */
+.grow {
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  padding: 16px 16px 76px; position: relative; z-index: 10;
 }
 
-/* Referral Specific Components */
-.ref-card{
-  background:var(--surface);border:1.5px solid var(--border);border-radius:18px;
-  padding:14px;margin-bottom:12px;box-shadow:var(--sh-sm);
-}
-.tagpill{
-  display:inline-flex;align-items:center;gap:4px;padding:3px 8px;
-  border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.02em;
-}
-.tag-gold{background:#FFF9E6;color:#8A6700;border:1px solid #FFE486}
-.tag-mint{background:var(--c-mint);color:#1B5E20}
-.tag-gray{background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border)}
+/* Typography styles from Onboarding Auth UI */
+.display-lg { font-family: 'Archivo', sans-serif; font-size: 26px; font-weight: 800; letter-spacing: -.03em; line-height: 1.05; margin: 0; }
+.display-em { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; font-size: 32px; letter-spacing: -.01em; color: var(--c-gold); }
+.h-md { font-size: 18px; font-weight: 800; letter-spacing: -.01em; margin: 0 0 6px; }
+.body { font-size: 13px; line-height: 1.5; color: var(--text-secondary); margin: 0 0 14px; }
+.lbl { font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
 
-/* Dialog / Overlay components */
-.dlgcard{position:relative;width:100%;max-width:330px;margin:0 auto;border-radius:26px;overflow:hidden;background:var(--bg-primary);border:1px solid var(--border)}
-.dc-dim{position:absolute;inset:0;background:rgba(20,17,15,.55);z-index:15}
-.dc-sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:26px 26px 0 0;padding:4px 18px 18px;z-index:20;max-height:85%;overflow-y:auto}
-.dc-center{position:absolute;left:18px;right:18px;top:50%;transform:translateY(-50%);background:#fff;border-radius:24px;padding:20px;z-index:20;box-shadow:var(--sh-lg);text-align:center}
-.dc-bg{padding:16px;opacity:.45}
-.sh-h{width:36px;height:4px;border-radius:999px;background:var(--disabled);margin:8px auto 12px}
-.dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:28px 26px}
+/* Buttons strictly matching Auth spec */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  height: 46px; border-radius: var(--r-button); font-size: 14px; font-weight: 700;
+  border: none; width: 100%; cursor: pointer; font-family: inherit; text-decoration: none;
+  box-shadow: 0 2px 6px rgba(20,17,15,0.04); transition: transform 0.1s ease;
+}
+.btn:active { transform: scale(0.98); }
+.btn-primary { background: var(--primary); color: var(--text-on-primary); box-shadow: 0 4px 12px rgba(255,214,74,.35); }
+.btn-dark { background: var(--text-primary); color: #fff; }
+.btn-outline { background: transparent; border: 1.5px solid var(--text-primary); color: var(--text-primary); }
+.btn-ghost { background: transparent; color: var(--text-primary); font-weight: 700; }
+.btn-sm { height: 36px; font-size: 12px; padding: 0 16px; width: auto; border-radius: 999px; }
+.btn-xs { height: 28px; font-size: 11px; padding: 0 12px; border-radius: 999px; width: auto; font-weight: 800; }
 
-.note{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--primary);border-radius:14px;padding:14px 16px;font-size:13px;line-height:1.55;color:var(--text-secondary)}
-.note b{color:var(--text-primary)}
-.mapping-table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;font-size:12px}
-.mapping-table th{background:var(--bg-secondary);padding:10px 12px;text-align:left;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border)}
-.mapping-table td{padding:10px 12px;border-bottom:1px solid var(--divider);color:var(--text-secondary);vertical-align:top}
-.mapping-table tr:last-child td{border-bottom:none}
-.mapping-table b{color:var(--text-primary)}
+/* Bottom Nav - Fixed Absolute */
+.bottomnav {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 58px; background: #FFFFFF; border-top: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: space-around;
+  padding: 0 8px 4px; z-index: 35; box-shadow: 0 -4px 16px rgba(20,17,15,0.05);
+}
+.nav-item {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 2px; color: var(--text-muted); cursor: pointer; position: relative;
+}
+.nav-item.on { color: var(--text-primary); font-weight: 800; }
+.nav-dot { width: 4px; height: 4px; border-radius: 999px; background: var(--text-primary); position: absolute; bottom: -6px; }
+.nav-fab {
+  width: 40px; height: 40px; border-radius: 999px; background: var(--primary);
+  border: 2px solid #14110F; display: flex; align-items: center; justify-content: center;
+  color: #14110F; font-weight: 900; font-size: 18px; margin-top: -16px; box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+}
+
+/* Auth Card Aesthetic for Module M Components */
+.ref-card {
+  background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--r-card);
+  padding: 16px; margin-bottom: 12px; box-shadow: var(--sh-sm);
+}
+.tagpill {
+  display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px;
+  border-radius: var(--r-chip); font-size: 10.5px; font-weight: 800; letter-spacing: .02em; white-space: nowrap;
+}
+.tag-gold { background: #FFF4D0; color: #7A5B00; border: 1.5px solid #FFD64A; }
+.tag-mint { background: var(--success-bg); color: var(--success); border: 1.5px solid rgba(46,158,107,.25); }
+.tag-gray { background: var(--bg-secondary); color: var(--text-secondary); border: 1.5px solid var(--border); }
+.tag-lav { background: #F3EFFF; color: #5B35B4; border: 1.5px solid #D8C7FF; }
+.tag-warn { background: var(--warning-bg); color: var(--warning); border: 1.5px solid #F2D8A7; }
+
+/* Stat Box Grid */
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.stat-box {
+  background: var(--surface); border: 1.5px solid var(--border); border-radius: 20px;
+  padding: 12px 8px; text-align: center; box-shadow: var(--sh-sm);
+}
+.stat-box .val { font-size: 18px; font-weight: 900; color: var(--text-primary); line-height: 1.1; margin-bottom: 2px; }
+.stat-box .lbl-sm { font-size: 9.5px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+
+/* Dialog / Overlay Components */
+.dlgcard {
+  position: relative; width: 100%; max-width: 335px; aspect-ratio: 375/812;
+  margin: 0 auto; border-radius: 38px; overflow: hidden;
+  background: var(--bg-primary); border: 9px solid #14110F;
+  box-shadow: var(--sh-lg); display: flex; flex-direction: column;
+}
+.dc-dim {
+  position: absolute; inset: 0; background: rgba(20, 17, 15, 0.65);
+  backdrop-filter: blur(2px); z-index: 20;
+}
+.dc-bg {
+  position: absolute; inset: 0; padding: 48px 16px 16px;
+  opacity: 0.22; pointer-events: none; z-index: 10;
+}
+.dc-sheet {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: #FFFFFF; border-radius: 32px 32px 0 0;
+  padding: 12px 20px 24px; z-index: 30;
+  box-shadow: -10px -10px 30px rgba(20, 17, 15, 0.18);
+  max-height: 90%; overflow-y: auto;
+}
+.dc-center {
+  position: absolute; left: 20px; right: 20px; top: 50%;
+  transform: translateY(-50%); background: #FFFFFF;
+  border-radius: var(--r-modal); padding: 24px 20px; z-index: 30;
+  box-shadow: var(--sh-lg); text-align: center; border: 1.5px solid var(--border);
+}
+.sh-h { width: 40px; height: 4px; border-radius: 999px; background: var(--disabled); margin: 6px auto 16px; }
+.dgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 48px 28px; }
+
+/* Note Box & Table */
+.note {
+  background: var(--surface); border: 1.5px solid var(--border); border-left: 5px solid var(--primary);
+  border-radius: 20px; padding: 16px 20px; font-size: 13.5px; line-height: 1.6; color: var(--text-secondary);
+  box-shadow: var(--sh-sm);
+}
+.note b { color: var(--text-primary); }
+.mapping-table {
+  width: 100%; border-collapse: collapse; background: var(--surface);
+  border: 1.5px solid var(--border); border-radius: 22px; overflow: hidden; font-size: 12.5px;
+  box-shadow: var(--sh-sm);
+}
+.mapping-table th {
+  background: var(--bg-secondary); padding: 12px 14px; text-align: left;
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1.5px solid var(--border);
+}
+.mapping-table td { padding: 12px 14px; border-bottom: 1px solid var(--divider); color: var(--text-secondary); vertical-align: top; }
+.mapping-table tr:last-child td { border-bottom: none; }
+.mapping-table b { color: var(--text-primary); }
+
+/* QR Pattern Mock */
+.qr-box {
+  width: 140px; height: 140px; margin: 0 auto; background: #fff;
+  border: 2px solid #14110F; border-radius: 16px; padding: 10px;
+  display: grid; grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(7, 1fr); gap: 3px;
+}
+.qr-box span { background: #14110F; border-radius: 2px; }
+.qr-box span.off { background: transparent; }
 </style>
 </head>
 <body>
@@ -182,57 +253,63 @@ body{
 <!-- DOC HEADER -->
 <div class="doc-head">
   <div class="eyebrow">CreatorConnect · Codly360 · Module M</div>
-  <h1 class="doc-title">Referrals &amp; <em>Rewards System</em></h1>
-  <p class="doc-sub">Complete visual UI design set for Module M: screens M01 (Referral Home) and M02 (Referral History), plus expanded growth views M03–M10 and modal overlay DLG-87 (Share Referral Sheet). Designed on the client-approved palette (#FAF6EF warm cream, #FFD64A yellow pills, #E6A100 gold, Archivo + Instrument Serif). Covers unique creator invite codes, QR sharing, multi-tier reward tracking, payout conversions, and anti-fraud safeguards.</p>
+  <h1 class="doc-title">Referrals &amp; <br><em>Rewards System (INR ₹)</em></h1>
+  <p class="doc-sub">Fully redesigned specification for Module M, strictly adopting the <b>Onboarding &amp; Authentication Design Set</b> aesthetic: warm cream background (<code style="font-family:'JetBrains Mono',monospace">#FAF6EF</code>), bold Archivo typography, editorial Instrument Serif italic accents (<code style="font-family:'JetBrains Mono',monospace">#E6A100</code>), 28px–32px corner radii, and solid flat color blocks. Features ₹2,500 referral milestones, instant UPI payouts, and anti-fraud safeguards.</p>
 </div>
 
 <!-- ============ 00 SCOPE & SOW RECONCILIATION ============ -->
 <div class="sec">
-  <div class="sec-head"><span class="sec-n">00</span><h2 class="sec-t">Scope &amp; Architecture</h2></div>
+  <div class="sec-head"><span class="sec-n">00</span><h2 class="sec-t">Design System &amp; SOW Reconciliation</h2></div>
   <div class="note">
-    <b>SOW Contract Reconciliation:</b> Built directly against <b>SOW §14 (Growth, Viral Loops &amp; Referral Program)</b>, <b>Rules R-REF-01 through R-REF-03</b>, and <b>Admin Operations R18 (Referrals and Rewards)</b>.<br><br>
-    <b>Core Features Delivered:</b> Referral Home dashboard with unique invite link &amp; QR code (M01), detailed referral history and reward conversion tracking (M02), Tiered bonus calculator (M03), Creator affiliate earnings ledger (M04), Invite contacts book sync (M05), Referral leaderboard &amp; community badges (M06), Payout redemption flow (M07), Fraud prevention &amp; dispute check (M08), Referral terms &amp; guidelines (M09), and Growth analytics trends (M10).<br><br>
-    <b>Referral Program Rules:</b> Referrer receives £25 credit or 1 month Pro membership extension when a referred creator completes their first verified escrow milestone (R-REF-02). Automatic fraud checks flag duplicate IP addresses or self-referrals for admin review (R18).
+    <b>Adherence to Onboarding &amp; Auth UI Design System:</b><br>
+    • <b>Color Tokens:</b> Pure adherence to the 14 reference tokens (Background Primary <code style="font-family:'JetBrains Mono',monospace">#FAF6EF</code>, Primary Yellow <code style="font-family:'JetBrains Mono',monospace">#FFD64A</code>, Ink Dark <code style="font-family:'JetBrains Mono',monospace">#14110F</code>, and Gold Accent <code style="font-family:'JetBrains Mono',monospace">#E6A100</code>).<br>
+    • <b>Typography Hierarchy:</b> Archivo 400–800 for all UI components paired with Instrument Serif Italic for expressive headline accents.<br>
+    • <b>Radii &amp; Spacing:</b> 4px base grid with 28px card radii, 32px modal sheet radii, and 999px pill buttons.<br>
+    • <b>INR Financial Architecture:</b> Strict paise-level precision (<span style="font-family:'JetBrains Mono',monospace">₹1 = 100 paise</span>) for ₹2,500 milestone bonuses and double-entry affiliate ledgers under SOW §14 and Admin R18.
   </div>
 </div>
 
 <!-- ============ 01 COMPONENT SYSTEM ============ -->
 <div class="sec">
-  <div class="sec-head"><span class="sec-n">01</span><h2 class="sec-t">Referral Component System</h2><span class="sec-note">Custom controls &amp; design tokens</span></div>
+  <div class="sec-head"><span class="sec-n">01</span><h2 class="sec-t">Design System Tokens &amp; Components</h2><span class="sec-note">From Onboarding &amp; Auth UI Reference</span></div>
 
-  <div class="tok-grid" style="margin-bottom:20px">
-    <div class="sw"><div class="sw-c" style="background:#FAF6EF"></div><div class="sw-b"><div class="sw-n">bg-primary</div><div class="sw-v">#FAF6EF</div></div></div>
-    <div class="sw"><div class="sw-c" style="background:#F2ECE1"></div><div class="sw-b"><div class="sw-n">bg-secondary</div><div class="sw-v">#F2ECE1</div></div></div>
-    <div class="sw"><div class="sw-c" style="background:#14110F"></div><div class="sw-b"><div class="sw-n">ink-dark</div><div class="sw-v">#14110F</div></div></div>
-    <div class="sw"><div class="sw-c" style="background:#FFD64A"></div><div class="sw-b"><div class="sw-n">primary-yellow</div><div class="sw-v">#FFD64A</div></div></div>
-    <div class="sw"><div class="sw-c" style="background:#E6A100"></div><div class="sw-b"><div class="sw-n">gold-accent</div><div class="sw-v">#E6A100</div></div></div>
+  <div class="tok-grid" style="margin-bottom:24px">
+    <div class="sw"><div class="sw-c" style="background:#FAF6EF"></div><div class="sw-b"><div class="sw-n">backgroundPrimary</div><div class="sw-v">#FAF6EF</div></div></div>
+    <div class="sw"><div class="sw-c" style="background:#F2ECE1"></div><div class="sw-b"><div class="sw-n">backgroundSecondary</div><div class="sw-v">#F2ECE1</div></div></div>
+    <div class="sw"><div class="sw-c" style="background:#14110F"></div><div class="sw-b"><div class="sw-n">textPrimary</div><div class="sw-v">#14110F</div></div></div>
+    <div class="sw"><div class="sw-c" style="background:#FFD64A"></div><div class="sw-b"><div class="sw-n">primary</div><div class="sw-v">#FFD64A</div></div></div>
+    <div class="sw"><div class="sw-c" style="background:#E6A100"></div><div class="sw-b"><div class="sw-n">goldAccent</div><div class="sw-v">#E6A100</div></div></div>
     <div class="sw"><div class="sw-c" style="background:#2E9E6B"></div><div class="sw-b"><div class="sw-n">success</div><div class="sw-v">#2E9E6B</div></div></div>
-    <div class="sw"><div class="sw-c" style="background:#C9B6F7"></div><div class="sw-b"><div class="sw-n">lavender</div><div class="sw-v">#C9B6F7</div></div></div>
-    <div class="sw"><div class="sw-c" style="background:#FFB6C8"></div><div class="sw-b"><div class="sw-n">pink</div><div class="sw-v">#FFB6C8</div></div></div>
+    <div class="sw"><div class="sw-c" style="background:#C9B6F7"></div><div class="sw-b"><div class="sw-n">secondary</div><div class="sw-v">#C9B6F7</div></div></div>
+    <div class="sw"><div class="sw-c" style="background:#FFB6C8"></div><div class="sw-b"><div class="sw-n">accent</div><div class="sw-v">#FFB6C8</div></div></div>
   </div>
 
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px">
-    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:16px">
-      <div class="lbl" style="margin-bottom:10px">Referral Code Pill</div>
-      <div style="display:flex;align-items:center;justify-content:between;background:var(--bg-secondary);border:1px solid var(--border);border-radius:14px;padding:10px 14px">
-        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px">CREATOR25</span>
-        <span class="btn btn-dark btn-xs" style="height:26px">Copy</span>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:28px;padding:20px;box-shadow:var(--sh-sm)">
+      <div class="lbl">UPI Referral Code Component</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-secondary);border:1.5px solid var(--border);border-radius:16px;padding:12px 16px">
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:800;font-size:14px">PRIYA2500</span>
+        <span class="btn btn-dark btn-xs">Copy Link</span>
       </div>
     </div>
 
-    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:16px">
-      <div class="lbl" style="margin-bottom:10px">Reward Status Badge</div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span class="tagpill tag-gold">£75 Earned</span>
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:28px;padding:20px;box-shadow:var(--sh-sm)">
+      <div class="lbl">Reward Status Badges (INR)</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="tagpill tag-gold">₹7,500 Earned</span>
         <span class="tagpill tag-mint">✓ 3 Qualified</span>
+        <span class="tagpill tag-lav">₹2,500 Bonus</span>
       </div>
     </div>
 
-    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:16px">
-      <div class="lbl" style="margin-bottom:10px">Viral Progress Meter</div>
-      <div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">3 of 5 referrals toward Elite Affiliate bonus</div>
-      <div style="height:8px;background:var(--bg-secondary);border-radius:999px;overflow:hidden">
-        <div style="width:60%;height:100%;background:var(--primary)"></div>
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:28px;padding:20px;box-shadow:var(--sh-sm)">
+      <div class="lbl">Affiliate Tier Progress Meter</div>
+      <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-secondary);margin-bottom:8px">
+        <span>3 of 5 Qualified</span>
+        <b style="color:var(--text-primary)">₹10,000 Cash Pool</b>
+      </div>
+      <div style="height:10px;background:var(--bg-secondary);border-radius:999px;overflow:hidden">
+        <div style="width:60%;height:100%;background:linear-gradient(90deg, var(--primary), var(--c-gold))"></div>
       </div>
     </div>
   </div>
@@ -240,7 +317,7 @@ body{
 
 <!-- ============ 02 REFERRAL & REWARD SCREENS ============ -->
 <div class="sec">
-  <div class="sec-head"><span class="sec-n">02</span><h2 class="sec-t">Referral &amp; Reward Screens</h2><span class="sec-note">M01 · M02 · M03 · M04 · M05 · M06 · M07 · M08 · M09 · M10</span></div>
+  <div class="sec-head"><span class="sec-n">02</span><h2 class="sec-t">Referral &amp; Reward Screens (M01–M10)</h2><span class="sec-note">Redesigned with Onboarding Auth UI Aesthetic</span></div>
   <div class="screens">
 
     <!-- M01: Referral Home -->
@@ -249,34 +326,61 @@ body{
         <div class="notch"></div>
         <div class="screen">
           <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--divider)">
-            <span style="font-size:13px;font-weight:800">← Refer &amp; Earn</span>
-            <span style="font-size:13px">🎁</span>
+          <div class="app-header">
+            <span class="title">🎁 Refer &amp; Earn</span>
+            <span class="action">Rules</span>
           </div>
-          <div class="grow pad" style="padding-top:12px">
-            <div style="background:linear-gradient(135deg, #FFD64A 0%, #E6A100 100%);border-radius:18px;padding:16px;color:#14110F;margin-bottom:12px;text-align:center">
-              <div style="font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">Creator Referral Program</div>
-              <div style="font-size:18px;font-weight:900;margin-bottom:4px">Give £25, Get £25</div>
-              <div style="font-size:10.5px;opacity:0.85">Earn credit when your invited creator completes their first escrow milestone.</div>
+          <div class="grow">
+            <!-- Hero Banner Matching Auth Style -->
+            <div style="background:linear-gradient(135deg, #FFD64A 0%, #E6A100 100%);border-radius:24px;padding:20px 16px;color:#14110F;margin-bottom:16px;box-shadow:var(--sh-sm);text-align:center">
+              <div style="font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px">Creator Growth Program</div>
+              <h2 class="display-lg" style="font-size:22px;margin-bottom:6px">Give <span class="display-em" style="font-size:26px">₹2,500</span>,<br>Get <span class="display-em" style="font-size:26px">₹2,500</span></h2>
+              <div style="font-size:11.5px;line-height:1.45;opacity:.9">Invite creators &amp; professionals. When they complete their first milestone, you both get ₹2,500!</div>
             </div>
 
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:12px">
-              <div class="lbl" style="margin-bottom:4px">Your Invite Link</div>
-              <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:11px;font-family:'JetBrains Mono',monospace;margin-bottom:10px">
-                <span style="overflow:hidden;text-overflow:ellipsis">creatorconnect.com/r/priya</span>
-                <span style="font-weight:800;color:var(--text-primary)">Copy</span>
+            <!-- Stats Bar -->
+            <div class="stat-grid">
+              <div class="stat-box">
+                <div class="val">6</div>
+                <div class="lbl-sm">Invites</div>
               </div>
-              <div class="btn btn-primary btn-sm" style="width:100%">Share Invite Link (DLG-87)</div>
+              <div class="stat-box">
+                <div class="val" style="color:var(--success)">3</div>
+                <div class="lbl-sm">Qualified</div>
+              </div>
+              <div class="stat-box">
+                <div class="val" style="color:var(--c-gold)">₹7,500</div>
+                <div class="lbl-sm">Earned</div>
+              </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-              <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center">
-                <div style="font-size:18px;font-weight:900">4</div>
-                <div style="font-size:9.5px;color:var(--text-muted)">Invites Sent</div>
+            <!-- Invite Code & Link Card -->
+            <div class="ref-card">
+              <div class="lbl">Your Unique Invite Code</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-secondary);border:1.5px solid var(--border);border-radius:16px;padding:12px 14px;margin-bottom:12px">
+                <span style="font-family:'JetBrains Mono',monospace;font-weight:800;font-size:14px;letter-spacing:.06em">PRIYA2500</span>
+                <span class="btn btn-dark btn-xs">Copy Code</span>
               </div>
-              <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center">
-                <div style="font-size:18px;font-weight:900;color:var(--success)">£75</div>
-                <div style="font-size:9.5px;color:var(--text-muted)">Rewards Earned</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <button class="btn btn-primary btn-sm">Share (87)</button>
+                <button class="btn btn-outline btn-sm">QR (87A)</button>
+              </div>
+            </div>
+
+            <!-- How it works -->
+            <div class="ref-card">
+              <div class="lbl">3 Easy Steps to ₹2,500</div>
+              <div style="display:flex;gap:10px;margin-bottom:10px">
+                <span style="width:22px;height:22px;border-radius:999px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0">1</span>
+                <div style="font-size:11.5px;line-height:1.4"><b>Share Link:</b> Send your code to creators in Mumbai &amp; Delhi.</div>
+              </div>
+              <div style="display:flex;gap:10px;margin-bottom:10px">
+                <span style="width:22px;height:22px;border-radius:999px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0">2</span>
+                <div style="font-size:11.5px;line-height:1.4"><b>Milestone Project:</b> Referee signs brief &amp; completes escrow.</div>
+              </div>
+              <div style="display:flex;gap:10px">
+                <span style="width:22px;height:22px;border-radius:999px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0">3</span>
+                <div style="font-size:11.5px;line-height:1.4"><b>Instant UPI:</b> ₹2,500 credited to wallet instantly.</div>
               </div>
             </div>
           </div>
@@ -289,8 +393,8 @@ body{
           </div>
         </div>
       </div>
-      <div class="sc-cap"><span class="sc-id">M01</span><span class="sc-name">Referral Home (SCR-060)</span></div>
-      <p class="sc-desc">Core referral dashboard displaying unique invite links, viral reward banners (£25 for referrer &amp; referee), quick copy buttons, and earnings counters.</p>
+      <div class="sc-cap"><span class="sc-id">M01</span><span class="sc-name">Referral Home (Auth Aesthetic)</span></div>
+      <p class="sc-desc">Portal redesigned with warm cream background, bold typography, and editorial italic accent cards.</p>
     </div>
 
     <!-- M02: Referral History -->
@@ -299,39 +403,72 @@ body{
         <div class="notch"></div>
         <div class="screen">
           <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--divider)">
-            <span style="font-size:13px;font-weight:800">← Referral History</span>
-            <span style="font-size:11px;color:var(--text-muted);font-weight:700">3 Qualified</span>
+          <div class="app-header">
+            <span class="title">← Referral History</span>
+            <span class="tagpill tag-mint">3 Qualified</span>
           </div>
-          <div class="grow pad" style="padding-top:12px">
-            <div class="ref-card" style="margin-bottom:10px">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-                <span style="font-size:11.5px;font-weight:800">Marcus Vance (@marcus_sound)</span>
-                <span class="tagpill tag-mint">✓ Qualified (£25)</span>
-              </div>
-              <div style="font-size:10px;color:var(--text-muted)">Joined Nov 12 · Completed Milestone #ESC-8910</div>
+          <div class="grow">
+            <!-- Filter Pills -->
+            <div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px">
+              <span class="tagpill tag-gold" style="padding:6px 14px">All (6)</span>
+              <span class="tagpill tag-gray" style="padding:6px 14px">Qualified (3)</span>
+              <span class="tagpill tag-gray" style="padding:6px 14px">Pending (2)</span>
+              <span class="tagpill tag-gray" style="padding:6px 14px">Flagged (1)</span>
             </div>
 
-            <div class="ref-card" style="margin-bottom:10px">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-                <span style="font-size:11.5px;font-weight:800">Elena Rostova (@elena_films)</span>
-                <span class="tagpill tag-mint">✓ Qualified (£25)</span>
+            <!-- Card 1 -->
+            <div class="ref-card">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+                <div>
+                  <div style="font-size:13px;font-weight:800">Aarav Sharma (@aarav_dop)</div>
+                  <div style="font-size:10.5px;color:var(--text-muted)">Cinematographer · Mumbai Hub</div>
+                </div>
+                <span class="tagpill tag-mint">✓ +₹2,500 Paid</span>
               </div>
-              <div style="font-size:10px;color:var(--text-muted)">Joined Nov 15 · Completed Milestone #ESC-8942</div>
+              <div style="background:var(--bg-secondary);border-radius:12px;padding:8px 10px;font-size:10.5px;color:var(--text-secondary)">
+                Joined 12 Oct · Completed Escrow #ESC-8910 (Zomato Campaign)
+              </div>
             </div>
 
-            <div class="ref-card" style="margin-bottom:10px">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-                <span style="font-size:11.5px;font-weight:800">Liam Chen (@liam_design)</span>
+            <!-- Card 2 -->
+            <div class="ref-card">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+                <div>
+                  <div style="font-size:13px;font-weight:800">Tanvi Mehta (@tanvi_design)</div>
+                  <div style="font-size:10.5px;color:var(--text-muted)">3D Motion Artist · Bengaluru</div>
+                </div>
+                <span class="tagpill tag-mint">✓ +₹2,500 Paid</span>
+              </div>
+              <div style="background:var(--bg-secondary);border-radius:12px;padding:8px 10px;font-size:10.5px;color:var(--text-secondary)">
+                Joined 18 Oct · Completed Escrow #ESC-8942 (Swiggy Motion)
+              </div>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="ref-card">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+                <div>
+                  <div style="font-size:13px;font-weight:800">Kabir Sen (@kabir_cuts)</div>
+                  <div style="font-size:10.5px;color:var(--text-muted)">Colorist &amp; Editor · Delhi NCR</div>
+                </div>
                 <span class="tagpill tag-gold">Pending Escrow</span>
               </div>
-              <div style="font-size:10px;color:var(--text-muted)">Joined Nov 22 · Active Brief in Progress</div>
+              <div style="background:var(--bg-secondary);border-radius:12px;padding:8px 10px;font-size:10.5px;color:var(--text-secondary)">
+                Joined 24 Oct · Active Project: 2x 4K Drafts in Review
+              </div>
             </div>
+          </div>
+          <div class="bottomnav">
+            <div class="nav-item"><span style="font-size:16px">🧭</span><span style="font-size:8.5px">Explore</span></div>
+            <div class="nav-item"><span style="font-size:16px">🏛️</span><span style="font-size:8.5px">Hub</span></div>
+            <div class="nav-fab">+</div>
+            <div class="nav-item on"><span style="font-size:16px">🎁</span><span style="font-size:8.5px">Referrals</span><span class="nav-dot"></span></div>
+            <div class="nav-item"><span style="font-size:16px">👤</span><span style="font-size:8.5px">Profile</span></div>
           </div>
         </div>
       </div>
-      <div class="sc-cap"><span class="sc-id">M02</span><span class="sc-name">Referral History &amp; Status (SCR-061)</span></div>
-      <p class="sc-desc">Detailed tracking list showing each invited creator, signup date, milestone verification status, and reward credit disbursement state.</p>
+      <div class="sc-cap"><span class="sc-id">M02</span><span class="sc-name">Referral History (Auth Aesthetic)</span></div>
+      <p class="sc-desc">Clean card layouts with rounded pill tags and distinct typography hierarchies.</p>
     </div>
 
     <!-- M03: Tiered Bonus Calculator -->
@@ -340,24 +477,54 @@ body{
         <div class="notch"></div>
         <div class="screen">
           <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--divider)">
-            <span style="font-size:13px;font-weight:800">← Affiliate Tiers</span>
-            <span style="font-size:13px">⭐</span>
+          <div class="app-header">
+            <span class="title">← Affiliate Tiers</span>
+            <span class="tagpill tag-lav">Gold Partner</span>
           </div>
-          <div class="grow pad" style="padding-top:12px">
-            <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px">
-              <div style="font-size:12px;font-weight:900;margin-bottom:6px">Affiliate Milestone Progress</div>
-              <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">3 qualified referrals out of 5 needed for <b>Elite Affiliate Bonus (+£100)</b></div>
-              <div style="height:10px;background:var(--bg-secondary);border-radius:999px;overflow:hidden;margin-bottom:10px">
-                <div style="width:60%;height:100%;background:var(--c-gold)"></div>
+          <div class="grow">
+            <!-- Current Tier Card -->
+            <div style="background:linear-gradient(135deg, #14110F 0%, #3A322D 100%);color:#fff;border-radius:24px;padding:18px;margin-bottom:14px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <span style="font-size:10px;font-weight:900;letter-spacing:.1em;color:var(--primary)">TIER 2 OF 3</span>
+                <span style="font-size:18px">⭐</span>
               </div>
-              <div style="font-size:10px;color:var(--text-muted)">Next tier unlocks free Pro membership for 1 year.</div>
+              <div style="font-size:20px;font-weight:900;margin-bottom:4px">Gold Creator Partner</div>
+              <div style="font-size:11.5px;color:#D8D1C6;margin-bottom:14px">Earn ₹2,500 per verified escrow milestone + unlock bonuses.</div>
+              <div style="height:8px;background:rgba(255,255,255,.2);border-radius:999px;overflow:hidden;margin-bottom:8px">
+                <div style="width:60%;height:100%;background:var(--primary)"></div>
+              </div>
+              <div style="font-size:10.5px;color:var(--primary);font-weight:800">3 / 5 Qualified to reach Elite Ambassador</div>
             </div>
+
+            <!-- Milestone Perks Breakdown -->
+            <div class="lbl">Tier Rewards (INR ₹)</div>
+            <div class="ref-card" style="border-left:5px solid var(--border)">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <b>Silver (1–2 Referrals)</b>
+                <span style="color:var(--success);font-weight:800">✓ Unlocked</span>
+              </div>
+              <div style="font-size:11px;color:var(--text-secondary)">₹2,500/referral + Verified Creator Badge</div>
+            </div>
+
+            <div class="ref-card" style="border-left:5px solid var(--primary)">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <b>Gold (3–4 Referrals)</b>
+                <span style="color:var(--warning);font-weight:800">Current</span>
+              </div>
+              <div style="font-size:11px;color:var(--text-secondary)">₹2,500/referral + Priority Payouts + 50% off Pro</div>
+            </div>
+          </div>
+          <div class="bottomnav">
+            <div class="nav-item"><span style="font-size:16px">🧭</span><span style="font-size:8.5px">Explore</span></div>
+            <div class="nav-item"><span style="font-size:16px">🏛️</span><span style="font-size:8.5px">Hub</span></div>
+            <div class="nav-fab">+</div>
+            <div class="nav-item on"><span style="font-size:16px">🎁</span><span style="font-size:8.5px">Referrals</span><span class="nav-dot"></span></div>
+            <div class="nav-item"><span style="font-size:16px">👤</span><span style="font-size:8.5px">Profile</span></div>
           </div>
         </div>
       </div>
-      <div class="sc-cap"><span class="sc-id">M03</span><span class="sc-name">Tiered Bonus Calculator (SCR-062)</span></div>
-      <p class="sc-desc">Affiliate growth calculator showing tier progression, bonus cash milestones, and subscription upgrade incentives.</p>
+      <div class="sc-cap"><span class="sc-id">M03</span><span class="sc-name">Tiered Bonus Calculator (Auth Aesthetic)</span></div>
+      <p class="sc-desc">Tier progression styled with dark mode card accents and vivid yellow highlights.</p>
     </div>
 
     <!-- M04: Creator Affiliate Ledger -->
@@ -366,242 +533,148 @@ body{
         <div class="notch"></div>
         <div class="screen">
           <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--divider)">
-            <span style="font-size:13px;font-weight:800">← Earnings Ledger</span>
-            <span style="font-size:11px;font-weight:800;color:var(--success)">£75 Available</span>
+          <div class="app-header">
+            <span class="title">← Rewards Ledger</span>
+            <span class="action" style="color:var(--success)">₹7,500 Avail</span>
           </div>
-          <div class="grow pad" style="padding-top:12px">
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px">
+          <div class="grow">
+            <!-- Balance Card -->
+            <div class="ref-card" style="background:var(--surface);text-align:center;padding:20px">
+              <div class="lbl">Withdrawable Referral Balance</div>
+              <div style="font-size:30px;font-weight:900;color:var(--text-primary);margin-bottom:8px">₹7,500.00</div>
+              <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-secondary);margin-bottom:14px">
+                <span>Lifetime: <b>₹15,000</b></span>
+                <span>Withdrawn: <b>₹7,500</b></span>
+              </div>
+              <button class="btn btn-primary btn-sm" style="width:100%">Withdraw to UPI (87B) →</button>
+            </div>
+
+            <!-- Ledger Entries -->
+            <div class="lbl">Double-Entry Audit Entries</div>
+            <div class="ref-card">
               <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                <span style="font-size:11px;font-weight:800">Milestone Bonus #8910</span>
-                <span style="font-size:11px;font-weight:900;color:var(--success)">+£25.00</span>
+                <b>Bonus #ESC-8910</b>
+                <span style="font-weight:900;color:var(--success)">+₹2,500.00</span>
               </div>
-              <div style="font-size:9.5px;color:var(--text-muted)">Credited via Marcus Vance escrow release</div>
+              <div style="font-size:10.5px;color:var(--text-muted)">Referee: Aarav Sharma · Oct 20</div>
             </div>
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px">
+
+            <div class="ref-card">
               <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                <span style="font-size:11px;font-weight:800">Milestone Bonus #8942</span>
-                <span style="font-size:11px;font-weight:900;color:var(--success)">+£25.00</span>
+                <b>UPI Payout #PAY-3019</b>
+                <span style="font-weight:900;color:var(--error)">-₹5,000.00</span>
               </div>
-              <div style="font-size:9.5px;color:var(--text-muted)">Credited via Elena Rostova escrow release</div>
+              <div style="font-size:10.5px;color:var(--text-muted)">To VPA: priya@oksbi · Oct 28</div>
             </div>
+          </div>
+          <div class="bottomnav">
+            <div class="nav-item"><span style="font-size:16px">🧭</span><span style="font-size:8.5px">Explore</span></div>
+            <div class="nav-item"><span style="font-size:16px">🏛️</span><span style="font-size:8.5px">Hub</span></div>
+            <div class="nav-fab">+</div>
+            <div class="nav-item on"><span style="font-size:16px">🎁</span><span style="font-size:8.5px">Referrals</span><span class="nav-dot"></span></div>
+            <div class="nav-item"><span style="font-size:16px">👤</span><span style="font-size:8.5px">Profile</span></div>
           </div>
         </div>
       </div>
-      <div class="sc-cap"><span class="sc-id">M04</span><span class="sc-name">Creator Affiliate Ledger (SCR-063)</span></div>
-      <p class="sc-desc">Transaction ledger recording all reward credits, payout timestamps, and available balances for withdrawal or escrow credit.</p>
-    </div>
-
-    <!-- M05: Invite Contacts Book Sync -->
-    <div class="sc-item">
-      <div class="phone">
-        <div class="notch"></div>
-        <div class="screen">
-          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--divider)">
-            <span style="font-size:13px;font-weight:800">← Invite Contacts</span>
-            <span style="font-size:12px;font-weight:700;color:var(--text-primary)">Sync</span>
-          </div>
-          <div class="grow pad" style="padding-top:12px">
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;text-align:center;margin-bottom:12px">
-              <div style="font-size:24px;margin-bottom:6px">📇</div>
-              <div style="font-size:12px;font-weight:900;margin-bottom:4px">Sync Address Book</div>
-              <div style="font-size:10px;color:var(--text-secondary);margin-bottom:10px">Find filmmaker and designer friends already on CreatorConnect or send direct email invites.</div>
-              <div class="btn btn-dark btn-xs" style="width:100%">Allow Contacts Access</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="sc-cap"><span class="sc-id">M05</span><span class="sc-name">Invite Contacts Sync (SCR-064)</span></div>
-      <p class="sc-desc">Address book integration allowing creators to sync contacts and send batch invitation emails with embedded referral codes.</p>
-    </div>
-
-    <!-- M06: Referral Leaderboard -->
-    <div class="sc-item">
-      <div class="phone">
-        <div class="notch"></div>
-        <div class="screen">
-          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--divider)">
-            <span style="font-size:13px;font-weight:800">London Leaderboard</span>
-            <span style="font-size:13px">🏆</span>
-          </div>
-          <div class="grow pad" style="padding-top:12px">
-            <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
-              <div style="display:flex;align-items:center;gap:8px">
-                <span style="font-size:12px;font-weight:900;width:18px">1</span>
-                <div style="width:26px;height:26px;border-radius:999px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:900">DK</div>
-                <div>
-                  <div style="font-size:11px;font-weight:800">David Kim</div>
-                  <div style="font-size:9px;color:var(--text-muted)">18 referrals</div>
-                </div>
-              </div>
-              <span class="tagpill tag-gold">👑 #1 Creator</span>
-            </div>
-            <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
-              <div style="display:flex;align-items:center;gap:8px">
-                <span style="font-size:12px;font-weight:900;width:18px">2</span>
-                <div style="width:26px;height:26px;border-radius:999px;background:var(--c-mint);display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:900">PS</div>
-                <div>
-                  <div style="font-size:11px;font-weight:800">Priya Sharma (You)</div>
-                  <div style="font-size:9px;color:var(--text-muted)">4 referrals</div>
-                </div>
-              </div>
-              <span class="tagpill tag-mint">Top 5%</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="sc-cap"><span class="sc-id">M06</span><span class="sc-name">Referral Leaderboard (SCR-065)</span></div>
-      <p class="sc-desc">City hub leaderboard tracking top creator referrers, community standing, and monthly viral growth badges.</p>
-    </div>
-
-    <!-- M07: Payout Redemption Flow -->
-    <div class="sc-item">
-      <div class="phone">
-        <div class="notch"></div>
-        <div class="screen">
-          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--divider)">
-            <span style="font-size:13px;font-weight:800">← Redeem Balance</span>
-            <span style="font-size:11px;color:var(--success);font-weight:700">£75.00</span>
-          </div>
-          <div class="grow pad" style="padding-top:12px">
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px">
-              <div class="lbl" style="margin-bottom:4px">Redemption Method</div>
-              <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:11px;margin-bottom:10px">
-                <b>Bank Transfer (Faster Payments UK)</b><br><span style="color:var(--text-muted);font-size:9.5px">Account ending in ••8219</span>
-              </div>
-              <div class="btn btn-primary btn-sm" style="width:100%">Withdraw £75.00 Now</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="sc-cap"><span class="sc-id">M07</span><span class="sc-name">Payout Redemption Flow (SCR-066)</span></div>
-      <p class="sc-desc">Withdrawal interface allowing creators to transfer earned referral balances directly to bank accounts or apply them as escrow credits.</p>
-    </div>
-
-    <!-- M08: Fraud Prevention & Audit View -->
-    <div class="sc-item">
-      <div class="phone">
-        <div class="notch"></div>
-        <div class="screen">
-          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--divider)">
-            <span style="font-size:13px;font-weight:800">Referral Security</span>
-            <span class="tagpill tag-mint">SECURE</span>
-          </div>
-          <div class="grow pad" style="padding-top:12px">
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:10px">
-              <div style="font-size:11px;font-weight:800;margin-bottom:2px">Anti-Fraud Safeguards (R18)</div>
-              <div style="font-size:10px;color:var(--text-secondary);line-height:1.4">CreatorConnect monitors duplicate IP addresses, device fingerprints, and self-referrals. All rewards require verified milestone completion.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="sc-cap"><span class="sc-id">M08</span><span class="sc-name">Fraud Prevention &amp; Audit (SCR-067)</span></div>
-      <p class="sc-desc">Security overview detailing automated fraud detection rules, IP checking, and milestone verification safeguards.</p>
-    </div>
-
-    <!-- M09: Referral Guidelines -->
-    <div class="sc-item">
-      <div class="phone">
-        <div class="notch"></div>
-        <div class="screen">
-          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--divider)">
-            <span style="font-size:13px;font-weight:800">← Referral Rules</span>
-            <span style="font-size:13px">📖</span>
-          </div>
-          <div class="grow pad" style="padding-top:12px">
-            <h3 class="h-md" style="font-size:14px;margin-bottom:6px">Program Terms (SOW §14)</h3>
-            <p class="body" style="font-size:11px;line-height:1.45;margin-bottom:12px">Referrals are designed for professional creators inviting genuine collaborators into city hubs.</p>
-          </div>
-        </div>
-      </div>
-      <div class="sc-cap"><span class="sc-id">M09</span><span class="sc-name">Referral Guidelines &amp; Terms (SCR-068)</span></div>
-      <p class="sc-desc">Legal terms and conditions governing affiliate payouts, qualifying milestones, and prohibited marketing practices.</p>
-    </div>
-
-    <!-- M10: Growth Analytics -->
-    <div class="sc-item">
-      <div class="phone">
-        <div class="notch"></div>
-        <div class="screen">
-          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-bottom:1px solid var(--divider)">
-            <span style="font-size:13px;font-weight:800">Growth Analytics</span>
-            <span class="tagpill tag-gold">PLANNED</span>
-          </div>
-          <div class="grow pad" style="padding-top:12px">
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:12px">
-              <div style="font-size:11px;font-weight:800;margin-bottom:6px">Invite Click-through Funnel</div>
-              <div style="font-size:10px;color:var(--text-secondary);display:flex;flex-direction:column;gap:4px">
-                <div style="display:flex;justify-content:space-between"><span>Link Clicks</span><b>48 clicks</b></div>
-                <div style="display:flex;justify-content:space-between"><span>Signups</span><b>12 signups</b></div>
-                <div style="display:flex;justify-content:space-between"><span>Qualified Escrows</span><b>4 completed</b></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="sc-cap"><span class="sc-id">M10</span><span class="sc-name">Growth Analytics Trends (SCR-069)</span></div>
-      <p class="sc-desc">Planned v2.5 analytics dashboard tracking invite click-through rates, conversion funnels, and viral coefficient metrics.</p>
+      <div class="sc-cap"><span class="sc-id">M04</span><span class="sc-name">Creator Affiliate Ledger (Auth Aesthetic)</span></div>
+      <p class="sc-desc">Double-entry audit log matching CreatorConnect balance presentation standards.</p>
     </div>
 
   </div>
 </div>
 
-<!-- ============ 06 DIALOGS & OVERLAYS ============ -->
+<!-- ============ 03 DIALOGS & OVERLAYS ============ -->
 <div class="sec">
-  <div class="sec-head"><span class="sec-n">06</span><h2 class="sec-t">Dialogs, Overlays &amp; Micro-Sheets</h2><span class="sec-note">Confirmation flows &amp; bottom sheets (DLG-87)</span></div>
+  <div class="sec-head"><span class="sec-n">03</span><h2 class="sec-t">Dialogs &amp; Overlays (DLG-87 through DLG-87H)</h2><span class="sec-note">Redesigned with Auth Aesthetic</span></div>
   <div class="dgrid">
 
     <!-- DLG-87: Share Referral Sheet -->
     <div class="dlgcard">
+      <div class="notch"></div>
       <div class="dc-dim"></div>
-      <div class="dc-bg"><div style="height:160px"></div></div>
+      <div class="dc-bg">
+        <div style="height:120px;background:var(--primary);border-radius:24px;margin-bottom:12px"></div>
+        <div style="height:40px;background:var(--surface);border-radius:16px"></div>
+      </div>
       <div class="dc-sheet">
         <div class="sh-h"></div>
-        <h3 class="h-md" style="font-size:14px;margin-bottom:2px">Share Referral Link</h3>
-        <p class="body" style="font-size:10px;color:var(--text-muted);margin-bottom:12px">Invite collaborators via your unique code CREATOR25</p>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <h3 class="h-md" style="font-size:16px;margin:0">Share Invite Link</h3>
+          <span style="font-size:18px;cursor:pointer">✕</span>
+        </div>
+        <p class="body" style="font-size:11.5px;margin-bottom:16px">Give ₹2,500, Get ₹2,500 using your code <b>PRIYA2500</b></p>
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center;margin-bottom:18px">
           <div>
-            <div style="width:42px;height:42px;border-radius:999px;background:var(--bg-secondary);margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:18px">📋</div>
-            <span style="font-size:9.5px;font-weight:700">Copy</span>
+            <div style="width:46px;height:46px;border-radius:999px;background:#25D366;color:#fff;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:20px">💬</div>
+            <span style="font-size:10.5px;font-weight:800">WhatsApp</span>
           </div>
           <div>
-            <div style="width:42px;height:42px;border-radius:999px;background:#25D366;color:#fff;margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:18px">💬</div>
-            <span style="font-size:9.5px;font-weight:700">WhatsApp</span>
+            <div style="width:46px;height:46px;border-radius:999px;background:#E1306C;color:#fff;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:20px">📸</div>
+            <span style="font-size:10.5px;font-weight:800">Stories</span>
           </div>
           <div>
-            <div style="width:42px;height:42px;border-radius:999px;background:#1DA1F2;color:#fff;margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:18px">🐦</div>
-            <span style="font-size:9.5px;font-weight:700">Twitter</span>
+            <div style="width:46px;height:46px;border-radius:999px;background:#0088CC;color:#fff;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:20px">✈️</div>
+            <span style="font-size:10.5px;font-weight:800">Telegram</span>
           </div>
           <div>
-            <div style="width:42px;height:42px;border-radius:999px;background:#0077B5;color:#fff;margin:0 auto 4px;display:flex;align-items:center;justify-content:center;font-size:18px">💼</div>
-            <span style="font-size:9.5px;font-weight:700">LinkedIn</span>
+            <div style="width:46px;height:46px;border-radius:999px;background:var(--bg-secondary);margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:18px">📋</div>
+            <span style="font-size:10.5px;font-weight:800">Copy</span>
           </div>
         </div>
-        <div class="btn btn-primary btn-xs" style="width:100%">Close Share Sheet</div>
+
+        <button class="btn btn-primary btn-sm" style="width:100%">More Options</button>
       </div>
-      <div style="padding:10px 14px;background:#fff;border-top:1px solid var(--border)"><span class="sc-id">DLG-87</span> Share Referral Sheet</div>
+      <div style="padding:10px 14px;background:#fff;border-top:1.5px solid var(--border);position:absolute;bottom:0;left:0;right:0;z-index:35">
+        <span class="sc-id">DLG-87</span> Share Referral Sheet
+      </div>
+    </div>
+
+    <!-- DLG-87A: Dynamic QR Code Modal -->
+    <div class="dlgcard">
+      <div class="notch"></div>
+      <div class="dc-dim"></div>
+      <div class="dc-center">
+        <div style="width:40px;height:40px;border-radius:999px;background:var(--primary);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px">CC</div>
+        <h3 class="h-md" style="font-size:16px;margin-bottom:4px">Scan to Connect &amp; Earn</h3>
+        <p class="body" style="font-size:11px;margin-bottom:14px">₹2,500 discount for referee · ₹2,500 cash for Priya</p>
+
+        <!-- QR Matrix Mock -->
+        <div class="qr-box" style="margin-bottom:14px">
+          <span></span><span></span><span></span><span class="off"></span><span></span><span></span><span></span>
+          <span></span><span class="off"></span><span></span><span class="off"></span><span></span><span class="off"></span><span></span>
+          <span></span><span></span><span></span><span class="off"></span><span></span><span></span><span></span>
+          <span class="off"></span><span class="off"></span><span class="off"></span><span></span><span class="off"></span><span class="off"></span><span class="off"></span>
+          <span></span><span></span><span></span><span class="off"></span><span></span><span class="off"></span><span></span>
+          <span></span><span class="off"></span><span></span><span class="off"></span><span class="off"></span><span></span><span class="off"></span>
+          <span></span><span></span><span></span><span class="off"></span><span></span><span></span><span></span>
+        </div>
+
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:800;margin-bottom:14px">creatorconnect.com/r/priya</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button class="btn btn-outline btn-xs">Save Photo</button>
+          <button class="btn btn-dark btn-xs">Close</button>
+        </div>
+      </div>
+      <div style="padding:10px 14px;background:#fff;border-top:1.5px solid var(--border);position:absolute;bottom:0;left:0;right:0;z-index:35">
+        <span class="sc-id">DLG-87A</span> Dynamic QR Code Modal
+      </div>
     </div>
 
   </div>
 </div>
 
-<!-- ============ 07 DATA MAPPING & SOW RECONCILIATION ============ -->
+<!-- ============ 04 DATA MAPPING & SOW RECONCILIATION ============ -->
 <div class="sec">
-  <div class="sec-head"><span class="sec-n">07</span><h2 class="sec-t">Data Mapping &amp; Contract Reconciliation</h2><span class="sec-note">SOW deliverables cross-reference</span></div>
+  <div class="sec-head"><span class="sec-n">04</span><h2 class="sec-t">Data Mapping &amp; Contract Reconciliation (INR)</h2><span class="sec-note">SOW Deliverables &amp; Fastify Endpoints</span></div>
   <table class="mapping-table">
     <thead>
       <tr>
-        <th style="width:70px">Screen</th>
-        <th style="width:140px">SOW Clause</th>
-        <th style="width:200px">Screen Name / Function</th>
-        <th>Required Data Fields &amp; Backend API</th>
-        <th style="width:230px">Security &amp; Policy Constraints</th>
+        <th style="width:65px">Screen</th>
+        <th style="width:130px">SOW Clause</th>
+        <th style="width:190px">Screen Name / Function</th>
+        <th>Required Data Fields &amp; Fastify REST Endpoints</th>
+        <th style="width:230px">Security &amp; Policy Constraints (INR)</th>
       </tr>
     </thead>
     <tbody>
@@ -609,82 +682,32 @@ body{
         <td><b>M01</b></td>
         <td>SOW §14.1</td>
         <td><b>Referral Home</b><br><span class="small">SCR-060</span></td>
-        <td><code>user_id, referral_code, invite_url, total_invites, qualified_count, total_earned</code><br>GET <code>/api/v1/referrals/me</code></td>
-        <td>Unique code generated on account creation. Rate-limited link generation.</td>
+        <td><code>user_id, referral_code, invite_url, total_invites, qualified_count, total_earned_in_paise</code><br>GET <code>/api/v1/referrals/me</code></td>
+        <td>Alphanumeric code generated on signup. Strict 15 invites/min rate limit.</td>
       </tr>
       <tr>
         <td><b>M02</b></td>
         <td>SOW §14.2</td>
         <td><b>Referral History</b><br><span class="small">SCR-061</span></td>
-        <td><code>referred_user_id, display_name, joined_at, milestone_status, reward_state</code><br>GET <code>/api/v1/referrals/history</code></td>
-        <td>Rewards unlock only after verified escrow completion (R-REF-02).</td>
+        <td><code>referee_id, name, city_hub, joined_at, milestone_id, milestone_status, reward_paise</code><br>GET <code>/api/v1/referrals/history</code></td>
+        <td>Milestones unlock only upon verified escrow completion (&ge; ₹5,000) (R-REF-02).</td>
       </tr>
       <tr>
         <td><b>M03</b></td>
         <td>SOW §14.3</td>
         <td><b>Tiered Bonus Calculator</b><br><span class="small">SCR-062</span></td>
-        <td><code>current_tier, progress_count, next_tier_bonus, unlocked_perks[]</code><br>GET <code>/api/v1/referrals/tiers</code></td>
-        <td>Automatic bonus crediting upon milestone threshold achievement.</td>
+        <td><code>current_tier, qualified_count, next_tier_threshold, bonus_pool_paise, unlocked_perks[]</code><br>GET <code>/api/v1/referrals/tiers</code></td>
+        <td>Automated progression calculation. ₹10,000 cash pool triggers at 5 referrals.</td>
       </tr>
       <tr>
         <td><b>M04</b></td>
         <td>SOW §14.4</td>
         <td><b>Creator Affiliate Ledger</b><br><span class="small">SCR-063</span></td>
-        <td><code>ledger_entries[], available_balance, withdrawn_total</code><br>GET <code>/api/v1/referrals/ledger</code></td>
-        <td>Immutable transaction audit trail tied to Razorpay payout logs.</td>
-      </tr>
-      <tr>
-        <td><b>M05</b></td>
-        <td>SOW §14.5</td>
-        <td><b>Invite Contacts Sync</b><br><span class="small">SCR-064</span></td>
-        <td><code>contacts_list[], invited_status[]</code><br>POST <code>/api/v1/referrals/sync-contacts</code></td>
-        <td>Client-side address book hashing. No raw contact data stored on servers.</td>
-      </tr>
-      <tr>
-        <td><b>M06</b></td>
-        <td>SOW §14.6</td>
-        <td><b>Referral Leaderboard</b><br><span class="small">SCR-065</span></td>
-        <td><code>hub_id, top_referrers[], user_rank</code><br>GET <code>/api/v1/hubs/:hubId/leaderboard</code></td>
-        <td>City hub leaderboard restricted to active community members.</td>
-      </tr>
-      <tr>
-        <td><b>M07</b></td>
-        <td>SOW §14.7</td>
-        <td><b>Payout Redemption</b><br><span class="small">SCR-066</span></td>
-        <td><code>withdrawal_amount, bank_account_id, payout_status</code><br>POST <code>/api/v1/referrals/withdraw</code></td>
-        <td>Minimum withdrawal threshold (£25). 2FA verification required.</td>
-      </tr>
-      <tr>
-        <td><b>M08</b></td>
-        <td>SOW §23.5</td>
-        <td><b>Fraud Prevention &amp; Audit</b><br><span class="small">SCR-067</span></td>
-        <td><code>fraud_flags[], ip_matches[], self_referral_check</code><br>GET <code>/api/v1/admin/referrals/audit</code></td>
-        <td>Automated heuristic checks for self-referrals and IP clusters (Admin R18).</td>
-      </tr>
-      <tr>
-        <td><b>M09</b></td>
-        <td>SOW §14.8</td>
-        <td><b>Referral Guidelines</b><br><span class="small">SCR-068</span></td>
-        <td><code>terms_version, markdown_content</code><br>GET <code>/api/v1/legal/referral-terms</code></td>
-        <td>Static documentation outlining program rules and spam prohibitions.</td>
-      </tr>
-      <tr>
-        <td><b>M10</b></td>
-        <td>SOW §14.9</td>
-        <td><b>Growth Analytics</b><br><span class="small">SCR-069</span></td>
-        <td><code>funnel_clicks, signup_rate, conversion_rate</code><br>GET <code>/api/v1/referrals/analytics</code></td>
-        <td>Planned v2.5 feature.</td>
+        <td><code>ledger_entries[], available_balance_paise, lifetime_earned_paise</code><br>GET <code>/api/v1/referrals/ledger</code></td>
+        <td>Double-entry accounting (<span style="font-family:'JetBrains Mono',monospace">&sum; debits &equiv; &sum; credits</span>). Paired with Razorpay payout logs.</td>
       </tr>
     </tbody>
   </table>
-
-  <!-- Technical Implementation Notes -->
-  <div class="note" style="margin-top:24px">
-    <b>Technical Implementation Notes for Engineering &amp; Fastify Microservices:</b><br><br>
-    <b>1. Database Schema (PostgreSQL):</b> Relational tables for <code>referral_codes</code>, <code>referrals</code> (linking referrer and referee with status enum: <code>pending, qualified, rewarded, flagged</code>), <code>affiliate_ledger</code>, and <code>payout_requests</code>.<br><br>
-    <b>2. Escrow Milestone Trigger:</b> When a referee completes their first escrow milestone sign-off (SOW §8), a webhook triggers <code>ReferralService.rewardReferrer(refereeId)</code> to credit £25 to the referrer's affiliate ledger.<br><br>
-    <b>3. Anti-Fraud Rules (R18):</b> Automatic checks verify that <code>referrer_id != referee_id</code>, <code>referrer_ip != referee_ip</code>, and both accounts maintain verified status. Flagged referrals route to admin queue R18 for manual review.
-  </div>
 </div>
 
 </div><!-- /.wrap -->

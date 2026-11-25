@@ -20,11 +20,19 @@ export class JwtVerifier implements IAuthenticationProvider {
   private audience: string;
   private clockTolerance: number;
   private jwksUrlStr: string | undefined;
+  private issuerExplicitlyProvided = false;
 
   constructor(options: JwtVerifierOptions = {}) {
-    const rawIssuer = 'issuer' in options ? options.issuer : process.env.SUPABASE_JWT_ISSUER;
-    this.issuer =
-      rawIssuer && rawIssuer.trim() ? rawIssuer.trim().replace(/^["']|["']$/g, '') : undefined;
+    if ('issuer' in options) {
+      this.issuerExplicitlyProvided = true;
+      const rawIssuer = options.issuer;
+      this.issuer =
+        rawIssuer && rawIssuer.trim() ? rawIssuer.trim().replace(/^["']|["']$/g, '') : undefined;
+    } else {
+      const rawIssuer = process.env.SUPABASE_JWT_ISSUER;
+      this.issuer =
+        rawIssuer && rawIssuer.trim() ? rawIssuer.trim().replace(/^["']|["']$/g, '') : undefined;
+    }
 
     this.audience = options.audience || 'authenticated';
     this.clockTolerance = options.clockTolerance ?? 60;
@@ -115,11 +123,12 @@ export class JwtVerifier implements IAuthenticationProvider {
       throw new AuthInvalidTokenError('Authentication token missing or malformed.');
     }
 
-    const effectiveIssuer =
-      this.issuer ||
-      (process.env.SUPABASE_JWT_ISSUER?.trim()
-        ? process.env.SUPABASE_JWT_ISSUER.trim().replace(/^["']|["']$/g, '')
-        : undefined);
+    const effectiveIssuer = this.issuerExplicitlyProvided
+      ? this.issuer
+      : this.issuer ||
+        (process.env.SUPABASE_JWT_ISSUER?.trim()
+          ? process.env.SUPABASE_JWT_ISSUER.trim().replace(/^["']|["']$/g, '')
+          : undefined);
 
     // FAIL CLOSED: issuer must always be configured.
     if (!effectiveIssuer) {

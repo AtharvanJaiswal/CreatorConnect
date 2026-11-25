@@ -62,6 +62,14 @@ export const assignmentsRoutes: FastifyPluginAsync<AssignmentsRoutesOptions> = a
   }>(
     '/api/v1/assignments',
     {
+      preHandler: [
+        fastify.rateLimit({
+          endpoint: 'list-assignments',
+          max: 120,
+          windowSeconds: 60,
+          onRedisFailure: 'fail-closed',
+        }),
+      ],
       schema: {
         description: 'Lists published assignments or brand owned assignments',
         tags: ['Assignments'],
