@@ -1,0 +1,732 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/safe_image.dart';
+import '../../domain/entities/chat_entities.dart';
+import '../controllers/chat_controllers.dart';
+import '../widgets/pinned_brief_banner_widget.dart';
+import '../widgets/message_bubble_widget.dart';
+import '../widgets/typing_indicator_widget.dart';
+import '../bottom_sheets/dlg_e08_attachment_picker_sheet.dart';
+import '../bottom_sheets/dlg_e11_report_user_sheet.dart';
+import '../dialogs/dlg_e09_delete_message_dialog.dart';
+import '../dialogs/dlg_e10_block_user_dialog.dart';
+import 'e07_attachment_viewer_screen.dart';
+
+/// SCR-E04, SCR-E05, SCR-E06: One-to-One Chat Thread Screen
+/// SOW §7.1: Features pinned collaboration brief context, yellow user bubbles,
+/// double read receipt ticks, secure Cloudflare R2 file transfers, and anti-circumvention gating.
+class E04ChatThreadScreen extends ConsumerStatefulWidget {
+  final String conversationId;
+  final PinnedBriefContext? initialBrief;
+  final ConversationItem? initialPeer;
+
+  const E04ChatThreadScreen({
+    super.key,
+    required this.conversationId,
+    this.initialBrief,
+    this.initialPeer,
+  });
+
+  @override
+  ConsumerState<E04ChatThreadScreen> createState() => _E04ChatThreadScreenState();
+}
+
+class _E04ChatThreadScreenState extends ConsumerState<E04ChatThreadScreen> {
+  final _textCtrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
+  bool _isSending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.initialPeer != null) {
+        ref.read(chatThreadProvider(widget.conversationId).notifier).setInitialConversation(widget.initialPeer);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _textCtrl.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollCtrl.hasClients) {
+        _scrollCtrl.animateTo(
+          _scrollCtrl.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _handleSendMessage() async {
+    final text = _textCtrl.text.trim();
+    if (text.isEmpty) return;
+
+    _textCtrl.clear();
+    setState(() => _isSending = true);
+    await ref.read(chatThreadProvider(widget.conversationId).notifier).sendMessage(text);
+    if (mounted) setState(() => _isSending = false);
+    _scrollToBottom();
+  }
+
+  Future<void> _handleAttachmentPicker() async {
+    final selectedType = await DlgE08AttachmentPickerSheet.show(context);
+    if (selectedType == null) return;
+
+    try {
+      String? filePath;
+      String? fileName;
+      int? fileSize;
+
+      if (selectedType == AttachmentType.image) {
+        final picker = ImagePicker();
+        final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+        if (picked != null) {
+          filePath = picked.path;
+          fileName = picked.name;
+          final f = File(picked.path);
+          if (await f.exists()) fileSize = await f.length();
+        }
+      } else if (selectedType == AttachmentType.video) {
+        final picker = ImagePicker();
+        final picked = await picker.pickVideo(source: ImageSource.gallery);
+        if (picked != null) {
+          filePath = picked.path;
+          fileName = picked.name;
+          final f = File(picked.path);
+          if (await f.exists()) fileSize = await f.length();
+        }
+      } else if (selectedType == AttachmentType.document) {
+        final result = await FilePicker.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['pdf', 'doc', 'docx', 'png', 'jpg'],
+        );
+        if (result != null && result.files.isNotEmpty) {
+          final picked = result.files.first;
+          filePath = picked.path;
+          fileName = picked.name;
+          fileSize = picked.size;
+        }
+      }
+
+      if (filePath != null) {
+        final repo = ref.read(chatRepositoryProvider);
+        final att = await repo.uploadAttachment(
+          filePath,
+          selectedType,
+          originalName: fileName,
+          fileSize: fileSize,
+        );
+        await ref.read(chatThreadProvider(widget.conversationId).notifier).sendMessage(
+          'Shared an attachment: ${att.fileName}',
+          attachment: att,
+        );
+        _scrollToBottom();
+      } else if (selectedType == AttachmentType.brief) {
+        final conv = ref.read(chatThreadProvider(widget.conversationId)).conversation ?? widget.initialPeer;
+        final briefTitle = conv?.pinnedBrief?.title ?? 'Collaboration Campaign Brief';
+        final att = MessageAttachment(
+          id: 'brief-${widget.conversationId}',
+          type: AttachmentType.brief,
+          fileName: briefTitle,
+          fileSize: 'Link',
+          url: 'https://creatorconnect.app/briefs/${widget.conversationId}',
+        );
+        await ref.read(chatThreadProvider(widget.conversationId).notifier).sendMessage(
+          'Attached collaboration brief reference: $briefTitle',
+          attachment: att,
+        );
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to share attachment: ${e.toString().split('\n').first}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  void _openAttachmentViewer(MessageAttachment att) {
+    final conv = ref.read(chatThreadProvider(widget.conversationId)).conversation ?? widget.initialPeer;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => E07AttachmentViewerScreen(
+          attachment: att,
+          sentBy: conv?.peerName,
+          timestamp: 'Today',
+          conversationId: widget.conversationId,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleDeleteMessage(String messageId) async {
+    final choice = await DlgE09DeleteMessageDialog.show(context);
+    if (choice != null) {
+      await ref.read(chatThreadProvider(widget.conversationId).notifier).deleteMessage(
+        messageId,
+        forEveryone: choice == DeleteMessageChoice.forEveryone,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(choice == DeleteMessageChoice.forEveryone
+                ? 'Message deleted for everyone'
+                : 'Message deleted for you'),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleBlockUser(String peerName) async {
+    final confirmed = await DlgE10BlockUserDialog.show(context, peerName: peerName);
+    if (confirmed == true && mounted) {
+      await ref.read(chatThreadProvider(widget.conversationId).notifier).blockUser();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$peerName has been blocked.')),
+        );
+        Navigator.pop(context);
+      }
+    }
+  }
+
+  Future<void> _handleReportUser(String peerName) async {
+    final report = await DlgE11ReportUserSheet.show(context, peerName: peerName);
+    if (report != null && mounted) {
+      await ref.read(chatThreadProvider(widget.conversationId).notifier).reportUser(
+        report.reason,
+        details: report.details,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Report submitted. Safety team will investigate within 24 hours.'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    }
+  }
+
+  static bool _isSameDay(DateTime d1, DateTime d2) {
+    return d1.year == d2.year && d1.month == d2.month && d1.day == d2.day;
+  }
+
+  static String _formatDateSeparator(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final messageDate = DateTime(dt.year, dt.month, dt.day);
+    final diffDays = today.difference(messageDate).inDays;
+
+    if (diffDays == 0) {
+      return 'TODAY';
+    } else if (diffDays == 1) {
+      return 'YESTERDAY';
+    } else if (diffDays < 7 && diffDays > 0) {
+      const weekdays = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+      return weekdays[dt.weekday - 1];
+    } else {
+      const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+    }
+  }
+
+  Widget _buildDateSeparator(String text) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFECE7DE),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2DDD2), width: 0.8),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+            color: Color(0xFF736B63),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(chatThreadProvider(widget.conversationId));
+    final conv = state.conversation ?? widget.initialPeer;
+    final isRequestPending = conv != null && conv.isRequest && !conv.isAccepted;
+    final brief = conv?.pinnedBrief ?? widget.initialBrief;
+
+    return Scaffold(
+      backgroundColor: AppColors.backgroundPrimary,
+      appBar: _buildAppBar(conv),
+      body: SafeArea(
+        child: state.isLoading && conv == null
+            ? const Center(child: CircularProgressIndicator(color: AppColors.textPrimary))
+            : Column(
+                children: [
+                  // Pinned Brief Context Banner (SCR-E04)
+                  if (brief != null)
+                    TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 380),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, child) {
+                        return Transform.translate(
+                          offset: Offset(0, -18 * (1.0 - value)),
+                          child: Opacity(opacity: value.clamp(0.0, 1.0), child: child),
+                        );
+                      },
+                      child: PinnedBriefBannerWidget(
+                        brief: brief,
+                        onViewBrief: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/campaigns/brief-detail',
+                            arguments: brief.id,
+                          );
+                        },
+                      ),
+                    ),
+
+                  // Messages viewport
+                  Expanded(
+                    child: ListView.builder(
+                      controller: _scrollCtrl,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      itemCount: state.messages.length + (state.isTyping ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (state.isTyping && index == state.messages.length) {
+                          return TypingIndicatorWidget(peerName: conv?.peerName);
+                        }
+
+                        final msg = state.messages[index];
+                        final prevMsg = index > 0 ? state.messages[index - 1] : null;
+                        final nextMsg = index < state.messages.length - 1 ? state.messages[index + 1] : null;
+
+                        final isNewDay = prevMsg == null || !_isSameDay(msg.timestamp, prevMsg.timestamp);
+                        final isFirstInGroup = isNewDay || prevMsg.isMe != msg.isMe || msg.timestamp.difference(prevMsg.timestamp).inMinutes > 5;
+                        final isLastInGroup = nextMsg == null || !_isSameDay(msg.timestamp, nextMsg.timestamp) || nextMsg.isMe != msg.isMe || nextMsg.timestamp.difference(msg.timestamp).inMinutes > 5;
+
+                        final bubble = MessageBubbleWidget(
+                          message: msg,
+                          showAvatar: isLastInGroup,
+                          showSenderName: isFirstInGroup,
+                          peerName: conv?.peerName,
+                          peerAvatar: conv?.peerAvatar,
+                          isFirstInGroup: isFirstInGroup,
+                          isLastInGroup: isLastInGroup,
+                          onOpenAttachment: _openAttachmentViewer,
+                          onLongPress: () => _handleDeleteMessage(msg.id),
+                        );
+
+                        if (isNewDay) {
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildDateSeparator(_formatDateSeparator(msg.timestamp)),
+                              bubble,
+                            ],
+                          );
+                        }
+
+                        return bubble;
+                      },
+                    ),
+                  ),
+
+                  // Bottom viewport: Either SCR-E05 Locked Request State or normal input field
+                  if (isRequestPending)
+                    _buildLockedRequestPanel(context, conv)
+                  else
+                    _buildInputBar(context, _isSending),
+                ],
+              ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(ConversationItem? conv) {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+        onPressed: () => Navigator.pop(context),
+      ),
+      titleSpacing: 0,
+      title: Row(
+        children: [
+          Stack(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.backgroundSecondary,
+                backgroundImage: safeNetworkImage(conv?.peerAvatar),
+                child: safeNetworkImage(conv?.peerAvatar) == null
+                    ? Text(
+                        conv != null && conv.peerName.isNotEmpty ? conv.peerName[0].toUpperCase() : '?',
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.textPrimary),
+                      )
+                    : null,
+              ),
+              if (conv?.isOnline == true)
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF22C55E),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        conv?.peerName ?? 'Chat',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    if (conv?.isPeerVerified == true) ...[
+                      const SizedBox(width: 4),
+                      const Icon(Icons.verified_rounded, size: 14, color: AppColors.primaryDark),
+                    ],
+                  ],
+                ),
+                Text(
+                  conv?.isOnline == true
+                      ? 'Active now'
+                      : (conv?.lastSeen != null ? 'Last seen ${conv!.lastSeen}' : conv?.peerRole ?? ''),
+                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.phone_outlined, color: AppColors.textPrimary, size: 22),
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Voice calls require accepted project agreement.')),
+            );
+          },
+        ),
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert_rounded, color: AppColors.textPrimary),
+          onSelected: (value) {
+            if (conv == null) return;
+            if (value == 'report') {
+              _handleReportUser(conv.peerName);
+            } else if (value == 'block') {
+              _handleBlockUser(conv.peerName);
+            }
+          },
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'report',
+              child: Row(
+                children: [
+                  Icon(Icons.flag_outlined, size: 18, color: AppColors.warning),
+                  SizedBox(width: 8),
+                  Text('Report Conversation', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'block',
+              child: Row(
+                children: [
+                  Icon(Icons.block_rounded, size: 18, color: AppColors.error),
+                  SizedBox(width: 8),
+                  Text('Block User', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.error)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// SCR-E05: Chat Thread - Message Request State (Locked input with caller summary)
+  Widget _buildLockedRequestPanel(BuildContext context, ConversationItem conv) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.border, width: 1)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Caller Summary Card (SCR-E05)
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: AppColors.backgroundSecondary,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.borderLight),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: Colors.white,
+                  backgroundImage: safeNetworkImage(conv.peerAvatar),
+                  child: safeNetworkImage(conv.peerAvatar) == null
+                      ? Text(
+                          conv.peerName.isNotEmpty ? conv.peerName[0].toUpperCase() : '?',
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.textPrimary),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              conv.peerName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: AppColors.textPrimary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (conv.isPeerVerified) ...[
+                            const SizedBox(width: 4),
+                            const Icon(Icons.verified_rounded, size: 14, color: AppColors.primaryDark),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${conv.peerRole}${conv.location != null && conv.location!.isNotEmpty ? ' • ${conv.location}' : ''}${conv.followers != null && conv.followers!.isNotEmpty ? ' • ${conv.followers} followers' : ''}',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Security Warning Banner (Anti-Circumvention)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.warning.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.shield_outlined, size: 16, color: AppColors.warning),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Security Reminder: Phone numbers and direct contact details are shielded until you accept this request.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Actions: Decline, Accept, Block
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () async {
+                    await ref.read(chatThreadProvider(widget.conversationId).notifier).declineRequest();
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Request from ${conv.peerName} declined.')),
+                      );
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: const BorderSide(color: AppColors.border),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text(
+                    'Decline',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await ref.read(chatThreadProvider(widget.conversationId).notifier).acceptRequest();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Chat with ${conv.peerName} accepted! Input unlocked.'),
+                          backgroundColor: AppColors.success,
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.textPrimary,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text(
+                    'Accept Request',
+                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13.5),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: () => _handleBlockUser(conv.peerName),
+                icon: const Icon(Icons.block_rounded, size: 20, color: AppColors.error),
+                tooltip: 'Block User',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Normal Message Input Bar
+  Widget _buildInputBar(BuildContext context, bool isSending) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.border, width: 1)),
+      ),
+      child: Row(
+        children: [
+          // Attachment Button
+          GestureDetector(
+            onTap: _handleAttachmentPicker,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                color: AppColors.backgroundSecondary,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.add_rounded, size: 24, color: AppColors.textPrimary),
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // Text Field
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: AppColors.backgroundSecondary,
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: TextField(
+                controller: _textCtrl,
+                textCapitalization: TextCapitalization.sentences,
+                style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                onChanged: (val) {
+                  ref.read(chatThreadProvider(widget.conversationId).notifier).setTyping(val.trim().isNotEmpty);
+                },
+                decoration: const InputDecoration(
+                  hintText: 'Type a message...',
+                  hintStyle: TextStyle(fontSize: 14, color: AppColors.textMuted),
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(vertical: 10),
+                ),
+                onSubmitted: (_) => _handleSendMessage(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // Send Button
+          GestureDetector(
+            onTap: isSending ? null : _handleSendMessage,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+              ),
+              child: isSending
+                  ? const Padding(
+                      padding: EdgeInsets.all(10),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.textPrimary),
+                    )
+                  : const Icon(Icons.send_rounded, size: 20, color: AppColors.textPrimary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

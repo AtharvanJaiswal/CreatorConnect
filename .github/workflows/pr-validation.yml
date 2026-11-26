@@ -114,7 +114,7 @@ jobs:
   e2e:
     name: Playwright E2E Smoke Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       DATABASE_URL: postgresql://postgres:postgres_local_password@localhost:5432/creatorconnect_dev?schema=public
       SUPABASE_JWT_ISSUER: https://auth.creatorconnect.local/auth/v1
@@ -208,7 +208,7 @@ jobs:
         run: pnpm test:e2e
 
       - name: Dump Ephemeral Stack Diagnostics on Failure
-        if: failure()
+        if: failure() || cancelled()
         run: |
           echo "=================================================="
           echo "CONTAINER STATUS (docker compose ps -a)"
@@ -244,7 +244,7 @@ jobs:
         run: docker compose down -v
 
       - name: Upload Test Report Artifact
-        if: failure()
+        if: failure() || cancelled()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report

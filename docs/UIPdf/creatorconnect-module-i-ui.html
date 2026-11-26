@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreatorConnect — Module I: Real-Time Messaging & Chat UI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   CREATORCONNECT — DESIGN TOKENS
+   Standardized across Modules A through I
+   ============================================================ */
+:root {
+  color-scheme: light;
+  --bg-primary: #FAF6EF;
+  --bg-secondary: #F2ECE1;
+  --surface: #FFFFFF;
+  --surface-elevated: #FFFFFF;
+
+  --primary: #FFD64A;
+  --primary-press: #F0C52F;
+  --secondary: #C9B6F7;
+  --accent: #FFB6C8;
+
+  --c-yellow: #FFD64A;
+  --c-pink: #FFB6C8;
+  --c-lavender: #C9B6F7;
+  --c-mint: #B6E09B;
+  --c-sky: #A6CCF7;
+  --c-peach: #FFC9A3;
+
+  --text-primary: #14110F;
+  --text-secondary: #6F675E;
+  --text-muted: #A39A8F;
+  --text-on-primary: #14110F;
+
+  --border: #E7E0D5;
+  --divider: #EFE9DF;
+  --disabled: #D8D1C6;
+
+  --success: #2E9E6B;
+  --success-bg: #E6F4EC;
+  --warning: #C98A16;
+  --warning-bg: #FBF1DC;
+  --error: #D8483C;
+  --error-bg: #FBE9E7;
+
+  --sp-xs: 4px; --sp-sm: 8px; --sp-md: 16px; --sp-lg: 24px;
+  --sp-xl: 32px; --sp-2xl: 48px;
+
+  --r-button: 999px;
+  --r-input: 16px;
+  --r-card: 22px;
+  --r-modal: 28px;
+  --r-image: 14px;
+  --r-chip: 999px;
+
+  --bw: 1.5px;
+  --bw-focus: 2px;
+  --sh-sm: 0 1px 2px rgba(20,17,15,.05);
+  --sh-md: 0 4px 16px rgba(20,17,15,.07);
+  --sh-lg: 0 12px 32px rgba(20,17,15,.10);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0; background: #EDE7DC; color: var(--text-primary);
+  font-family: 'Archivo', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1260px; margin: 0 auto; padding: 40px 20px 80px; }
+
+/* Doc Header */
+.doc-head { margin-bottom: 40px; }
+.eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
+.doc-title { font-size: clamp(32px, 5vw, 48px); font-weight: 800; letter-spacing: -.025em; line-height: 1.05; margin: 0 0 12px; }
+.doc-title em { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; }
+.doc-sub { font-size: 15px; color: var(--text-secondary); max-width: 780px; line-height: 1.55; margin: 0; }
+
+/* Section Headers */
+.sec { margin: 64px 0 0; }
+.sec-head { display: flex; align-items: baseline; gap: 12px; border-bottom: 2px solid var(--text-primary); padding-bottom: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+.sec-n { font-size: 12px; font-weight: 800; letter-spacing: .1em; color: var(--text-muted); }
+.sec-t { font-size: 22px; font-weight: 800; letter-spacing: -.01em; margin: 0; }
+.sec-note { font-size: 13px; color: var(--text-secondary); margin-left: auto; }
+
+/* Grid of Screens */
+.screens { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 36px 26px; }
+.sc-item { display: flex; flex-direction: column; gap: 12px; }
+.sc-cap { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.sc-id { font-size: 10px; font-weight: 800; letter-spacing: .1em; color: #fff; background: var(--text-primary); padding: 3px 8px; border-radius: 999px; }
+.sc-name { font-size: 14px; font-weight: 700; }
+.sc-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.45; }
+
+/* Phone Frame */
+.phone {
+  width: 100%; max-width: 335px; aspect-ratio: 375/812; margin: 0 auto;
+  background: var(--bg-primary); border-radius: 38px;
+  border: 9px solid #14110F; overflow: hidden; position: relative;
+  box-shadow: var(--sh-lg); display: flex; flex-direction: column;
+}
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-primary); }
+.notch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 34%; height: 22px; background: #14110F; border-radius: 0 0 14px 14px; z-index: 30; }
+.statusbar { height: 34px; flex-shrink: 0; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 18px 3px; font-size: 10px; font-weight: 700; position: relative; z-index: 25; }
+.pad { padding: 0 16px; }
+.grow { flex: 1; min-height: 0; overflow-y: auto; }
+
+/* Buttons & UI Elements */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  height: 44px; border-radius: var(--r-button); font-size: 13px; font-weight: 700;
+  border: none; width: 100%; cursor: pointer; font-family: inherit;
+}
+.btn-primary { background: var(--primary); color: var(--text-on-primary); }
+.btn-dark { background: var(--text-primary); color: #fff; }
+.btn-outline { background: transparent; border: var(--bw) solid var(--text-primary); color: var(--text-primary); }
+.btn-ghost { background: transparent; color: var(--text-primary); font-weight: 600; }
+.btn-sm { height: 32px; font-size: 11.5px; padding: 0 14px; width: auto; flex-shrink: 0; }
+.btn-xs { height: 26px; font-size: 10.5px; padding: 0 10px; border-radius: 999px; width: auto; flex-shrink: 0; }
+
+/* Bottom Nav */
+.bottomnav {
+  height: 52px; background: #FFFFFF; border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-around;
+  padding: 0 8px; flex-shrink: 0; position: relative; z-index: 20;
+}
+.nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--text-muted); position: relative; }
+.nav-item.on { color: var(--text-primary); }
+.nav-dot { width: 4px; height: 4px; border-radius: 999px; background: var(--text-primary); position: absolute; bottom: -5px; }
+.nav-fab {
+  width: 38px; height: 38px; border-radius: 999px; background: var(--primary);
+  border: 2px solid #14110F; display: flex; align-items: center; justify-content: center;
+  color: #14110F; font-weight: 900; font-size: 18px; margin-top: -14px; box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+}
+
+/* Chat Specific Styles */
+.chat-row {
+  display: flex; align-items: center; gap: 11px; padding: 11px 16px;
+  border-bottom: 1px solid var(--divider); background: var(--surface);
+  position: relative; transition: background .15s;
+}
+.chat-row.unread { background: #FFFDF7; }
+.chat-row.pinned { border-left: 3.5px solid var(--primary); }
+.avatar-wrap { position: relative; flex-shrink: 0; }
+.avatar {
+  width: 44px; height: 44px; border-radius: 999px; display: flex;
+  align-items: center; justify-content: center; font-weight: 800; font-size: 15px;
+  border: 2px solid #fff; box-shadow: var(--sh-sm);
+}
+.online-dot {
+  position: absolute; bottom: 0; right: 0; width: 10px; height: 10px;
+  border-radius: 999px; background: var(--success); border: 2px solid #fff;
+}
+.unread-badge {
+  min-width: 18px; height: 18px; border-radius: 999px; background: var(--primary);
+  border: 1.5px solid #14110F; color: #14110F; font-size: 9.5px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center; padding: 0 4px;
+}
+.chat-bubble {
+  max-width: 78%; padding: 9px 13px; border-radius: 18px; font-size: 12.5px;
+  line-height: 1.42; position: relative; margin-bottom: 8px; word-break: break-word;
+}
+.bubble-in {
+  background: var(--surface); border: 1.5px solid var(--border);
+  color: var(--text-primary); border-bottom-left-radius: 4px; align-self: flex-start;
+}
+.bubble-out {
+  background: var(--primary); border: 1.5px solid #14110F;
+  color: var(--text-primary); border-bottom-right-radius: 4px; align-self: flex-end;
+}
+.bubble-meta {
+  font-size: 9px; color: var(--text-muted); margin-top: 3px; display: flex;
+  align-items: center; gap: 4px; justify-content: flex-end;
+}
+.bubble-out .bubble-meta { color: rgba(20,17,15,0.7); font-weight: 600; }
+.ticks { display: inline-flex; align-items: center; }
+
+/* In-Chat Brief Context Strip */
+.brief-strip {
+  background: #FFF9E6; border: 1.5px solid #FFE486; border-radius: 12px;
+  padding: 8px 12px; margin: 6px 14px 10px; display: flex; align-items: center;
+  justify-content: space-between; gap: 8px; box-shadow: var(--sh-sm);
+}
+.brief-title { font-size: 11px; font-weight: 800; color: #14110F; line-height: 1.2; }
+.brief-sub { font-size: 9.5px; color: #8C6A0A; margin-top: 1px; font-weight: 600; }
+
+/* Anti-Bypass Guard Alert */
+.safety-alert {
+  background: #FBE9E7; border: 1.5px solid #F5C2BE; border-radius: 12px;
+  padding: 8px 12px; margin: 6px 14px; font-size: 10.5px; line-height: 1.4;
+  color: #7A1D16; display: flex; gap: 8px; align-items: flex-start;
+}
+
+/* Chat Input Bar */
+.chat-inputbar {
+  background: #FFFFFF; border-top: 1px solid var(--border); padding: 8px 12px;
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.input-pill {
+  flex: 1; height: 38px; background: var(--bg-primary); border: 1.5px solid var(--border);
+  border-radius: 999px; padding: 0 14px; font-size: 12.5px; color: var(--text-primary);
+  display: flex; align-items: center;
+}
+.input-pill .ph { color: var(--text-muted); font-size: 12px; }
+
+/* Dialog & Sheet styles */
+.dc-dim { position: absolute; inset: 0; background: rgba(20,17,15,.6); z-index: 25; }
+.dc-sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; background: #fff;
+  border-radius: 26px 26px 0 0; padding: 10px 18px 20px; z-index: 30;
+  border-top: 1.5px solid #14110F; box-shadow: var(--sh-lg);
+}
+.dc-center {
+  position: absolute; left: 20px; right: 20px; top: 50%; transform: translateY(-50%);
+  background: #fff; border-radius: 24px; padding: 22px 18px; z-index: 30;
+  border: 2px solid #14110F; box-shadow: var(--sh-lg); text-align: center;
+}
+.sh-h { width: 36px; height: 4px; border-radius: 999px; background: var(--disabled); margin: 6px auto 14px; }
+
+/* Technical Spec Tables */
+.spec-box {
+  background: #FFFFFF; border: 1.5px solid var(--border); border-radius: 20px;
+  padding: 24px; margin-top: 24px; overflow-x: auto;
+}
+.spec-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.spec-table th {
+  background: var(--bg-secondary); padding: 10px 12px; text-align: left;
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em;
+  border-bottom: 1.5px solid var(--border);
+}
+.spec-table td { padding: 11px 12px; border-bottom: 1px solid var(--divider); vertical-align: top; color: var(--text-secondary); }
+.spec-table tr:last-child td { border-bottom: none; }
+.code-inline {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; background: var(--bg-secondary);
+  padding: 2px 5px; border-radius: 4px; color: #14110F; font-weight: 600;
+}
+.code-block {
+  background: #14110F; color: #FAF6EF; padding: 16px; border-radius: 14px;
+  font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.6;
+  overflow-x: auto; margin-top: 12px;
+}
+.tagpill { display: inline-block; font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- DOC HEADER -->
+<div class="doc-head">
+  <div class="eyebrow">CreatorConnect · Codly360 · Module I Specification</div>
+  <h1 class="doc-title">Real-Time Messaging &amp; <em>Collaboration Chat</em></h1>
+  <p class="doc-sub">Production mobile UI architecture and data contracts for Module I. Contracted under SOW §14 (Real-Time Chat), §20 (Notifications), §25 (Fastify &amp; Socket.IO Backend), §26 (Supabase PostgreSQL), and §27 (Cloudflare R2 Media Attachments).</p>
+</div>
+
+<!-- ============ 01 SYSTEM PURPOSE & SOW RECONCILIATION ============ -->
+<div class="sec">
+  <div class="sec-head">
+    <span class="sec-n">01</span>
+    <h2 class="sec-t">Purpose &amp; Technical Architecture</h2>
+    <span class="sec-note">Node.js · Fastify · Socket.IO · Upstash Redis · Cloudflare R2</span>
+  </div>
+
+  <div style="background:var(--surface);border:1.5px solid var(--border);border-left:5px solid var(--primary);border-radius:18px;padding:18px 20px;font-size:13px;line-height:1.6;color:var(--text-secondary)">
+    <b style="color:var(--text-primary);font-size:14px">Core Business Purpose of Module I:</b><br>
+    CreatorConnect Messaging is not a generic chat system; it is a <b>transaction-anchored collaboration hub</b> designed to facilitate verified hiring between Creators, Brands, Production Professionals, and Podcasters. Every conversation can be contextually tethered to an active Assignment Brief (SOW §11), an application status (SOW §12), or a mutual connection request.
+    <br><br>
+    <b style="color:var(--text-primary)">Critical Business Rules &amp; Anti-Bypass Controls:</b>
+    <ul style="margin:6px 0 0;padding-left:20px">
+      <li><b>Anti-Bypass Protection (Admin Spec §519):</b> Phone numbers, email addresses, and external payment handles (UPI / PayPal) detected in the first 3 messages of a newly established conversation trigger soft user warning prompts and are queued for admin moderation.</li>
+      <li><b>Daily Outreach Quota (SOW §17):</b> Free tier accounts are throttled to a predefined number of new direct message outreaches per day, gating unlimited messaging behind the Creator Pro subscription tier.</li>
+      <li><b>Cloudflare R2 Direct Pre-Signed Uploads:</b> Images, PDFs, and voice clips are uploaded directly to Cloudflare R2 via pre-signed backend URLs, preventing high-bandwidth media from loading the Node.js/Fastify server.</li>
+      <li><b>Presence &amp; Real-time Socket Scaling:</b> Upstash Redis stores active socket room joins, typing status TTLs (2.5 seconds), and user online presence heartbeats.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============ 02 UI SCREENS CATALOGUE ============ -->
+<div class="sec">
+  <div class="sec-head">
+    <span class="sec-n">02</span>
+    <h2 class="sec-t">Module I Screen Catalogue (I01 – I10)</h2>
+    <span class="sec-note">Interactive Native Mobile Layouts (375 × 812 pt)</span>
+  </div>
+
+  <div class="screens">
+
+    <!-- I01: CONVERSATIONS INBOX -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <!-- Inbox Top Header -->
+          <div style="padding:8px 18px 4px;display:flex;align-items:center;justify-content:space-between">
+            <h2 style="font-size:22px;font-weight:900;margin:0;letter-spacing:-.02em">Messages</h2>
+            <div style="display:flex;gap:8px">
+              <div style="width:34px;height:34px;border-radius:999px;background:var(--surface);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Inbox Search Bar -->
+          <div class="pad" style="margin-top:6px">
+            <div style="height:38px;background:var(--surface);border:1.5px solid var(--border);border-radius:999px;display:flex;align-items:center;gap:8px;padding:0 12px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <span style="font-size:12px;color:var(--text-muted)">Search conversations, briefs…</span>
+            </div>
+          </div>
+
+          <!-- Filter Pill Tabs -->
+          <div style="display:flex;gap:6px;padding:10px 18px;overflow-x:auto">
+            <span style="padding:5px 12px;border-radius:999px;background:#14110F;color:#fff;font-size:10.5px;font-weight:700">All (4)</span>
+            <span style="padding:5px 12px;border-radius:999px;background:var(--surface);border:1.5px solid var(--border);color:var(--text-secondary);font-size:10.5px;font-weight:700">Unread (2)</span>
+            <span style="padding:5px 12px;border-radius:999px;background:var(--surface);border:1.5px solid var(--border);color:var(--text-secondary);font-size:10.5px;font-weight:700">Briefs (3)</span>
+          </div>
+
+          <!-- Conversation List -->
+          <div class="grow" style="background:var(--surface)">
+
+            <!-- Row 1: Pinned / Active Brand Collab -->
+            <div class="chat-row unread pinned">
+              <div class="avatar-wrap">
+                <div class="avatar" style="background:#14110F;color:#fff;border-radius:12px">Z</div>
+                <span class="online-dot"></span>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="font-size:13px;font-weight:900;display:flex;align-items:center;gap:4px">
+                    Zara India <svg width="9" height="9" viewBox="0 0 24 24" fill="#2E9E6B"><circle cx="12" cy="12" r="10"/></svg>
+                  </span>
+                  <span style="font-size:10px;color:var(--text-primary);font-weight:700">10:24 AM</span>
+                </div>
+                <div style="font-size:10px;color:#8C6A0A;font-weight:700;margin-top:1px">Brief: Summer Reels Campaign</div>
+                <div style="font-size:11.5px;color:var(--text-primary);font-weight:700;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                  Can you send the draft reel by tomorrow evening?
+                </div>
+              </div>
+              <span class="unread-badge">2</span>
+            </div>
+
+            <!-- Row 2: Video Editor (Typing Indicator) -->
+            <div class="chat-row unread">
+              <div class="avatar-wrap">
+                <div class="avatar" style="background:var(--c-mint)">K</div>
+                <span class="online-dot"></span>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="font-size:13px;font-weight:800">Kabir Sen</span>
+                  <span style="font-size:10px;color:var(--success);font-weight:700">Just now</span>
+                </div>
+                <div style="font-size:10px;color:var(--text-muted);font-weight:600">Reels Editor · Mumbai</div>
+                <div style="font-size:11.5px;color:var(--success);font-weight:700;margin-top:2px;display:flex;align-items:center;gap:4px">
+                  <span>typing</span><span style="animation:blink 1s infinite">...</span>
+                </div>
+              </div>
+              <span class="unread-badge">1</span>
+            </div>
+
+            <!-- Row 3: Studio Frame (Brand) -->
+            <div class="chat-row">
+              <div class="avatar-wrap">
+                <div class="avatar" style="background:var(--c-sky)">S</div>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="font-size:13px;font-weight:800">Studio Frame</span>
+                  <span style="font-size:10px;color:var(--text-muted)">Yesterday</span>
+                </div>
+                <div style="font-size:10px;color:var(--text-muted);font-weight:600">D2C Brand · Bangalore</div>
+                <div style="font-size:11.5px;color:var(--text-secondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                  ✓✓ Thanks for the proposal! Let's schedule a call.
+                </div>
+              </div>
+            </div>
+
+            <!-- Row 4: Rohan Varma (Creator) -->
+            <div class="chat-row">
+              <div class="avatar-wrap">
+                <div class="avatar" style="background:var(--c-lavender)">R</div>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="font-size:13px;font-weight:800">Rohan Varma</span>
+                  <span style="font-size:10px;color:var(--text-muted)">2 days ago</span>
+                </div>
+                <div style="font-size:10px;color:var(--text-muted);font-weight:600">Men's Fashion Creator</div>
+                <div style="font-size:11.5px;color:var(--text-secondary);margin-top:2px">
+                  🎙️ Voice message (0:42)
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Bottom Navigation Bar -->
+          <div class="bottomnav">
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+            <div class="nav-fab">+</div>
+            <div class="nav-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="nav-dot"></span></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">I01</span><span class="sc-name">Conversations Inbox (Primary Hub)</span></div>
+      <p class="sc-desc">Main inbox stream with assignment context pills, unread count counters, real-time typing indicators, and presence status dots.</p>
+    </div>
+
+    <!-- I02: ONE-TO-ONE CHAT THREAD -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <!-- Chat Top App Bar -->
+          <div style="padding:6px 14px;background:#FFFFFF;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+            <div class="avatar-wrap">
+              <div class="avatar" style="width:34px;height:34px;background:#14110F;color:#fff;border-radius:10px;font-size:13px">Z</div>
+              <span class="online-dot"></span>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:900;display:flex;align-items:center;gap:4px">
+                Zara India <svg width="9" height="9" viewBox="0 0 24 24" fill="#2E9E6B"><circle cx="12" cy="12" r="10"/></svg>
+              </div>
+              <div style="font-size:9.5px;color:var(--success);font-weight:700">Online · Brand Partner</div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <div style="width:30px;height:30px;border-radius:999px;background:var(--bg-primary);display:flex;align-items:center;justify-content:center">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contextual Assignment Header Strip -->
+          <div class="brief-strip">
+            <div>
+              <div class="brief-title">Summer Reels Campaign 2026</div>
+              <div class="brief-sub">Budget: ₹15,000 · Status: Shortlisted</div>
+            </div>
+            <div class="btn btn-dark btn-xs" style="height:24px;font-size:9.5px;padding:0 8px">View Brief →</div>
+          </div>
+
+          <!-- Anti-Bypass Guard Banner -->
+          <div class="safety-alert">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <div><b>SafeChat Active:</b> For your payment protection, keep agreements inside CreatorConnect. Off-platform deals void guarantees.</div>
+          </div>
+
+          <!-- Messages Stream -->
+          <div class="grow" style="padding:10px 14px;display:flex;flex-direction:column">
+
+            <div style="text-align:center;margin:4px 0 10px"><span style="background:var(--bg-secondary);padding:3px 10px;border-radius:999px;font-size:9.5px;font-weight:700;color:var(--text-muted)">TODAY</span></div>
+
+            <!-- Inbound Bubble 1 -->
+            <div class="chat-bubble bubble-in">
+              Hi Priya! We reviewed your festive lookbook reels. The aesthetic matches our summer campaign perfectly.
+              <div class="bubble-meta">10:14 AM</div>
+            </div>
+
+            <!-- Inbound Bubble 2 -->
+            <div class="chat-bubble bubble-in">
+              Could you commit to a 48-hour delivery timeline once our clothing samples arrive at your studio?
+              <div class="bubble-meta">10:15 AM</div>
+            </div>
+
+            <!-- Outbound Bubble 1 -->
+            <div class="chat-bubble bubble-out">
+              Hello Zara India team! Yes, 48 hours is completely feasible. I have a professional studio team ready for the shoot.
+              <div class="bubble-meta">10:18 AM · <span class="ticks">✓✓</span></div>
+            </div>
+
+            <!-- Outbound Bubble 2 -->
+            <div class="chat-bubble bubble-out">
+              Could you share the moodboard document so we can prep the lighting and color grade?
+              <div class="bubble-meta">10:19 AM · <span class="ticks">✓✓</span></div>
+            </div>
+
+            <!-- Inbound Typing Bubble -->
+            <div class="chat-bubble bubble-in" style="display:flex;align-items:center;gap:5px;padding:8px 12px;width:fit-content">
+              <span style="font-size:10.5px;color:var(--text-secondary);font-weight:600">Zara India is typing</span>
+              <span style="width:4px;height:4px;border-radius:999px;background:#14110F;display:inline-block"></span>
+              <span style="width:4px;height:4px;border-radius:999px;background:#14110F;display:inline-block"></span>
+            </div>
+
+          </div>
+
+          <!-- Bottom Input Bar -->
+          <div class="chat-inputbar">
+            <div style="width:34px;height:34px;border-radius:999px;background:var(--bg-secondary);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.6"><path d="M12 5v14M5 12h14"/></svg>
+            </div>
+            <div class="input-pill">
+              <span class="ph">Message Zara India…</span>
+            </div>
+            <div style="width:34px;height:34px;border-radius:999px;background:var(--primary);border:1.5px solid #14110F;display:flex;align-items:center;justify-content:center;cursor:pointer">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.6"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">I02</span><span class="sc-name">One-to-One Chat Thread (Active Discussion)</span></div>
+      <p class="sc-desc">Active one-to-one conversation displaying the contextual brief anchor, SafeChat compliance banner, double-tick read status, and live typing indicator.</p>
+    </div>
+
+    <!-- I03: RICH MEDIA & ATTACHMENTS CHAT -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <!-- Header -->
+          <div style="padding:6px 14px;background:#FFFFFF;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+            <div class="avatar" style="width:32px;height:32px;background:#14110F;color:#fff;border-radius:8px;font-size:12px">Z</div>
+            <div style="flex:1">
+              <div style="font-size:12.5px;font-weight:900">Zara India</div>
+              <div style="font-size:9.5px;color:var(--text-muted)">Media &amp; Deliverables</div>
+            </div>
+          </div>
+
+          <div class="grow" style="padding:10px 14px;display:flex;flex-direction:column">
+
+            <!-- Inbound Image Attachment -->
+            <div class="chat-bubble bubble-in" style="padding:6px;width:82%">
+              <div style="height:120px;border-radius:12px;background:var(--c-mint);display:flex;align-items:center;justify-content:center;position:relative;border:1px solid #14110F">
+                <span style="font-size:11px;font-weight:800;background:rgba(255,255,255,0.9);padding:4px 8px;border-radius:6px">Moodboard_Summer.jpg (1.8 MB)</span>
+              </div>
+              <div style="padding:6px 4px 2px;font-size:11.5px">Here is the color grading and lighting reference we agreed upon.</div>
+              <div class="bubble-meta">10:22 AM</div>
+            </div>
+
+            <!-- Inbound Document (PDF) -->
+            <div class="chat-bubble bubble-in" style="width:82%">
+              <div style="display:flex;align-items:center;gap:10px;background:var(--bg-secondary);padding:8px 10px;border-radius:12px;border:1px solid var(--border)">
+                <div style="width:34px;height:34px;border-radius:8px;background:#D8483C;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:10px">PDF</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:11.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Zara_Campaign_Brief_v2.pdf</div>
+                  <div style="font-size:9.5px;color:var(--text-muted)">2.4 MB · Cloudflare R2</div>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </div>
+              <div class="bubble-meta">10:23 AM</div>
+            </div>
+
+            <!-- Outbound Voice Message -->
+            <div class="chat-bubble bubble-out" style="width:80%">
+              <div style="display:flex;align-items:center;gap:10px;padding:2px 0">
+                <div style="width:32px;height:32px;border-radius:999px;background:#14110F;color:#fff;display:flex;align-items:center;justify-content:center">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </div>
+                <div style="flex:1">
+                  <div style="display:flex;align-items:center;gap:2px;height:16px">
+                    <span style="height:4px;width:3px;background:#14110F;border-radius:2px"></span>
+                    <span style="height:12px;width:3px;background:#14110F;border-radius:2px"></span>
+                    <span style="height:16px;width:3px;background:#14110F;border-radius:2px"></span>
+                    <span style="height:8px;width:3px;background:#14110F;border-radius:2px"></span>
+                    <span style="height:14px;width:3px;background:#14110F;border-radius:2px"></span>
+                    <span style="height:6px;width:3px;background:#14110F;border-radius:2px"></span>
+                  </div>
+                  <div style="font-size:9.5px;font-weight:700;margin-top:2px">0:38 / 0:42</div>
+                </div>
+              </div>
+              <div class="bubble-meta">10:25 AM · <span class="ticks">✓✓</span></div>
+            </div>
+
+            <!-- In-Chat Milestone Card -->
+            <div style="background:#FFFFFF;border:1.5px solid #14110F;border-radius:16px;padding:12px;margin:10px 0;box-shadow:var(--sh-sm)">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span class="tagpill" style="background:var(--success-bg);color:var(--success)">Milestone 1 Funded</span>
+                <span style="font-size:12px;font-weight:900">₹7,500</span>
+              </div>
+              <div style="font-size:12.5px;font-weight:800;margin-top:4px">Deliverable: 2x 30s 4K Reels</div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Escrow secured. Submit draft to unlock payment.</div>
+              <div class="btn btn-primary btn-xs" style="margin-top:8px;height:26px;width:100%">Submit Deliverable Reel →</div>
+            </div>
+
+          </div>
+
+          <div class="chat-inputbar">
+            <div class="input-pill"><span class="ph">Reply to Zara India…</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">I03</span><span class="sc-name">Rich Media &amp; Attachment Message Types</span></div>
+      <p class="sc-desc">Comprehensive support for Cloudflare R2 images, PDF contracts, voice waveforms, and in-chat milestone escrow action cards.</p>
+    </div>
+
+    <!-- I04: ATTACHMENT SELECTOR SHEET -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <!-- Dimmed background chat -->
+          <div style="padding:14px;opacity:.35">
+            <div class="chat-bubble bubble-in">Hi Priya, can you send the moodboard?</div>
+          </div>
+
+          <!-- Bottom Sheet Modal Surface -->
+          <div class="dc-sheet">
+            <div class="sh-h"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:10px;border-bottom:1px solid var(--divider)">
+              <h3 style="font-size:16px;font-weight:800;margin:0">Share with Collaborator</h3>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </div>
+
+            <!-- 6-Grid Attachment Actions -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;text-align:center">
+              <div>
+                <div style="width:52px;height:52px;border-radius:16px;background:var(--c-pink);border:1.5px solid #14110F;display:flex;align-items:center;justify-content:center;margin:0 auto 6px">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </div>
+                <span style="font-size:11px;font-weight:700">Photos &amp; Video</span>
+              </div>
+              <div>
+                <div style="width:52px;height:52px;border-radius:16px;background:var(--c-mint);border:1.5px solid #14110F;display:flex;align-items:center;justify-content:center;margin:0 auto 6px">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <span style="font-size:11px;font-weight:700">Document PDF</span>
+              </div>
+              <div>
+                <div style="width:52px;height:52px;border-radius:16px;background:var(--c-yellow);border:1.5px solid #14110F;display:flex;align-items:center;justify-content:center;margin:0 auto 6px">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                </div>
+                <span style="font-size:11px;font-weight:700">Portfolio Item</span>
+              </div>
+              <div>
+                <div style="width:52px;height:52px;border-radius:16px;background:var(--c-sky);border:1.5px solid #14110F;display:flex;align-items:center;justify-content:center;margin:0 auto 6px">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+                </div>
+                <span style="font-size:11px;font-weight:700">Voice Note</span>
+              </div>
+              <div>
+                <div style="width:52px;height:52px;border-radius:16px;background:var(--c-peach);border:1.5px solid #14110F;display:flex;align-items:center;justify-content:center;margin:0 auto 6px">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+                </div>
+                <span style="font-size:11px;font-weight:700">Brief Milestone</span>
+              </div>
+              <div>
+                <div style="width:52px;height:52px;border-radius:16px;background:var(--c-lavender);border:1.5px solid #14110F;display:flex;align-items:center;justify-content:center;margin:0 auto 6px">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                </div>
+                <span style="font-size:11px;font-weight:700">Studio Venue</span>
+              </div>
+            </div>
+
+            <div style="margin-top:20px">
+              <div class="btn btn-outline btn-sm" style="width:100%">Cancel</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">I04</span><span class="sc-name">Attachment Selector Bottom Sheet</span></div>
+      <p class="sc-desc">Contextual bottom sheet triggering direct Cloudflare R2 uploads for media, contracts, portfolio project links, and studio shoot venues.</p>
+    </div>
+
+    <!-- I05: ANTI-BYPASS COMPLIANCE WARNING -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <div style="padding:10px 14px;background:#FFFFFF;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+            <div class="avatar" style="width:32px;height:32px;background:var(--c-yellow)">S</div>
+            <div>
+              <div style="font-size:12.5px;font-weight:900">Studio Frame</div>
+              <div style="font-size:9.5px;color:var(--text-muted)">New Conversation</div>
+            </div>
+          </div>
+
+          <div class="grow" style="padding:14px">
+            <div class="chat-bubble bubble-in">
+              Hello! We saw your profile and want to discuss a reel shoot.
+              <div class="bubble-meta">11:05 AM</div>
+            </div>
+
+            <!-- Outbound Draft flagged with anti-bypass -->
+            <div style="border:2px solid var(--error);background:#FFF9F9;border-radius:18px;padding:12px;margin-top:10px">
+              <div style="font-size:12px;color:#14110F">"Call me on 98200XXXXX or WhatsApp me to discuss pricing."</div>
+
+              <div style="background:var(--error-bg);border:1px solid #F5C2BE;border-radius:10px;padding:8px 10px;margin-top:8px;font-size:10.5px;color:var(--error)">
+                <b>⚠️ Contact Info Detected:</b> Sharing phone numbers or off-platform payment details in the first 3 messages is prohibited. Payments arranged outside CreatorConnect are not protected by our escrow guarantee.
+              </div>
+
+              <div style="display:flex;gap:6px;margin-top:10px">
+                <div class="btn btn-xs" style="background:var(--error);color:#fff;flex:1">Edit Message</div>
+                <div class="btn btn-outline btn-xs" style="flex:1">Learn Rules</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-inputbar">
+            <div class="input-pill"><span style="color:var(--error);font-size:11.5px">Contact details blocked</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">I05</span><span class="sc-name">Anti-Bypass Guard &amp; Moderation Warning</span></div>
+      <p class="sc-desc">Real-time client-side regex interception enforcing Admin Spec §519. Warns users against off-platform payment solicitation before dispatch.</p>
+    </div>
+
+    <!-- I06: CONVERSATION DETAILS & SAFETY -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <div style="padding:10px 14px;background:#FFFFFF;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+            <span style="font-size:14px;font-weight:900">Conversation Details</span>
+          </div>
+
+          <div class="grow" style="padding:14px">
+            <!-- Profile Card -->
+            <div style="background:#FFFFFF;border:1.5px solid var(--border);border-radius:18px;padding:14px;text-align:center">
+              <div class="avatar" style="width:54px;height:54px;background:#14110F;color:#fff;margin:0 auto 8px;font-size:20px;border-radius:16px">Z</div>
+              <div style="font-size:15px;font-weight:900">Zara India <svg width="10" height="10" viewBox="0 0 24 24" fill="#2E9E6B"><circle cx="12" cy="12" r="10"/></svg></div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Official Brand Partner · Mumbai</div>
+              <div class="btn btn-outline btn-xs" style="margin:10px auto 0;width:auto">View Full Profile →</div>
+            </div>
+
+            <!-- Shared Media Strip -->
+            <div style="margin-top:16px">
+              <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">
+                <span>Shared Media &amp; Files</span>
+                <span style="color:#14110F">14 items</span>
+              </div>
+              <div style="display:flex;gap:6px">
+                <div style="width:64px;height:64px;border-radius:10px;background:var(--c-mint);border:1px solid #14110F"></div>
+                <div style="width:64px;height:64px;border-radius:10px;background:var(--c-sky);border:1px solid #14110F"></div>
+                <div style="width:64px;height:64px;border-radius:10px;background:var(--c-lavender);border:1px solid #14110F;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800">+11</div>
+              </div>
+            </div>
+
+            <!-- Settings Actions -->
+            <div style="background:#FFFFFF;border:1.5px solid var(--border);border-radius:16px;margin-top:18px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--divider)">
+                <span style="font-size:12.5px;font-weight:700">Mute Notifications</span>
+                <span style="width:36px;height:20px;border-radius:999px;background:#14110F;position:relative;display:inline-block"><span style="position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:999px;background:#fff"></span></span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--divider)">
+                <span style="font-size:12.5px;font-weight:700;color:var(--error)">Report This Conversation</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px">
+                <span style="font-size:12.5px;font-weight:700;color:var(--error)">Block Zara India</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">I06</span><span class="sc-name">Conversation Settings &amp; Safety Panel</span></div>
+      <p class="sc-desc">Detailed conversation panel providing media archives, notification muting, user blocking, and SOW §14 moderation reporting.</p>
+    </div>
+
+    <!-- I07: OUTREACH QUOTA PAYWALL -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <div style="padding:14px;opacity:.3">
+            <div class="chat-row unread"><div class="avatar" style="background:#14110F;color:#fff">Z</div></div>
+          </div>
+
+          <div class="dc-sheet">
+            <div class="sh-h"></div>
+            <div style="width:44px;height:44px;border-radius:14px;background:var(--warning-bg);color:var(--warning);display:flex;align-items:center;justify-content:center;margin-bottom:8px">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+            </div>
+            <h3 style="font-size:17px;font-weight:900;margin:0">Daily Outreach Limit Reached</h3>
+            <p style="font-size:12px;color:var(--text-secondary);margin:6px 0 14px;line-height:1.45">
+              Free creator accounts can initiate up to 3 new direct message threads per day. Upgrade to Creator Pro for unlimited outreach.
+            </p>
+            <div class="btn btn-primary btn-sm" style="font-size:12.5px">Upgrade to Pro (₹499/mo) →</div>
+            <div class="btn btn-ghost btn-sm" style="margin-top:6px;font-size:11.5px">Wait for Tomorrow</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">I07</span><span class="sc-name">Direct Outreach Limit Paywall (SOW §17)</span></div>
+      <p class="sc-desc">Gentle monetization gate preventing outbound messaging spam on Free accounts while linking directly to Razorpay Pro subscriptions.</p>
+    </div>
+
+    <!-- I08: LIVE VOICE NOTE RECORDING -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <div style="padding:10px 14px;background:#FFFFFF;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+            <span style="font-size:13px;font-weight:900">Recording Voice Message</span>
+          </div>
+
+          <div class="grow" style="padding:14px;display:flex;flex-direction:column;justify-content:flex-end">
+            <div class="chat-bubble bubble-in">Could you explain the reel concept?</div>
+          </div>
+
+          <!-- Live Recording Bar -->
+          <div style="background:#14110F;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;color:#fff">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="width:8px;height:8px;border-radius:999px;background:#D8483C;animation:blink 1s infinite"></span>
+              <span style="font-size:12px;font-weight:700">0:14</span>
+            </div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.7);font-weight:600">&lt;&lt; Slide to cancel</div>
+            <div style="width:34px;height:34px;border-radius:999px;background:var(--primary);color:#14110F;display:flex;align-items:center;justify-content:center;cursor:pointer">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.6"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">I08</span><span class="sc-name">Live Voice Recording State</span></div>
+      <p class="sc-desc">Micro-interaction state for audio memo recording with live timer, waveform feedback, and slide-to-cancel gestures.</p>
+    </div>
+
+    <!-- I09: BLOCKED CONVERSATION STATE -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <div style="padding:10px 14px;background:#FFFFFF;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+            <span style="font-size:13px;font-weight:800">Spam Account</span>
+          </div>
+
+          <!-- Blocked Banner -->
+          <div style="background:var(--error-bg);padding:10px 14px;font-size:11px;color:var(--error);font-weight:700;display:flex;justify-content:space-between;align-items:center">
+            <span>🚫 You have blocked this user</span>
+            <span style="text-decoration:underline;cursor:pointer">Unblock</span>
+          </div>
+
+          <div class="grow" style="padding:14px">
+            <div class="chat-bubble bubble-in" style="opacity:.6">Hello send details</div>
+          </div>
+
+          <!-- Disabled Input Bar -->
+          <div style="padding:12px 14px;background:var(--bg-secondary);border-top:1px solid var(--border);text-align:center">
+            <span style="font-size:11.5px;color:var(--text-muted);font-weight:700">You cannot message a blocked account</span>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">I09</span><span class="sc-name">Blocked User Conversation State</span></div>
+      <p class="sc-desc">Secure deactivated state preventing bidirectional messaging following user moderation blocks per SOW §14.</p>
+    </div>
+
+    <!-- I10: EMPTY INBOX ZERO STATE -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+
+          <div style="padding:10px 18px">
+            <h2 style="font-size:22px;font-weight:900;margin:0">Messages</h2>
+          </div>
+
+          <div class="grow" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center">
+            <div style="width:64px;height:64px;border-radius:999px;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;margin-bottom:12px">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <h3 style="font-size:16px;font-weight:900;margin:0">No messages yet</h3>
+            <p style="font-size:12px;color:var(--text-secondary);max-width:220px;margin:6px 0 16px;line-height:1.4">
+              Apply to active assignment briefs or connect with creators in Discover to begin collaborating.
+            </p>
+            <div class="btn btn-primary btn-sm" style="font-size:12px">Explore Discovery Tab →</div>
+          </div>
+
+          <div class="bottomnav">
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+            <div class="nav-fab">+</div>
+            <div class="nav-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="nav-dot"></span></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">I10</span><span class="sc-name">Empty Inbox State</span></div>
+      <p class="sc-desc">Zero-message onboarding state guiding new users directly toward the Discovery stream and active assignment briefs.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ 03 DATA CARRY REQUIREMENTS & SCHEMAS ============ -->
+<div class="sec">
+  <div class="sec-head">
+    <span class="sec-n">03</span>
+    <h2 class="sec-t">UI Data Payloads &amp; Backend State Contracts</h2>
+    <span class="sec-note">What Data Must the Messaging UI Carry?</span>
+  </div>
+
+  <div class="spec-box">
+    <h3 style="font-size:16px;font-weight:800;margin:0 0 12px">1. Summary of Data Required by the UI</h3>
+    <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin:0 0 16px">
+      To power real-time messaging, optimistic updates, Cloudflare R2 media streaming, anti-bypass guards, and assignment anchors, the client-side UI (Flutter / Riverpod) must carry three distinct tiers of data:
+    </p>
+
+    <table class="spec-table">
+      <thead>
+        <tr>
+          <th>Data Domain</th>
+          <th>Specific Attributes Carried by UI</th>
+          <th>Storage Layer</th>
+          <th>Real-Time Protocol</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Conversation Metadata</b></td>
+          <td>Conversation UUID, participant profiles (name, avatar, verification status, role), unread count, pinned status, muted status, linked assignment summary (brief ID, title, budget, escrow status).</td>
+          <td>Supabase PostgreSQL + Upstash Redis Cache</td>
+          <td>REST initial fetch + Socket.IO updates</td>
+        </tr>
+        <tr>
+          <td><b>Message Entities</b></td>
+          <td>Message UUID, client-side temporary UUID (for optimistic local bubble), sender UUID, recipient UUID, content text, message type (TEXT, IMAGE, PDF, AUDIO, MILESTONE_CARD), timestamps (sent, delivered, read), status ticks.</td>
+          <td>PostgreSQL <code class="code-inline">messages</code> table</td>
+          <td>Socket.IO <code class="code-inline">message:send</code>, <code class="code-inline">message:new</code>, <code class="code-inline">message:ack</code></td>
+        </tr>
+        <tr>
+          <td><b>Cloudflare R2 Media Metadata</b></td>
+          <td>Storage object key, public Cloudflare CDN URL, pre-signed upload URL, MIME type, file size in bytes, image width/height, voice note duration in seconds.</td>
+          <td>Cloudflare R2 Object Store + PostgreSQL <code class="code-inline">attachments</code></td>
+          <td>HTTP PUT direct to R2 + metadata payload via Socket.IO</td>
+        </tr>
+        <tr>
+          <td><b>Real-Time Transient Presence</b></td>
+          <td>Online presence boolean, last seen timestamp, active room socket ID, peer typing indicator boolean (2.5s auto-expire TTL).</td>
+          <td>Upstash Redis In-Memory KV</td>
+          <td>Socket.IO <code class="code-inline">presence:update</code>, <code class="code-inline">typing:status</code></td>
+        </tr>
+        <tr>
+          <td><b>Safety &amp; Compliance Flags</b></td>
+          <td>Anti-bypass flag boolean (phone/email/UPI detection in first 3 messages), report status, block status, user daily connection quota remaining.</td>
+          <td>PostgreSQL <code class="code-inline">user_blocks</code>, <code class="code-inline">chat_flags</code></td>
+          <td>Client-side Regex check + Backend validation hook</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============ 04 SOW RECONCILIATION ============ -->
+<div class="sec">
+  <div class="sec-head">
+    <span class="sec-n">04</span>
+    <h2 class="sec-t">SOW Scope Reconciliation</h2>
+    <span class="sec-note">Contract Compliance Checklist</span>
+  </div>
+  <table class="spec-table" style="background:#FFFFFF;border:1.5px solid var(--border);border-radius:16px">
+    <thead>
+      <tr>
+        <th>SOW Clause</th>
+        <th>Contracted Feature Requirement</th>
+        <th>Module I UI Implementation</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>SOW §14</b></td>
+        <td>One-to-one real-time chat with Socket.IO</td>
+        <td>Screens I01 &amp; I02 with instant bidirectional message streams</td>
+        <td><span class="tagpill" style="background:var(--success-bg);color:var(--success)">Full Parity</span></td>
+      </tr>
+      <tr>
+        <td><b>SOW §14</b></td>
+        <td>Delivery / Read status indicators &amp; timestamps</td>
+        <td>Single tick (sent), double grey ticks (delivered), double emerald ticks (read)</td>
+        <td><span class="tagpill" style="background:var(--success-bg);color:var(--success)">Full Parity</span></td>
+      </tr>
+      <tr>
+        <td><b>SOW §14</b></td>
+        <td>Typing status indicator</td>
+        <td>Screen I02 &amp; I01 live typing indicator with Redis TTL expiration</td>
+        <td><span class="tagpill" style="background:var(--success-bg);color:var(--success)">Full Parity</span></td>
+      </tr>
+      <tr>
+        <td><b>SOW §14</b></td>
+        <td>Block user, report user &amp; chat moderation</td>
+        <td>Screens I05, I06, I09 with Admin Spec §519 anti-bypass guard</td>
+        <td><span class="tagpill" style="background:var(--success-bg);color:var(--success)">Full Parity</span></td>
+      </tr>
+      <tr>
+        <td><b>SOW §27</b></td>
+        <td>Cloudflare R2 media storage integration</td>
+        <td>Screen I03 &amp; I04 with R2 direct upload hooks for photos, PDFs &amp; voice</td>
+        <td><span class="tagpill" style="background:var(--success-bg);color:var(--success)">Full Parity</span></td>
+      </tr>
+      <tr>
+        <td><b>SOW §17</b></td>
+        <td>Membership &amp; subscription feature limits</td>
+        <td>Screen I07 daily direct outreach quota paywall for free tiers</td>
+        <td><span class="tagpill" style="background:var(--success-bg);color:var(--success)">Full Parity</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</div>
+</body>
+</html>

@@ -6,3 +6,6 @@ coverage/
 .turbo/
 pnpm-lock.yaml
 *.log
+.dart_tool/
+apps/app/.dart_tool/
+apps/app/build/

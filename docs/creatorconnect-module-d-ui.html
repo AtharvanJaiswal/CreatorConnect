@@ -1,0 +1,2261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreatorConnect — Module D: Home, Discovery &amp; Public Profile UI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   CREATORCONNECT — DESIGN TOKENS
+   Extracted from client-approved visual reference
+   ============================================================ */
+:root{
+  color-scheme: light;
+  /* Backgrounds & surfaces */
+  --bg-primary:#FAF6EF;
+  --bg-secondary:#F2ECE1;
+  --surface:#FFFFFF;
+  --surface-elevated:#FFFFFF;
+
+  /* Brand */
+  --primary:#FFD64A;
+  --primary-press:#F0C52F;
+  --secondary:#C9B6F7;
+  --accent:#FFB6C8;
+
+  /* Extended accent palette (from reference colour blocks) */
+  --c-yellow:#FFD64A;
+  --c-pink:#FFB6C8;
+  --c-lavender:#C9B6F7;
+  --c-mint:#B6E09B;
+  --c-sky:#A6CCF7;
+  --c-peach:#FFC9A3;
+
+  /* Text */
+  --text-primary:#14110F;
+  --text-secondary:#6F675E;
+  --text-muted:#A39A8F;
+  --text-on-primary:#14110F;
+
+  /* Lines */
+  --border:#E7E0D5;
+  --divider:#EFE9DF;
+  --disabled:#D8D1C6;
+
+  /* Status */
+  --success:#2E9E6B;
+  --success-bg:#E6F4EC;
+  --warning:#C98A16;
+  --warning-bg:#FBF1DC;
+  --error:#D8483C;
+  --error-bg:#FBE9E7;
+
+  /* Spacing scale */
+  --sp-xs:4px; --sp-sm:8px; --sp-md:16px; --sp-lg:24px;
+  --sp-xl:32px; --sp-2xl:48px; --sp-3xl:64px;
+
+  /* Radius */
+  --r-button:999px;
+  --r-input:16px;
+  --r-card:28px;
+  --r-modal:32px;
+  --r-image:24px;
+  --r-chip:999px;
+
+  /* Borders */
+  --bw:1.5px;
+  --bw-divider:1px;
+  --bw-focus:2px;
+
+  /* Shadows */
+  --sh-sm:0 1px 2px rgba(20,17,15,.05);
+  --sh-md:0 4px 16px rgba(20,17,15,.07);
+  --sh-lg:0 12px 32px rgba(20,17,15,.10);
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{
+  margin:0;background:#EDE7DC;color:var(--text-primary);
+  font-family:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1240px;margin:0 auto;padding:40px 20px 80px}
+
+/* ---------- Doc chrome ---------- */
+.doc-head{margin-bottom:40px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px}
+.doc-title{font-size:clamp(32px,5vw,50px);font-weight:800;letter-spacing:-.025em;line-height:1.02;margin:0 0 12px}
+.doc-title em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;letter-spacing:-.01em}
+.doc-sub{font-size:15px;color:var(--text-secondary);max-width:720px;line-height:1.55;margin:0}
+.sec{margin:64px 0 0}
+.sec-head{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid var(--text-primary);padding-bottom:10px;margin-bottom:24px;flex-wrap:wrap}
+.sec-n{font-size:12px;font-weight:800;letter-spacing:.1em;color:var(--text-muted)}
+.sec-t{font-size:22px;font-weight:800;letter-spacing:-.01em;margin:0}
+.sec-note{font-size:13px;color:var(--text-secondary);margin-left:auto}
+
+/* ---------- Token display ---------- */
+.tok-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+.sw{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.sw-c{height:54px}
+.sw-b{padding:8px 10px}
+.sw-n{font-size:11.5px;font-weight:700}
+.sw-v{font-size:10.5px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+
+.type-list{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:8px 20px}
+.type-row{display:flex;align-items:baseline;gap:20px;padding:12px 0;border-bottom:1px solid var(--divider);flex-wrap:wrap}
+.type-row:last-child{border-bottom:none}
+.type-meta{width:180px;flex-shrink:0}
+.type-name{font-size:12px;font-weight:700}
+.type-spec{font-size:10.5px;color:var(--text-muted)}
+
+/* ---------- Phone frames ---------- */
+.screens{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:36px 26px}
+.sc-item{display:flex;flex-direction:column;gap:12px}
+.sc-cap{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.sc-id{font-size:10px;font-weight:800;letter-spacing:.1em;color:#fff;background:var(--text-primary);padding:3px 8px;border-radius:999px}
+.sc-name{font-size:14px;font-weight:700}
+.sc-desc{font-size:12px;color:var(--text-secondary);line-height:1.45}
+
+.phone{
+  width:100%;max-width:330px;aspect-ratio:375/812;margin:0 auto;
+  background:var(--bg-primary);border-radius:38px;
+  border:9px solid #14110F;overflow:hidden;position:relative;
+  box-shadow:var(--sh-lg);
+}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg-primary)}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:34%;height:22px;background:#14110F;border-radius:0 0 14px 14px;z-index:20}
+.statusbar{height:34px;flex-shrink:0;display:flex;align-items:flex-end;justify-content:space-between;padding:0 18px 3px;font-size:10px;font-weight:700;position:relative;z-index:10}
+.pad{padding:0 18px}
+.grow{flex:1;min-height:0;overflow-y:auto}
+.flexcol{display:flex;flex-direction:column}
+
+/* ---------- Typography styles ---------- */
+.h-display{font-size:28px;font-weight:800;letter-spacing:-.03em;line-height:1.04;margin:0}
+.h-display em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400;letter-spacing:-.01em}
+.h-lg{font-size:24px;font-weight:800;letter-spacing:-.025em;line-height:1.1;margin:0}
+.h-lg em{font-family:'Instrument Serif',Georgia,serif;font-style:italic;font-weight:400}
+.h-md{font-size:17px;font-weight:800;letter-spacing:-.01em;margin:0}
+.body{font-size:13px;line-height:1.5;color:var(--text-secondary);margin:0}
+.small{font-size:11px;line-height:1.4;color:var(--text-muted);margin:0}
+.lbl{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted)}
+
+/* ---------- Button components ---------- */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  height:48px;border-radius:var(--r-button);font-size:14px;font-weight:700;
+  border:none;width:100%;cursor:pointer;font-family:inherit;
+}
+.btn-primary{background:var(--primary);color:var(--text-on-primary)}
+.btn-dark{background:var(--text-primary);color:#fff}
+.btn-outline{background:transparent;border:var(--bw) solid var(--text-primary);color:var(--text-primary)}
+.btn-ghost{background:transparent;color:var(--text-primary);font-weight:600}
+.btn-sm{height:34px;font-size:12px;padding:0 14px;width:auto;flex-shrink:0;white-space:nowrap}
+.btn-xs{height:28px;font-size:11px;padding:0 12px;border-radius:999px;width:auto;flex-shrink:0;white-space:nowrap;margin-left:auto}
+.btn-disabled{background:var(--disabled);color:#fff}
+
+/* ---------- Form & Search Components ---------- */
+.searchbar{
+  height:44px;background:var(--surface);border:var(--bw) solid var(--border);
+  border-radius:999px;display:flex;align-items:center;gap:9px;padding:0 14px;
+  font-size:13px;color:var(--text-primary);
+}
+.searchbar.on{border-color:var(--text-primary);border-width:2px}
+.searchbar .ph{color:var(--text-muted);font-size:12.5px}
+
+.role-tabs{display:flex;gap:6px;padding:0 18px;overflow-x:auto}
+.role-tab{
+  padding:6px 13px;border-radius:999px;background:var(--surface);
+  border:var(--bw) solid var(--border);font-size:11px;font-weight:700;
+  color:var(--text-secondary);white-space:nowrap;
+}
+.role-tab.on{background:var(--text-primary);color:#fff;border-color:var(--text-primary)}
+
+/* ---------- Cards & Lists ---------- */
+.catgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 18px}
+.catcard{
+  border-radius:18px;padding:11px 12px;border:1.5px solid var(--text-primary);
+  position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;
+}
+.cat-ic{position:absolute;right:-4px;bottom:-4px;opacity:.25}
+.cat-name{font-size:13px;font-weight:800;line-height:1.15;color:#14110F}
+.cat-count{font-size:10px;color:rgba(20,17,15,.7);margin-top:2px;font-weight:600}
+
+.pcard{
+  background:var(--surface);border:var(--bw) solid var(--border);
+  border-radius:18px;padding:10px 12px;display:flex;align-items:center;
+  gap:10px;margin-bottom:8px;position:relative;
+}
+.pcard.featured{border-color:#14110F;background:#FFFDF7}
+.pcard-avatar{
+  width:42px;height:42px;border-radius:999px;display:flex;
+  align-items:center;justify-content:center;font-weight:800;font-size:15px;
+  flex-shrink:0;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.08);position:relative;
+}
+.pcard-avatar .online-dot{
+  position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:999px;
+  background:var(--success);border:2px solid #fff;
+}
+.pcard-info{flex:1;min-width:0;overflow:hidden}
+.pcard > div:nth-child(2){flex:1;min-width:0;overflow:hidden}
+.pcard-name{font-size:13px;font-weight:800;display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard-role{font-size:10.5px;color:var(--text-secondary);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard-meta{display:flex;gap:6px;font-size:10px;color:var(--text-muted);margin-top:3px;align-items:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard-meta-item{display:inline-flex;align-items:center;gap:3px;flex-shrink:0}
+.pcard .btn{width:auto !important;flex-shrink:0 !important;white-space:nowrap !important;margin-left:auto !important}
+
+.stat-grid{display:flex;gap:7px;padding:0 18px}
+.stat-card{
+  flex:1;background:var(--surface);border:var(--bw) solid var(--border);
+  border-radius:14px;padding:8px 10px;min-width:0;
+}
+.stat-val{font-size:16px;font-weight:900;line-height:1.1}
+.stat-lbl{font-size:9.5px;color:var(--text-muted);font-weight:700;text-transform:uppercase;margin-top:1px}
+.stat-sub{font-size:9.5px;color:var(--success);font-weight:700;margin-top:2px}
+
+.filterchip{
+  display:inline-flex;align-items:center;gap:5px;background:var(--text-primary);
+  color:#fff;border-radius:999px;padding:5px 11px;font-size:11px;font-weight:700;
+}
+.filterchip .x{
+  width:13px;height:13px;border-radius:999px;background:rgba(255,255,255,.25);
+  display:flex;align-items:center;justify-content:center;
+}
+.filterchip.outline{
+  background:var(--surface);color:var(--text-primary);border:1.5px solid var(--border);
+}
+
+.match-badge{
+  display:inline-flex;align-items:center;gap:4px;background:#FFF9E6;
+  border:1px solid #FFE486;color:#8C6A0A;font-size:9.5px;font-weight:700;
+  padding:2px 7px;border-radius:999px;margin-top:3px;
+}
+
+/* ---------- Bottom Nav ---------- */
+.bottomnav{
+  height:54px;background:#FFFFFF;border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-around;
+  padding:0 8px;flex-shrink:0;position:relative;z-index:10;
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:2px;color:var(--text-muted);cursor:pointer;position:relative;
+}
+.nav-item.on{color:var(--text-primary)}
+.nav-dot{width:4px;height:4px;border-radius:999px;background:var(--text-primary);position:absolute;bottom:-6px}
+.nav-fab{
+  width:38px;height:38px;border-radius:999px;background:var(--primary);
+  border:2px solid #14110F;display:flex;align-items:center;justify-content:center;
+  color:#14110F;font-weight:900;font-size:18px;margin-top:-14px;box-shadow:0 3px 8px rgba(0,0,0,0.12);
+}
+
+/* ---------- Sheets, Dialogs & Overlays ---------- */
+.dlgcard{position:relative;width:100%;max-width:330px;margin:0 auto;border-radius:26px;overflow:hidden;background:var(--bg-primary);border:1px solid var(--border)}
+.dc-dim{position:absolute;inset:0;background:rgba(20,17,15,.55);z-index:15}
+.dc-sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:26px 26px 0 0;padding:4px 18px 18px;z-index:20;max-height:85%;overflow-y:auto}
+.dc-center{position:absolute;left:18px;right:18px;top:50%;transform:translateY(-50%);background:#fff;border-radius:26px;padding:20px;z-index:20;box-shadow:var(--sh-lg)}
+.dc-bg{padding:16px;opacity:.5}
+.sh-h{width:36px;height:4px;border-radius:999px;background:var(--disabled);margin:8px auto 12px}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:28px 26px}
+.lrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--divider);font-size:12px}
+.lrow:last-child{border-bottom:none}
+
+.section-tag{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);padding:0 18px}
+.tagpill{display:inline-block;font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px}
+.note{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--primary);border-radius:14px;padding:14px 16px;font-size:13px;line-height:1.55;color:var(--text-secondary)}
+.note b{color:var(--text-primary)}
+.mapping-table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;font-size:12px}
+.mapping-table th{background:var(--bg-secondary);padding:10px 12px;text-align:left;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border)}
+.mapping-table td{padding:10px 12px;border-bottom:1px solid var(--divider);color:var(--text-secondary);vertical-align:top}
+.mapping-table tr:last-child td{border-bottom:none}
+.mapping-table b{color:var(--text-primary)}
+
+@media print{
+  .sc-item,.sw,.type-row,.note,.scale-item,.comp-box,.dlgcard{break-inside:avoid;page-break-inside:avoid}
+  .sec{break-inside:auto}
+  .sec-head{break-after:avoid;page-break-after:avoid}
+  .screens{break-inside:auto}
+  body{background:#EDE7DC !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="doc-head">
+  <div class="eyebrow">CreatorConnect · Codly360 · Module D</div>
+  <h1 class="doc-title">Home, Discovery &amp; <em>Public Profile</em></h1>
+  <p class="doc-sub">Detailed UI design set for screens D01 through D16, filter &amp; sort bottom sheets, notification panel, and interactive micro-modals. Built on the approved design system: cream background (#FAF6EF), bright yellow pill buttons (#FFD64A), bold Archivo typography with Instrument Serif Italic accents, 28 px cards, and 16 px inputs.</p>
+</div>
+
+<!-- ============ 00 SCOPE & APPROACH ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">00</span><h2 class="sec-t">Scope &amp; Architecture</h2></div>
+  <div class="note">
+    <b>What this module covers:</b> Complete visual design and screen architecture for <b>Home &amp; Dashboard (D01–D04)</b>, <b>Discovery &amp; Search (D05–D08, D14)</b>, <b>Public Profile Details (D09–D11)</b>, and <b>Recommendations &amp; Matching (D12–D13, D15–D16)</b>.<br><br>
+    <b>SOW Contract Reconciliation:</b> Built directly against <b>SOW §9 (Discovery &amp; Search)</b>, <b>SOW §10 (Portfolio Showcase)</b>, <b>SOW §13 (Rule-Based Matchmaking)</b>, <b>SOW §20 (Notification System)</b>, and <b>SOW §22 (Web &amp; Mobile Dashboard Parity)</b>. In accordance with SOW §13, recommendations use predefined business rules (category, city, rating, follower range), explicitly excluding unsupported AI engines from this phase.<br><br>
+    <b>Role-Aware System:</b> The shell is shared across all four user roles (Creator/Influencer, Production Professional, Brand/Company, Podcaster), with content blocks dynamically populated based on active role permissions.
+  </div>
+</div>
+
+<!-- ============ 01 DESIGN TOKENS & COMPONENTS ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">01</span><h2 class="sec-t">Tokens &amp; Core Components</h2><span class="sec-note">Exact reference tokens &amp; reusable UI widgets</span></div>
+  
+  <div class="tok-grid" style="margin-bottom:20px">
+    <div class="sw"><div class="sw-c" style="background:#FAF6EF"></div><div class="sw-b"><div class="sw-n">bg-primary</div><div class="sw-v">#FAF6EF</div></div></div>
+    <div class="sw"><div class="sw-c" style="background:#F2ECE1"></div><div class="sw-b"><div class="sw-n">bg-secondary</div><div class="sw-v">#F2ECE1</div></div></div>
+    <div class="sw"><div class="sw-c" style="background:#FFD64A"></div><div class="sw-b"><div class="sw-n">primary-yellow</div><div class="sw-v">#FFD64A</div></div></div>
+    <div class="sw"><div class="sw-c" style="background:#C9B6F7"></div><div class="sw-b"><div class="sw-n">secondary-lavender</div><div class="sw-v">#C9B6F7</div></div></div>
+    <div class="sw"><div class="sw-c" style="background:#B6E09B"></div><div class="sw-b"><div class="sw-n">accent-mint</div><div class="sw-v">#B6E09B</div></div></div>
+    <div class="sw"><div class="sw-c" style="background:#A6CCF7"></div><div class="sw-b"><div class="sw-n">accent-sky</div><div class="sw-v">#A6CCF7</div></div></div>
+    <div class="sw"><div class="sw-c" style="background:#FFB6C8"></div><div class="sw-b"><div class="sw-n">accent-pink</div><div class="sw-v">#FFB6C8</div></div></div>
+    <div class="sw"><div class="sw-c" style="background:#14110F"></div><div class="sw-b"><div class="sw-n">text-primary</div><div class="sw-v">#14110F</div></div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px">
+      <div class="lbl" style="margin-bottom:10px">DiscoverySearchBar</div>
+      <div class="searchbar" style="margin-bottom:8px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <span class="ph">Search creators, skills, brands…</span>
+      </div>
+      <div class="searchbar on">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <span style="color:#14110F;font-size:12.5px;font-weight:600">fashion reels</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2.4" style="margin-left:auto"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px">
+      <div class="lbl" style="margin-bottom:10px">ProfileCard (Search &amp; Discovery)</div>
+      <div class="pcard" style="margin:0">
+        <div class="pcard-avatar" style="background:var(--c-pink)">P<span class="online-dot"></span></div>
+        <div class="pcard-info">
+          <div class="pcard-name">Priya Sharma <svg width="11" height="11" viewBox="0 0 24 24" fill="#2E9E6B" stroke="#fff" stroke-width="1.5"><circle cx="12" cy="12" r="10"/></svg></div>
+          <div class="pcard-role">Fashion Creator · Mumbai</div>
+          <div class="pcard-meta"><span class="pcard-meta-item">★ 4.9</span><span>·</span><span>120K</span><span>·</span><span>₹8k–15k</span></div>
+        </div>
+        <div class="btn btn-primary btn-xs">Connect</div>
+      </div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px">
+      <div class="lbl" style="margin-bottom:10px">MatchReasonChip &amp; FilterChip</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        <span class="match-badge"><svg width="10" height="10" viewBox="0 0 24 24" fill="#8C6A0A"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Matches your niche: Fashion</span>
+        <span class="match-badge" style="background:#EBF5FF;border-color:#C2E0FF;color:#0F5298">📍 Same city: Mumbai</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <div class="filterchip">Fashion<span class="x"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+        <div class="filterchip">Verified ✓<span class="x"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 02 HOME & DASHBOARD ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">02</span><h2 class="sec-t">Screens — Home &amp; Dashboard</h2><span class="sec-note">D01 to D04 · multi-role dashboard parity, notifications &amp; onboarding empty state</span></div>
+  <div class="screens">
+
+    <!-- D01: HOME CREATOR -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <!-- App Header -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:36px;height:36px;border-radius:999px;background:var(--c-yellow);border:2px solid #14110F;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px">P</div>
+              <div>
+                <div style="font-size:13px;font-weight:900;line-height:1">CreatorConnect</div>
+                <div style="font-size:9.5px;color:var(--text-muted);font-weight:600">Creator dashboard</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:34px;height:34px;border-radius:999px;background:var(--surface);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;position:relative">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                <span style="position:absolute;top:2px;right:2px;width:7px;height:7px;border-radius:999px;background:var(--error);border:1.5px solid #fff"></span>
+              </div>
+              <div style="width:34px;height:34px;border-radius:999px;background:var(--surface);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;position:relative">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span style="position:absolute;top:2px;right:2px;width:7px;height:7px;border-radius:999px;background:var(--primary);border:1.5px solid #fff"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="grow" style="padding-bottom:12px">
+            <!-- Greeting & Alert -->
+            <div class="pad" style="padding-top:4px">
+              <h2 class="h-md" style="font-size:19px">Good morning, Priya 👋</h2>
+              <div style="background:#FFF9E6;border:1.5px solid #FFE486;border-radius:14px;padding:9px 12px;margin-top:8px;display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <div style="font-size:11.5px;font-weight:800;color:#14110F">2 new applications</div>
+                  <div style="font-size:10px;color:#8C6A0A">On "Fashion Reel Collab"</div>
+                </div>
+                <div class="btn btn-dark btn-xs" style="height:26px;font-size:10.5px">Review →</div>
+              </div>
+            </div>
+
+            <!-- Stats Row -->
+            <div class="section-tag" style="margin-top:14px;margin-bottom:6px">Your Performance</div>
+            <div class="stat-grid">
+              <div class="stat-card">
+                <div class="stat-val">248</div>
+                <div class="stat-lbl">Views</div>
+                <div class="stat-sub">+12 today</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-val">4.9 ★</div>
+                <div class="stat-lbl">Rating</div>
+                <div class="stat-sub" style="color:var(--text-muted)">18 reviews</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-val">3</div>
+                <div class="stat-lbl">Assignments</div>
+                <div class="stat-sub" style="color:var(--warning)">2 active</div>
+              </div>
+            </div>
+
+            <!-- Recommended Collaborators -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 6px">
+              <div class="section-tag" style="padding:0">Recommended for You</div>
+              <span style="font-size:11px;font-weight:700;color:var(--text-secondary)">See all</span>
+            </div>
+            <div style="display:flex;gap:8px;padding:0 18px;overflow-x:auto">
+              <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:10px;min-width:130px;text-align:center">
+                <div style="width:44px;height:44px;border-radius:999px;background:var(--c-sky);margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px">S</div>
+                <div style="font-size:12px;font-weight:800">Studio Frame</div>
+                <div style="font-size:9.5px;color:var(--text-muted)">D2C Brand · Mumbai</div>
+                <div class="match-badge" style="margin-top:5px;font-size:9px">Fashion Match</div>
+              </div>
+              <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:10px;min-width:130px;text-align:center">
+                <div style="width:44px;height:44px;border-radius:999px;background:var(--c-mint);margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px">K</div>
+                <div style="font-size:12px;font-weight:800">Kabir Sen</div>
+                <div style="font-size:9.5px;color:var(--text-muted)">Reels Editor · Delhi</div>
+                <div class="match-badge" style="margin-top:5px;font-size:9px">Top Rated</div>
+              </div>
+            </div>
+
+            <!-- Active Assignments Near You -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 6px">
+              <div class="section-tag" style="padding:0">Opportunities Near You</div>
+              <span style="font-size:11px;font-weight:700;color:var(--text-secondary)">Browse</span>
+            </div>
+            <div class="pad">
+              <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:12px;margin-bottom:8px">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span class="tagpill" style="background:var(--c-peach);color:#7C3D00;font-size:9.5px">Fashion</span>
+                  <span style="font-size:10px;color:var(--error);font-weight:700">2 days left</span>
+                </div>
+                <div style="font-size:13px;font-weight:800;margin-top:5px">Looking for Reels Creator for Summer Edit</div>
+                <div style="font-size:10.5px;color:var(--text-muted);margin-top:2px">Posted by Zara India · Mumbai</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid var(--divider)">
+                  <b style="font-size:12px">₹8,000 – ₹15,000</b>
+                  <div class="btn btn-primary btn-xs">Apply Now</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Navigation -->
+          <div class="bottomnav">
+            <div class="nav-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="nav-dot"></span></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+            <div class="nav-fab">+</div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D01</span><span class="sc-name">Home — Creator / Influencer View</span></div>
+      <p class="sc-desc">Personalized dashboard showing incoming applications, profile view analytics, rule-matched collaborators, and nearby assignment opportunities matching skills.</p>
+    </div>
+
+    <!-- D02: HOME BRAND -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <!-- Brand Header -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:36px;height:36px;border-radius:12px;background:#14110F;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px">Z</div>
+              <div>
+                <div style="font-size:13px;font-weight:900;line-height:1">Zara India <svg width="10" height="10" viewBox="0 0 24 24" fill="#2E9E6B" stroke="#fff" stroke-width="1.5"><circle cx="12" cy="12" r="10"/></svg></div>
+                <div style="font-size:9.5px;color:var(--text-muted);font-weight:600">Brand account</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:34px;height:34px;border-radius:999px;background:var(--surface);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              </div>
+              <div style="width:34px;height:34px;border-radius:999px;background:var(--surface);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="grow" style="padding-bottom:12px">
+            <!-- Greeting & Brand Action -->
+            <div class="pad" style="padding-top:4px">
+              <h2 class="h-md" style="font-size:19px">Campaign Overview</h2>
+              <div style="background:#E6F0FC;border:1.5px solid #C2E0FF;border-radius:14px;padding:9px 12px;margin-top:8px;display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <div style="font-size:11.5px;font-weight:800;color:#1B3A5C">5 new applicants today</div>
+                  <div style="font-size:10px;color:#3A628F">Review submissions before deadline</div>
+                </div>
+                <div class="btn btn-dark btn-xs" style="height:26px;font-size:10.5px">Review →</div>
+              </div>
+            </div>
+
+            <!-- Brand Stats -->
+            <div class="section-tag" style="margin-top:14px;margin-bottom:6px">Campaign Metrics</div>
+            <div class="stat-grid">
+              <div class="stat-card">
+                <div class="stat-val">47</div>
+                <div class="stat-lbl">Applicants</div>
+                <div class="stat-sub">+5 today</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-val">3</div>
+                <div class="stat-lbl">Assignments</div>
+                <div class="stat-sub" style="color:var(--warning)">1 closing</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-val">12</div>
+                <div class="stat-lbl">Hired</div>
+                <div class="stat-sub" style="color:var(--text-muted)">This month</div>
+              </div>
+            </div>
+
+            <!-- Active Assignments Management -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 6px">
+              <div class="section-tag" style="padding:0">Your Active Briefs</div>
+              <span style="font-size:11px;font-weight:700;color:var(--text-secondary)">Post Brief +</span>
+            </div>
+            <div class="pad">
+              <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:12px;margin-bottom:8px">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span class="tagpill" style="background:var(--success-bg);color:var(--success);font-size:9.5px">Active</span>
+                  <span style="font-size:10px;color:var(--text-muted)">Budget ₹15,000</span>
+                </div>
+                <div style="font-size:13px;font-weight:800;margin-top:4px">Summer Reels Campaign 2026</div>
+                <div style="margin-top:8px">
+                  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);font-weight:700;margin-bottom:3px">
+                    <span>34 APPLICANTS</span><span>8 SHORTLISTED</span>
+                  </div>
+                  <div style="height:4px;background:var(--divider);border-radius:999px;overflow:hidden">
+                    <div style="width:68%;height:4px;background:var(--text-primary);border-radius:999px"></div>
+                  </div>
+                </div>
+                <div style="display:flex;justify-content:flex-end;margin-top:8px">
+                  <div class="btn btn-outline btn-xs" style="height:26px">Manage Applicants</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recommended Creators -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px 6px">
+              <div class="section-tag" style="padding:0">Featured Creators Available</div>
+              <span style="font-size:11px;font-weight:700;color:var(--text-secondary)">Explore</span>
+            </div>
+            <div class="pad">
+              <div class="pcard" style="margin-bottom:0">
+                <div class="pcard-avatar" style="background:var(--c-pink)">P<span class="online-dot"></span></div>
+                <div style="flex:1;min-width:0">
+                  <div class="pcard-name">Priya Sharma <svg width="10" height="10" viewBox="0 0 24 24" fill="#2E9E6B" stroke="#fff"><circle cx="12" cy="12" r="10"/></svg></div>
+                  <div class="pcard-role">Fashion &amp; Lifestyle · 120K followers</div>
+                  <div class="match-badge">Available Now</div>
+                </div>
+                <div class="btn btn-primary btn-xs">Invite</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Navigation -->
+          <div class="bottomnav">
+            <div class="nav-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="nav-dot"></span></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+            <div class="nav-fab"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.4"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D02</span><span class="sc-name">Home — Brand / Company View</span></div>
+      <p class="sc-desc">Hiring &amp; campaign cockpit for brands. Tracks applicant volumes, active assignment pipelines, and features instant collaborator invites.</p>
+    </div>
+
+    <!-- D03: HOME EMPTY STATE -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:36px;height:36px;border-radius:999px;background:var(--bg-secondary);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:900">A</div>
+              <div style="font-size:13px;font-weight:900">CreatorConnect</div>
+            </div>
+            <div style="width:34px;height:34px;border-radius:999px;background:var(--surface);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </div>
+          </div>
+
+          <div class="grow" style="padding-bottom:12px">
+            <!-- Profile Completion Progress Banner -->
+            <div class="pad" style="padding-top:4px">
+              <div style="background:linear-gradient(135deg,#FFF5D9,#FFFDF7);border:1.5px solid #FFD64A;border-radius:20px;padding:14px;box-shadow:var(--sh-sm)">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <div style="width:48px;height:48px;border-radius:999px;border:4px solid #14110F;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;flex-shrink:0;background:#fff">40%</div>
+                  <div style="flex:1">
+                    <div style="font-size:13.5px;font-weight:800;color:#14110F">Complete your profile</div>
+                    <div style="font-size:10.5px;color:var(--text-secondary);margin-top:2px">Add skills &amp; connect social accounts to unlock hiring</div>
+                  </div>
+                </div>
+                <div class="btn btn-primary btn-sm" style="margin-top:10px;height:36px;font-size:12px">Continue Profile Setup →</div>
+              </div>
+            </div>
+
+            <!-- Empty Recommendations -->
+            <div class="section-tag" style="margin-top:18px;margin-bottom:8px">Recommended Collaborators</div>
+            <div class="pad">
+              <div style="border:1.5px dashed var(--border);border-radius:20px;padding:24px 16px;text-align:center;background:var(--surface)">
+                <div style="width:44px;height:44px;border-radius:999px;background:var(--bg-secondary);margin:0 auto 8px;display:flex;align-items:center;justify-content:center">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+                </div>
+                <div style="font-size:13px;font-weight:800">Nothing here yet</div>
+                <div style="font-size:11px;color:var(--text-secondary);max-width:210px;margin:4px auto 0;line-height:1.4">Select your category and city so we can match you with the right creators.</div>
+              </div>
+            </div>
+
+            <!-- Empty Assignments -->
+            <div class="section-tag" style="margin-top:18px;margin-bottom:8px">Assignments For You</div>
+            <div class="pad">
+              <div style="border:1.5px dashed var(--border);border-radius:20px;padding:24px 16px;text-align:center;background:var(--surface)">
+                <div style="width:44px;height:44px;border-radius:999px;background:var(--bg-secondary);margin:0 auto 8px;display:flex;align-items:center;justify-content:center">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                </div>
+                <div style="font-size:13px;font-weight:800">No active assignments</div>
+                <div style="font-size:11px;color:var(--text-secondary);max-width:210px;margin:4px auto 0;line-height:1.4">Explore all open collaborations across India in the Discover tab.</div>
+                <div class="btn btn-outline btn-xs" style="margin:10px auto 0;width:auto">Browse Discovery</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bottomnav">
+            <div class="nav-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="nav-dot"></span></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+            <div class="nav-fab">+</div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D03</span><span class="sc-name">Home — Empty / New User State</span></div>
+      <p class="sc-desc">State shown before first setup completion. Uses motivating percentage ring and warm invitation cards with clear next actions.</p>
+    </div>
+
+    <!-- D04: NOTIFICATION CENTER -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px">
+            <h2 class="h-md" style="font-size:18px">Notifications</h2>
+            <span style="font-size:11px;font-weight:700;color:var(--text-secondary)">Mark all read</span>
+          </div>
+
+          <!-- Notification Tabs -->
+          <div class="role-tabs" style="margin-top:2px;margin-bottom:8px">
+            <span class="role-tab on">All (3)</span>
+            <span class="role-tab">Applications</span>
+            <span class="role-tab">System</span>
+          </div>
+
+          <div class="grow" style="padding:0 18px">
+            <!-- Unread Item 1 -->
+            <div style="background:#FFFDF7;border:1.5px solid var(--border);border-left:4px solid var(--primary);border-radius:14px;padding:10px 12px;margin-bottom:8px">
+              <div style="display:flex;gap:10px;align-items:flex-start">
+                <div style="width:36px;height:36px;border-radius:10px;background:#14110F;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;flex-shrink:0">Z</div>
+                <div style="flex:1">
+                  <div style="font-size:12px;font-weight:800">Zara India shortlisted your profile</div>
+                  <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">For "Summer Reels Campaign 2026"</div>
+                  <div style="font-size:9.5px;color:var(--text-muted);margin-top:4px">5 min ago</div>
+                </div>
+                <span style="width:6px;height:6px;border-radius:999px;background:var(--primary);flex-shrink:0;margin-top:4px"></span>
+              </div>
+            </div>
+
+            <!-- Unread Item 2 -->
+            <div style="background:#FFFDF7;border:1.5px solid var(--border);border-left:4px solid var(--success);border-radius:14px;padding:10px 12px;margin-bottom:8px">
+              <div style="display:flex;gap:10px;align-items:flex-start">
+                <div style="width:36px;height:36px;border-radius:10px;background:var(--success-bg);color:var(--success);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20 6 9 17l-5-5"/></svg>
+                </div>
+                <div style="flex:1">
+                  <div style="font-size:12px;font-weight:800">Instagram account verified</div>
+                  <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Your profile now displays the Verified badge.</div>
+                  <div style="font-size:9.5px;color:var(--text-muted);margin-top:4px">1 hour ago</div>
+                </div>
+                <span style="width:6px;height:6px;border-radius:999px;background:var(--success);flex-shrink:0;margin-top:4px"></span>
+              </div>
+            </div>
+
+            <!-- Unread Item 3 -->
+            <div style="background:#FFFDF7;border:1.5px solid var(--border);border-left:4px solid var(--warning);border-radius:14px;padding:10px 12px;margin-bottom:8px">
+              <div style="display:flex;gap:10px;align-items:flex-start">
+                <div style="width:36px;height:36px;border-radius:10px;background:var(--warning-bg);color:var(--warning);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <div style="flex:1">
+                  <div style="font-size:12px;font-weight:800">Subscription renewal in 3 days</div>
+                  <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Creator Pro plan renews on 23 Oct.</div>
+                  <div style="font-size:9.5px;color:var(--text-muted);margin-top:4px">Yesterday</div>
+                </div>
+                <span style="width:6px;height:6px;border-radius:999px;background:var(--warning);flex-shrink:0;margin-top:4px"></span>
+              </div>
+            </div>
+
+            <!-- Read Item -->
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 12px;margin-bottom:8px;opacity:.75">
+              <div style="display:flex;gap:10px;align-items:flex-start">
+                <div style="width:36px;height:36px;border-radius:10px;background:var(--c-lavender);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">R</div>
+                <div style="flex:1">
+                  <div style="font-size:12px;font-weight:800">Rahul Mehta sent you a message</div>
+                  <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">"Hey Priya, are you available for next weekend shoot?"</div>
+                  <div style="font-size:9.5px;color:var(--text-muted);margin-top:4px">2 days ago</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div style="text-align:center;padding:12px 18px">
+            <span style="font-size:11px;font-weight:700;color:var(--text-secondary)">Clear notification history</span>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D04</span><span class="sc-name">Notification Center (Expanded Panel)</span></div>
+      <p class="sc-desc">Dedicated notification inbox supporting FCM push events (SOW §20): application shortlisting, account verification, payments, messages, and broadcast announcements.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ 03 DISCOVERY HOME & PRE-SEARCH ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">03</span><h2 class="sec-t">Screens — Discovery Home &amp; Pre-Search</h2><span class="sec-note">D05 &amp; D14 · discovery entry points, taxonomy categories &amp; search exploration</span></div>
+  <div class="screens">
+
+    <!-- D05: DISCOVER CREATOR VIEW -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <div class="pad" style="padding-top:6px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <h2 class="h-lg">Discover</h2>
+              <div style="display:flex;gap:8px">
+                <div style="width:34px;height:34px;border-radius:999px;background:var(--surface);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                </div>
+                <div style="width:34px;height:34px;border-radius:999px;background:var(--surface);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/></svg>
+                </div>
+              </div>
+            </div>
+
+            <div class="searchbar" style="margin-top:10px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <span class="ph">Search brands, professionals…</span>
+            </div>
+          </div>
+
+          <div class="role-tabs" style="margin-top:12px">
+            <span class="role-tab on">Brands</span>
+            <span class="role-tab">Professionals</span>
+            <span class="role-tab">Podcasters</span>
+          </div>
+
+          <div class="grow" style="padding-top:12px;padding-bottom:12px">
+            <div class="section-tag">Explore Categories</div>
+            <div class="catgrid" style="margin-top:6px">
+              <div class="catcard" style="background:var(--c-yellow);height:70px">
+                <div class="cat-name">Fashion &amp; Apparel</div>
+                <div class="cat-count">340 active brands</div>
+                <svg class="cat-ic" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="1.8"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg>
+              </div>
+              <div class="catcard" style="background:var(--c-sky);height:70px">
+                <div class="cat-name">Home &amp; Living</div>
+                <div class="cat-count">210 active brands</div>
+                <svg class="cat-ic" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/></svg>
+              </div>
+              <div class="catcard" style="background:var(--c-mint);height:70px">
+                <div class="cat-name">Food &amp; Dining</div>
+                <div class="cat-count">290 active brands</div>
+                <svg class="cat-ic" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="1.8"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>
+              </div>
+              <div class="catcard" style="background:var(--c-peach);height:70px">
+                <div class="cat-name">Tech &amp; Gadgets</div>
+                <div class="cat-count">185 active brands</div>
+                <svg class="cat-ic" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 6px">
+              <div class="section-tag" style="padding:0">Featured Verified Brands</div>
+              <span style="font-size:11px;font-weight:700;color:var(--text-secondary)">All</span>
+            </div>
+            <div class="pad">
+              <div class="pcard">
+                <div class="pcard-avatar" style="background:var(--c-lavender)">S</div>
+                <div style="flex:1;min-width:0">
+                  <div class="pcard-name">Studio Frame Co. <svg width="10" height="10" viewBox="0 0 24 24" fill="#2E9E6B" stroke="#fff"><circle cx="12" cy="12" r="10"/></svg></div>
+                  <div class="pcard-role">Home Décor · Bengaluru</div>
+                  <div class="pcard-meta"><span>5 active briefs</span><span>·</span><span>₹10k avg</span></div>
+                </div>
+                <div class="btn btn-outline btn-xs">View</div>
+              </div>
+              <div class="pcard" style="margin-bottom:0">
+                <div class="pcard-avatar" style="background:var(--c-peach)">K</div>
+                <div style="flex:1;min-width:0">
+                  <div class="pcard-name">Kanta Living <svg width="10" height="10" viewBox="0 0 24 24" fill="#2E9E6B" stroke="#fff"><circle cx="12" cy="12" r="10"/></svg></div>
+                  <div class="pcard-role">D2C Furniture · Mumbai</div>
+                  <div class="pcard-meta"><span>3 active briefs</span><span>·</span><span>₹15k avg</span></div>
+                </div>
+                <div class="btn btn-outline btn-xs">View</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bottomnav">
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+            <div class="nav-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span class="nav-dot"></span></div>
+            <div class="nav-fab">+</div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D05</span><span class="sc-name">Discover Home — Creator View</span></div>
+      <p class="sc-desc">Main exploration tab for creators. Role tabs dynamically display target collaborator types (Brands, Production Pros, Podcasters). Includes visual taxonomy grid.</p>
+    </div>
+
+    <!-- D05: DISCOVER BRAND VIEW -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <div class="pad" style="padding-top:6px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <h2 class="h-lg">Discover</h2>
+              <div style="display:flex;gap:8px">
+                <div style="width:34px;height:34px;border-radius:999px;background:var(--surface);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                </div>
+              </div>
+            </div>
+
+            <div class="searchbar" style="margin-top:10px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <span class="ph">Search creators, niche, skills…</span>
+            </div>
+          </div>
+
+          <div class="role-tabs" style="margin-top:12px">
+            <span class="role-tab on">Creators</span>
+            <span class="role-tab">Production Pros</span>
+          </div>
+
+          <div class="grow" style="padding-top:12px;padding-bottom:12px">
+            <!-- Follower Tiers -->
+            <div class="section-tag">Follower Tier</div>
+            <div style="display:flex;gap:6px;padding:6px 18px 10px;overflow-x:auto">
+              <span class="filterchip outline" style="font-size:10.5px">Nano (&lt;10k)</span>
+              <span class="filterchip" style="font-size:10.5px">Micro (10k–100k)</span>
+              <span class="filterchip outline" style="font-size:10.5px">Macro (100k+)</span>
+            </div>
+
+            <div class="section-tag" style="margin-top:6px">Creator Niches</div>
+            <div class="catgrid" style="margin-top:6px">
+              <div class="catcard" style="background:var(--c-pink);height:70px">
+                <div class="cat-name">Reels Creators</div>
+                <div class="cat-count">1,820 creators</div>
+                <svg class="cat-ic" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/></svg>
+              </div>
+              <div class="catcard" style="background:var(--c-mint);height:70px">
+                <div class="cat-name">Tech Reviewers</div>
+                <div class="cat-count">480 creators</div>
+                <svg class="cat-ic" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/></svg>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 6px">
+              <div class="section-tag" style="padding:0">Top Rated in Mumbai</div>
+              <span style="font-size:11px;font-weight:700;color:var(--text-secondary)">Filters (2)</span>
+            </div>
+            <div class="pad">
+              <div class="pcard featured">
+                <div class="pcard-avatar" style="background:var(--c-yellow)">P<span class="online-dot"></span></div>
+                <div style="flex:1;min-width:0">
+                  <div class="pcard-name">Priya Sharma <svg width="10" height="10" viewBox="0 0 24 24" fill="#2E9E6B" stroke="#fff"><circle cx="12" cy="12" r="10"/></svg></div>
+                  <div class="pcard-role">Fashion &amp; Lifestyle · 120K followers</div>
+                  <div class="pcard-meta"><span class="pcard-meta-item">★ 4.9</span><span>·</span><span>₹8k–15k/reel</span></div>
+                </div>
+                <div class="btn btn-primary btn-xs">Connect</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bottomnav">
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+            <div class="nav-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span class="nav-dot"></span></div>
+            <div class="nav-fab"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.4"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D05</span><span class="sc-name">Discover Home — Brand View</span></div>
+      <p class="sc-desc">Brand-oriented discovery layout featuring tiered follower filters, verified talent spotlights, and commercial rates directly visible on creator cards.</p>
+    </div>
+
+    <!-- D14: SEARCH PRE-SEARCH -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <div class="pad" style="padding-top:6px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="searchbar on" style="flex:1">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <span style="color:#14110F;font-size:12.5px;font-weight:600">fashion</span><span style="border-right:1.5px solid #14110F;height:14px;animation:blink 1s infinite"></span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2.4" style="margin-left:auto"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </div>
+              <span style="font-size:12px;font-weight:700;color:var(--text-secondary)">Cancel</span>
+            </div>
+          </div>
+
+          <div class="grow" style="padding:14px 18px">
+            <!-- Recent Searches -->
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span class="section-tag" style="padding:0">Recent Searches</span>
+              <span style="font-size:10.5px;color:var(--text-muted);font-weight:700">Clear all</span>
+            </div>
+            
+            <div class="lrow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span style="font-weight:600">Reels editor Mumbai</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2.5" style="margin-left:auto"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </div>
+            <div class="lrow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span style="font-weight:600">Fashion creator Delhi</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2.5" style="margin-left:auto"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </div>
+
+            <!-- Trending Searches -->
+            <div class="section-tag" style="padding:0;margin-top:18px;margin-bottom:8px">Trending Collaborations</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span class="filterchip outline" style="font-size:11px">Reels Creator</span>
+              <span class="filterchip outline" style="font-size:11px">Podcast Guest</span>
+              <span class="filterchip outline" style="font-size:11px">Product Photographer</span>
+              <span class="filterchip outline" style="font-size:11px">Brand Collab</span>
+              <span class="filterchip outline" style="font-size:11px">Video Editor</span>
+            </div>
+
+            <!-- Suggested Categories -->
+            <div class="section-tag" style="padding:0;margin-top:20px;margin-bottom:8px">Browse by Niche</div>
+            <div style="display:flex;gap:8px;overflow-x:auto">
+              <div style="border:1px solid var(--border);border-radius:12px;padding:8px 12px;background:var(--surface);text-align:center;min-width:68px">
+                <div style="font-size:18px">👗</div>
+                <div style="font-size:10px;font-weight:700;margin-top:3px">Fashion</div>
+              </div>
+              <div style="border:1px solid var(--border);border-radius:12px;padding:8px 12px;background:var(--surface);text-align:center;min-width:68px">
+                <div style="font-size:18px">💻</div>
+                <div style="font-size:10px;font-weight:700;margin-top:3px">Tech</div>
+              </div>
+              <div style="border:1px solid var(--border);border-radius:12px;padding:8px 12px;background:var(--surface);text-align:center;min-width:68px">
+                <div style="font-size:18px">🍕</div>
+                <div style="font-size:10px;font-weight:700;margin-top:3px">Food</div>
+              </div>
+              <div style="border:1px solid var(--border);border-radius:12px;padding:8px 12px;background:var(--surface);text-align:center;min-width:68px">
+                <div style="font-size:18px">✈️</div>
+                <div style="font-size:10px;font-weight:700;margin-top:3px">Travel</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D14</span><span class="sc-name">Search — Initial / Pre-Search State</span></div>
+      <p class="sc-desc">Active search keyboard-focused state. Provides quick-access recent query cache, platform-wide trending searches, and instant category jump tags.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ 04 SEARCH & RESULTS ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">04</span><h2 class="sec-t">Screens — Search &amp; Results</h2><span class="sec-note">D06 · query results, autocomplete suggestions &amp; empty search handling</span></div>
+  <div class="screens">
+
+    <!-- D06: SEARCH RESULTS -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <!-- Search Header -->
+          <div class="pad" style="padding-top:6px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.4"><path d="m15 18-6-6 6-6"/></svg>
+              <div class="searchbar on" style="flex:1;height:40px;padding:0 12px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <span style="font-size:12px;font-weight:700">Fashion Creator Mumbai</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2.4" style="margin-left:auto"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </div>
+              <div style="width:34px;height:34px;border-radius:999px;background:var(--surface);border:1.5px solid #14110F;display:flex;align-items:center;justify-content:center;position:relative">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                <span style="position:absolute;top:2px;right:2px;width:7px;height:7px;border-radius:999px;background:var(--primary);border:1.5px solid #14110F"></span>
+              </div>
+            </div>
+
+            <!-- Summary & Sort Row -->
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:11px">
+              <span style="color:var(--text-secondary);font-weight:600">34 creators found</span>
+              <span style="font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:3px">Sort: Relevance ↓</span>
+            </div>
+
+            <!-- Active Filters Row -->
+            <div style="display:flex;gap:6px;margin-top:8px;overflow-x:auto">
+              <span class="filterchip" style="font-size:10px;padding:4px 9px">Fashion <span class="x">×</span></span>
+              <span class="filterchip" style="font-size:10px;padding:4px 9px">Mumbai <span class="x">×</span></span>
+              <span class="filterchip" style="font-size:10px;padding:4px 9px">Verified ✓ <span class="x">×</span></span>
+              <span class="filterchip outline" style="font-size:10px;padding:4px 9px;border-style:dashed">+ Filter</span>
+            </div>
+          </div>
+
+          <!-- Results List -->
+          <div class="grow" style="padding:10px 18px">
+            <!-- Card 1 -->
+            <div class="pcard featured">
+              <div class="pcard-avatar" style="background:var(--c-yellow)">P<span class="online-dot"></span></div>
+              <div style="flex:1;min-width:0">
+                <div class="pcard-name">Priya Sharma <svg width="10" height="10" viewBox="0 0 24 24" fill="#2E9E6B" stroke="#fff"><circle cx="12" cy="12" r="10"/></svg></div>
+                <div class="pcard-role">Fashion &amp; Lifestyle · Mumbai</div>
+                <div class="pcard-meta"><span class="pcard-meta-item">★ 4.9</span><span>·</span><span>120K followers</span><span>·</span><span>₹8k–15k</span></div>
+                <div style="display:flex;gap:4px;margin-top:4px">
+                  <span class="tagpill" style="background:var(--bg-secondary);font-size:8.5px">Reels</span>
+                  <span class="tagpill" style="background:var(--bg-secondary);font-size:8.5px">Styling</span>
+                </div>
+              </div>
+              <div class="btn btn-primary btn-xs">Connect</div>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="pcard">
+              <div class="pcard-avatar" style="background:var(--c-pink)">A</div>
+              <div style="flex:1;min-width:0">
+                <div class="pcard-name">Ananya Sen <svg width="10" height="10" viewBox="0 0 24 24" fill="#2E9E6B" stroke="#fff"><circle cx="12" cy="12" r="10"/></svg></div>
+                <div class="pcard-role">Fashion &amp; Beauty · Mumbai</div>
+                <div class="pcard-meta"><span class="pcard-meta-item">★ 4.8</span><span>·</span><span>85K followers</span><span>·</span><span>₹5k–10k</span></div>
+                <div style="display:flex;gap:4px;margin-top:4px">
+                  <span class="tagpill" style="background:var(--bg-secondary);font-size:8.5px">OOTD</span>
+                  <span class="tagpill" style="background:var(--bg-secondary);font-size:8.5px">Skincare</span>
+                </div>
+              </div>
+              <div class="btn btn-outline btn-xs">Connect</div>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="pcard" style="margin-bottom:0">
+              <div class="pcard-avatar" style="background:var(--c-sky)">R</div>
+              <div style="flex:1;min-width:0">
+                <div class="pcard-name">Rohan Varma</div>
+                <div class="pcard-role">Men's Fashion &amp; Fitness · Mumbai</div>
+                <div class="pcard-meta"><span class="pcard-meta-item">★ 4.7</span><span>·</span><span>45K followers</span></div>
+                <div style="display:flex;gap:4px;margin-top:4px">
+                  <span class="tagpill" style="background:var(--bg-secondary);font-size:8.5px">Lookbook</span>
+                </div>
+              </div>
+              <div class="btn btn-outline btn-xs">Connect</div>
+            </div>
+
+            <div style="text-align:center;margin-top:12px">
+              <span style="font-size:11px;font-weight:700;color:var(--text-secondary)">Load more results (24)</span>
+            </div>
+          </div>
+
+          <div class="bottomnav">
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+            <div class="nav-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span class="nav-dot"></span></div>
+            <div class="nav-fab">+</div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D06</span><span class="sc-name">Search Results — Filtered</span></div>
+      <p class="sc-desc">Active search results list with live multi-tag filters, result counter, sort trigger, and rich profile cards showing skills, verification, rates, and direct connect CTA.</p>
+    </div>
+
+    <!-- D06: SEARCH SUGGESTIONS -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <div class="pad" style="padding-top:6px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.4"><path d="m15 18-6-6 6-6"/></svg>
+              <div class="searchbar on" style="flex:1;height:40px;padding:0 12px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <span style="font-size:12.5px;font-weight:600">reels ed</span><span style="border-right:1.5px solid #14110F;height:14px;animation:blink 1s infinite"></span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2.4" style="margin-left:auto"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="grow" style="padding:14px 18px">
+            <div class="section-tag" style="padding:0;margin-bottom:8px">Suggested Matches</div>
+            
+            <div class="lrow" style="padding:10px 0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <div>
+                <span style="font-weight:800;color:#14110F">reels editor</span>
+                <div style="font-size:10px;color:var(--text-muted)">in Production Professionals · 1,240 matches</div>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2" style="margin-left:auto"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+            </div>
+
+            <div class="lrow" style="padding:10px 0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <div>
+                <span style="font-weight:800;color:#14110F">reels editing</span>
+                <div style="font-size:10px;color:var(--text-muted)">in Skills · 3,120 creators</div>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2" style="margin-left:auto"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+            </div>
+
+            <div class="lrow" style="padding:10px 0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <div>
+                <span style="font-weight:800;color:#14110F">reels editor in Mumbai</span>
+                <div style="font-size:10px;color:var(--text-muted)">in Location Matches · 340 creators</div>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2" style="margin-left:auto"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+            </div>
+
+            <!-- Instant Profile Preview -->
+            <div class="section-tag" style="padding:0;margin-top:18px;margin-bottom:8px">Top Creator Match</div>
+            <div class="pcard" style="margin-bottom:0;background:var(--surface)">
+              <div class="pcard-avatar" style="background:var(--c-mint)">K<span class="online-dot"></span></div>
+              <div style="flex:1;min-width:0">
+                <div class="pcard-name">Kabir Sen <svg width="10" height="10" viewBox="0 0 24 24" fill="#2E9E6B" stroke="#fff"><circle cx="12" cy="12" r="10"/></svg></div>
+                <div class="pcard-role">Lead Reels Editor · Mumbai</div>
+                <div class="pcard-meta"><span class="pcard-meta-item">★ 4.9</span><span>·</span><span>₹10k/reel</span></div>
+              </div>
+              <div class="btn btn-primary btn-xs">View</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D06</span><span class="sc-name">Search — Suggestions / Autocomplete</span></div>
+      <p class="sc-desc">Real-time prefix query autocomplete. Groups matches across roles, skills, and geographic locations, and surfaces instant top-profile snippets.</p>
+    </div>
+
+    <!-- D06: SEARCH EMPTY RESULTS -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <div class="pad" style="padding-top:6px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.4"><path d="m15 18-6-6 6-6"/></svg>
+              <div class="searchbar on" style="flex:1;height:40px;padding:0 12px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <span style="font-size:12px;font-weight:700">Underwater welder Goa</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2.4" style="margin-left:auto"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="grow flexcol" style="align-items:center;justify-content:center;text-align:center;padding:0 24px">
+            <div style="width:68px;height:68px;border-radius:24px;background:var(--bg-secondary);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="12"/><line x1="11" y1="14" x2="11.01" y2="14"/></svg>
+            </div>
+            <h2 class="h-md" style="font-size:18px">No matching creators found</h2>
+            <p class="body" style="font-size:12px;margin-top:6px;max-width:240px">We couldn't find anyone matching "Underwater welder Goa". Try broader terms or reset active filters.</p>
+            <div style="width:100%;margin-top:20px">
+              <div class="btn btn-primary btn-sm">Clear all filters</div>
+              <div class="btn btn-ghost btn-sm" style="margin-top:6px">Browse all categories</div>
+            </div>
+          </div>
+
+          <div class="bottomnav">
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+            <div class="nav-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span class="nav-dot"></span></div>
+            <div class="nav-fab">+</div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="nav-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D06</span><span class="sc-name">Search — Empty Results State</span></div>
+      <p class="sc-desc">Zero-result state providing helpful corrective suggestions and direct reset buttons rather than dead-ends.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ 05 FILTERS & SORTING ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">05</span><h2 class="sec-t">Screens — Filters &amp; Sorting</h2><span class="sec-note">D07 &amp; D08 · bottom sheets for multi-attribute discovery tuning</span></div>
+  <div class="screens">
+
+    <!-- D07: FILTER SHEET PART 1 -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <!-- Background screen dimmed -->
+          <div style="padding:10px 18px;opacity:.35">
+            <h2 class="h-lg">Discover</h2>
+            <div class="searchbar" style="margin-top:10px"><span class="ph">Search creators…</span></div>
+          </div>
+
+          <!-- Bottom Sheet Modal Surface -->
+          <div style="flex:1;background:var(--surface);border-radius:28px 28px 0 0;border-top:1.5px solid #14110F;display:flex;flex-direction:column;box-shadow:var(--sh-lg);overflow:hidden;margin-top:auto">
+            <div class="sh-h" style="margin-top:10px;margin-bottom:6px"></div>
+            
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 18px 10px;border-bottom:1px solid var(--divider)">
+              <h3 class="h-md" style="font-size:17px">Filter Creators</h3>
+              <span style="font-size:11px;font-weight:700;color:var(--text-secondary)">Reset All</span>
+            </div>
+
+            <div class="grow" style="padding:12px 18px">
+              <!-- Section 1: Role -->
+              <span class="lbl" style="display:block;margin-bottom:6px">Role</span>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <span class="filterchip">Creator / Influencer</span>
+                <span class="filterchip outline">Production Pro</span>
+                <span class="filterchip outline">Podcaster</span>
+              </div>
+
+              <!-- Section 2: Subcategory -->
+              <span class="lbl" style="display:block;margin-top:14px;margin-bottom:6px">Niche / Subcategory</span>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <span class="filterchip">Fashion</span>
+                <span class="filterchip">Lifestyle</span>
+                <span class="filterchip outline">Beauty</span>
+                <span class="filterchip outline">Travel</span>
+                <span class="filterchip outline">Tech</span>
+              </div>
+
+              <!-- Section 3: Location -->
+              <span class="lbl" style="display:block;margin-top:14px;margin-bottom:6px">City</span>
+              <div class="searchbar" style="height:38px;padding:0 12px;margin-bottom:6px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <span style="font-size:12px;color:#14110F;font-weight:600">Mumbai</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0">
+                <span style="font-size:11.5px;color:var(--text-secondary)">Include nearby NCR / MMR hubs</span>
+                <span style="width:36px;height:20px;border-radius:999px;background:#14110F;position:relative;display:inline-block">
+                  <span style="position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:999px;background:#fff"></span>
+                </span>
+              </div>
+
+              <!-- Section 4: Followers -->
+              <span class="lbl" style="display:block;margin-top:14px;margin-bottom:6px">Follower Range</span>
+              <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:4px">
+                <span>10K</span><span>500K+</span>
+              </div>
+              <div style="height:4px;background:var(--divider);border-radius:999px;position:relative;margin:10px 0 14px">
+                <div style="position:absolute;left:15%;right:20%;height:4px;background:#14110F;border-radius:999px"></div>
+                <div style="position:absolute;left:15%;top:-6px;width:16px;height:16px;border-radius:999px;background:#FFD64A;border:2px solid #14110F"></div>
+                <div style="position:absolute;right:20%;top:-6px;width:16px;height:16px;border-radius:999px;background:#FFD64A;border:2px solid #14110F"></div>
+              </div>
+            </div>
+
+            <!-- Sticky CTA -->
+            <div style="padding:10px 18px 18px;border-top:1px solid var(--divider)">
+              <div class="btn btn-primary btn-sm" style="font-size:13px">Show 34 Creators →</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D07</span><span class="sc-name">Filter Sheet — Scope &amp; Taxonomy</span></div>
+      <p class="sc-desc">Primary filter criteria modal. Supports role filtering, multiple niche selection, city lookup with regional hub aggregation, and follower range sliders.</p>
+    </div>
+
+    <!-- D07: FILTER SHEET PART 2 -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <div style="padding:10px 18px;opacity:.35">
+            <h2 class="h-lg">Discover</h2>
+            <div class="searchbar" style="margin-top:10px"><span class="ph">Search creators…</span></div>
+          </div>
+
+          <div style="flex:1;background:var(--surface);border-radius:28px 28px 0 0;border-top:1.5px solid #14110F;display:flex;flex-direction:column;box-shadow:var(--sh-lg);overflow:hidden;margin-top:auto">
+            <div class="sh-h" style="margin-top:10px;margin-bottom:6px"></div>
+            
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 18px 10px;border-bottom:1px solid var(--divider)">
+              <h3 class="h-md" style="font-size:17px">Commercial &amp; Trust</h3>
+              <span style="font-size:11px;font-weight:700;color:var(--text-secondary)">Reset</span>
+            </div>
+
+            <div class="grow" style="padding:12px 18px">
+              <!-- Budget Slider -->
+              <span class="lbl" style="display:block;margin-bottom:6px">Rate / Budget Per Deliverable</span>
+              <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:4px">
+                <span>₹5,000</span><span>₹25,000</span>
+              </div>
+              <div style="height:4px;background:var(--divider);border-radius:999px;position:relative;margin:10px 0 14px">
+                <div style="position:absolute;left:10%;right:30%;height:4px;background:#14110F;border-radius:999px"></div>
+                <div style="position:absolute;left:10%;top:-6px;width:16px;height:16px;border-radius:999px;background:#FFD64A;border:2px solid #14110F"></div>
+                <div style="position:absolute;right:30%;top:-6px;width:16px;height:16px;border-radius:999px;background:#FFD64A;border:2px solid #14110F"></div>
+              </div>
+
+              <!-- Toggles Row -->
+              <div style="margin-top:14px">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--divider)">
+                  <div>
+                    <div style="font-size:12px;font-weight:800">Verified accounts only</div>
+                    <div style="font-size:10px;color:var(--text-muted)">With confirmed social accounts</div>
+                  </div>
+                  <span style="width:36px;height:20px;border-radius:999px;background:#14110F;position:relative;display:inline-block">
+                    <span style="position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:999px;background:#fff"></span>
+                  </span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--divider)">
+                  <div>
+                    <div style="font-size:12px;font-weight:800">Available immediately</div>
+                    <div style="font-size:10px;color:var(--text-muted)">Open for work within 48h</div>
+                  </div>
+                  <span style="width:36px;height:20px;border-radius:999px;background:#14110F;position:relative;display:inline-block">
+                    <span style="position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:999px;background:#fff"></span>
+                  </span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0">
+                  <div>
+                    <div style="font-size:12px;font-weight:800">Has portfolio samples</div>
+                    <div style="font-size:10px;color:var(--text-muted)">At least 1 showcase item</div>
+                  </div>
+                  <span style="width:36px;height:20px;border-radius:999px;background:#14110F;position:relative;display:inline-block">
+                    <span style="position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:999px;background:#fff"></span>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Star Rating -->
+              <span class="lbl" style="display:block;margin-top:14px;margin-bottom:6px">Minimum Rating</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="#FFD64A" stroke="#14110F" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="#FFD64A" stroke="#14110F" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="#FFD64A" stroke="#14110F" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="#FFD64A" stroke="#14110F" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <span style="font-size:11.5px;font-weight:700;color:var(--text-secondary);margin-left:4px">4.0 &amp; up</span>
+              </div>
+            </div>
+
+            <div style="padding:10px 18px 18px;border-top:1px solid var(--divider)">
+              <div class="btn btn-primary btn-sm" style="font-size:13px">Apply Filters (4)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D07</span><span class="sc-name">Filter Sheet — Budget, Toggles &amp; Ratings</span></div>
+      <p class="sc-desc">Commercial filter parameters including price range, verification status, instant availability flags, portfolio existence, and star rating thresholds.</p>
+    </div>
+
+    <!-- D08: SORT SHEET -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <div style="padding:10px 18px;opacity:.35">
+            <h2 class="h-lg">Discover</h2>
+            <div class="searchbar" style="margin-top:10px"><span class="ph">Search creators…</span></div>
+          </div>
+
+          <div style="flex:1;background:var(--surface);border-radius:28px 28px 0 0;border-top:1.5px solid #14110F;display:flex;flex-direction:column;box-shadow:var(--sh-lg);overflow:hidden;margin-top:auto">
+            <div class="sh-h" style="margin-top:10px;margin-bottom:6px"></div>
+            
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 18px 12px;border-bottom:1px solid var(--divider)">
+              <h3 class="h-md" style="font-size:17px">Sort Results By</h3>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </div>
+
+            <div class="grow" style="padding:6px 18px">
+              <div class="lrow" style="padding:12px 0;background:#FFFDF7">
+                <span style="font-size:13px;font-weight:800;color:#14110F">Relevance (Recommended)</span>
+                <span style="margin-left:auto;width:18px;height:18px;border-radius:999px;background:#FFD64A;border:2px solid #14110F;display:flex;align-items:center;justify-content:center">
+                  <span style="width:6px;height:6px;border-radius:999px;background:#14110F"></span>
+                </span>
+              </div>
+              <div class="lrow" style="padding:12px 0">
+                <span style="font-size:13px;font-weight:600">Rating: High to Low</span>
+                <span style="margin-left:auto;width:18px;height:18px;border-radius:999px;border:1.5px solid var(--border)"></span>
+              </div>
+              <div class="lrow" style="padding:12px 0">
+                <span style="font-size:13px;font-weight:600">Followers: High to Low</span>
+                <span style="margin-left:auto;width:18px;height:18px;border-radius:999px;border:1.5px solid var(--border)"></span>
+              </div>
+              <div class="lrow" style="padding:12px 0">
+                <span style="font-size:13px;font-weight:600">Most Recently Active</span>
+                <span style="margin-left:auto;width:18px;height:18px;border-radius:999px;border:1.5px solid var(--border)"></span>
+              </div>
+              <div class="lrow" style="padding:12px 0">
+                <span style="font-size:13px;font-weight:600">Budget: Low to High</span>
+                <span style="margin-left:auto;width:18px;height:18px;border-radius:999px;border:1.5px solid var(--border)"></span>
+              </div>
+            </div>
+
+            <div style="padding:10px 18px 18px">
+              <div class="btn btn-dark btn-sm">Done</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D08</span><span class="sc-name">Sort Bottom Sheet</span></div>
+      <p class="sc-desc">One-tap sorting criteria sheet allowing instantaneous reordering across algorithmic relevance, ratings, follower reach, recency, and commercial rate tiers.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ 06 PUBLIC PROFILES ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">06</span><h2 class="sec-t">Screens — Public Profiles</h2><span class="sec-note">D09 to D11 · read-only profile views for creators and brands with moderation triggers</span></div>
+  <div class="screens">
+
+    <!-- D09: PUBLIC PROFILE CREATOR -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar" style="color:#fff;background:transparent;z-index:25"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <div class="grow" style="overflow-y:auto;position:relative">
+            <!-- Cover Banner -->
+            <div style="height:120px;background:linear-gradient(135deg,#FFD64A,#FFB6C8);position:relative">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 18px;position:relative;z-index:20">
+                <div style="width:32px;height:32px;border-radius:999px;background:rgba(20,17,15,.4);display:flex;align-items:center;justify-content:center">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <div style="width:32px;height:32px;border-radius:999px;background:rgba(20,17,15,.4);display:flex;align-items:center;justify-content:center">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                  </div>
+                  <div style="width:32px;height:32px;border-radius:999px;background:rgba(20,17,15,.4);display:flex;align-items:center;justify-content:center">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                  </div>
+                </div>
+              </div>
+              <span class="tagpill" style="position:absolute;bottom:8px;right:18px;background:#14110F;color:#fff;font-size:9.5px">Verified Creator ✓</span>
+            </div>
+
+            <!-- Avatar & Header Info -->
+            <div class="pad" style="position:relative;margin-top:-32px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-end">
+                <div style="width:68px;height:68px;border-radius:999px;background:var(--c-yellow);border:4px solid #fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:24px;box-shadow:var(--sh-md)">P</div>
+                <div style="display:flex;gap:6px">
+                  <div class="btn btn-outline btn-xs" style="height:32px;padding:0 12px">Message</div>
+                  <div class="btn btn-primary btn-xs" style="height:32px;padding:0 14px">Connect</div>
+                </div>
+              </div>
+
+              <div style="margin-top:8px">
+                <h2 class="h-md" style="font-size:18px;line-height:1.1">Priya Sharma</h2>
+                <div style="font-size:11px;color:var(--text-muted);font-weight:600">@priya.creates · Mumbai, Maharashtra</div>
+              </div>
+
+              <!-- Stats Pill Strip -->
+              <div style="display:flex;justify-content:space-between;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:8px 12px;margin-top:10px;text-align:center">
+                <div><div style="font-size:13px;font-weight:900">120K</div><div style="font-size:9px;color:var(--text-muted);font-weight:700">FOLLOWERS</div></div>
+                <div><div style="font-size:13px;font-weight:900">4.9 ★</div><div style="font-size:9px;color:var(--text-muted);font-weight:700">48 REVIEWS</div></div>
+                <div><div style="font-size:13px;font-weight:900">23</div><div style="font-size:9px;color:var(--text-muted);font-weight:700">COLLABS</div></div>
+                <div><div style="font-size:13px;font-weight:900">₹8k–15k</div><div style="font-size:9px;color:var(--text-muted);font-weight:700">PER REEL</div></div>
+              </div>
+
+              <!-- Bio -->
+              <div style="margin-top:10px">
+                <span class="lbl">About</span>
+                <p class="body" style="font-size:11.5px;margin-top:2px;line-height:1.4">Fashion &amp; lifestyle creator based in Mumbai. Specialized in brand storytelling, aesthetic lookbooks, and high-engagement D2C reels. <b style="color:#14110F">Read more</b></p>
+              </div>
+
+              <!-- Skills Wrap -->
+              <div style="margin-top:10px">
+                <span class="lbl">Skills &amp; Deliverables</span>
+                <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px">
+                  <span class="filterchip outline" style="font-size:10px;padding:3px 8px">Reels Creation</span>
+                  <span class="filterchip outline" style="font-size:10px;padding:3px 8px">Styling</span>
+                  <span class="filterchip outline" style="font-size:10px;padding:3px 8px">OOTD Shoots</span>
+                  <span class="filterchip outline" style="font-size:10px;padding:3px 8px">Brand Collab</span>
+                </div>
+              </div>
+
+              <!-- Social Accounts -->
+              <div style="margin-top:10px">
+                <span class="lbl">Connected Socials</span>
+                <div style="display:flex;gap:8px;margin-top:4px">
+                  <div style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:5px 8px;font-size:10.5px">
+                    <span style="font-weight:800;color:#C13584">IG</span> 120K <svg width="10" height="10" viewBox="0 0 24 24" fill="#2E9E6B"><circle cx="12" cy="12" r="10"/></svg>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:5px 8px;font-size:10.5px">
+                    <span style="font-weight:800;color:#FF0000">YT</span> 45K <svg width="10" height="10" viewBox="0 0 24 24" fill="#2E9E6B"><circle cx="12" cy="12" r="10"/></svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Portfolio Strip -->
+              <div style="margin-top:12px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                  <span class="lbl">Portfolio Showcase (12)</span>
+                  <span style="font-size:10.5px;font-weight:700;color:var(--text-secondary)">View all →</span>
+                </div>
+                <div style="display:flex;gap:6px;overflow-x:auto">
+                  <div style="width:90px;height:110px;border-radius:14px;background:var(--c-mint);display:flex;align-items:flex-end;padding:8px;border:1.5px solid #14110F;flex-shrink:0">
+                    <span style="font-size:9px;font-weight:800;background:rgba(255,255,255,.9);padding:2px 5px;border-radius:6px">Zara Edit</span>
+                  </div>
+                  <div style="width:90px;height:110px;border-radius:14px;background:var(--c-sky);display:flex;align-items:flex-end;padding:8px;border:1.5px solid #14110F;flex-shrink:0">
+                    <span style="font-size:9px;font-weight:800;background:rgba(255,255,255,.9);padding:2px 5px;border-radius:6px">Festive 24</span>
+                  </div>
+                  <div style="width:90px;height:110px;border-radius:14px;background:var(--c-lavender);display:flex;align-items:flex-end;padding:8px;border:1.5px solid #14110F;flex-shrink:0">
+                    <span style="font-size:9px;font-weight:800;background:rgba(255,255,255,.9);padding:2px 5px;border-radius:6px">+10 more</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Reviews Snippet -->
+              <div style="margin-top:12px;margin-bottom:16px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                  <span class="lbl">Recent Review</span>
+                  <span style="font-size:10.5px;font-weight:700;color:var(--text-secondary)">48 reviews</span>
+                </div>
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:9px 12px">
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <b style="font-size:11px">Zara India</b>
+                    <span style="font-size:10px;color:var(--warning)">★★★★★</span>
+                  </div>
+                  <p class="body" style="font-size:11px;margin-top:3px;line-height:1.35">"Outstanding turnaround on our summer reel campaign. High engagement and very professional."</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sticky Bottom CTA Bar -->
+          <div style="display:flex;gap:8px;padding:8px 18px 12px;background:#fff;border-top:1px solid var(--border);flex-shrink:0">
+            <div class="btn btn-outline btn-sm" style="flex:1">Message</div>
+            <div class="btn btn-primary btn-sm" style="flex:1">Connect</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D09</span><span class="sc-name">Public Profile — Creator Full View</span></div>
+      <p class="sc-desc">Comprehensive read-only creator portfolio and identity card. Features social follower verification, rate transparency, multimedia showcase, and verified brand reviews.</p>
+    </div>
+
+    <!-- D10: PUBLIC PROFILE BRAND -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar" style="color:#fff;background:transparent;z-index:25"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <div class="grow" style="overflow-y:auto;position:relative">
+            <!-- Brand Cover Banner -->
+            <div style="height:120px;background:#14110F;position:relative">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 18px;position:relative;z-index:20">
+                <div style="width:32px;height:32px;border-radius:999px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+                </div>
+                <div style="display:flex;gap:8px">
+                  <div style="width:32px;height:32px;border-radius:999px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                  </div>
+                  <div style="width:32px;height:32px;border-radius:999px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                  </div>
+                </div>
+              </div>
+              <span class="tagpill" style="position:absolute;bottom:8px;right:18px;background:#FFD64A;color:#14110F;font-size:9.5px;font-weight:900">Brand Verified ✓</span>
+            </div>
+
+            <!-- Avatar & Header Info -->
+            <div class="pad" style="position:relative;margin-top:-32px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-end">
+                <div style="width:68px;height:68px;border-radius:18px;background:#fff;border:3px solid #14110F;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:24px;box-shadow:var(--sh-md)">Z</div>
+                <div style="display:flex;gap:6px">
+                  <div class="btn btn-outline btn-xs" style="height:32px;padding:0 12px">Message</div>
+                  <div class="btn btn-dark btn-xs" style="height:32px;padding:0 14px">Follow</div>
+                </div>
+              </div>
+
+              <div style="margin-top:8px">
+                <h2 class="h-md" style="font-size:18px;line-height:1.1">Zara India</h2>
+                <div style="font-size:11px;color:var(--text-muted);font-weight:600">D2C Fashion Brand · Mumbai, Maharashtra</div>
+              </div>
+
+              <div style="display:flex;justify-content:space-between;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:8px 12px;margin-top:10px;text-align:center">
+                <div><div style="font-size:13px;font-weight:900">2.4M</div><div style="font-size:9px;color:var(--text-muted);font-weight:700">FOLLOWERS</div></div>
+                <div><div style="font-size:13px;font-weight:900">4.7 ★</div><div style="font-size:9px;color:var(--text-muted);font-weight:700">12 REVIEWS</div></div>
+                <div><div style="font-size:13px;font-weight:900">58</div><div style="font-size:9px;color:var(--text-muted);font-weight:700">CAMPAIGNS</div></div>
+              </div>
+
+              <div style="margin-top:10px">
+                <span class="lbl">About the Brand</span>
+                <p class="body" style="font-size:11.5px;margin-top:2px;line-height:1.4">Zara India official CreatorConnect partner account. We collaborate with high-craft creators across fashion, lifestyle, and visual art.</p>
+              </div>
+
+              <!-- Active Opportunities List -->
+              <div style="margin-top:14px;margin-bottom:16px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                  <span class="lbl">Active Assignment Briefs (2)</span>
+                </div>
+
+                <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:11px;margin-bottom:8px">
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span class="tagpill" style="background:var(--c-peach);font-size:9px">Fashion Reels</span>
+                    <b style="font-size:11.5px">₹8k–15k</b>
+                  </div>
+                  <div style="font-size:12.5px;font-weight:800;margin-top:4px">Summer Edit Campaign 2026</div>
+                  <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Mumbai · 2 days left to apply</div>
+                  <div style="display:flex;justify-content:flex-end;margin-top:8px">
+                    <div class="btn btn-primary btn-xs" style="height:26px">Apply Brief</div>
+                  </div>
+                </div>
+
+                <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:11px">
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span class="tagpill" style="background:var(--c-mint);font-size:9px">Lookbook Photo</span>
+                    <b style="font-size:11.5px">₹12,000</b>
+                  </div>
+                  <div style="font-size:12.5px;font-weight:800;margin-top:4px">Autumn Catalog Product Shoot</div>
+                  <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Mumbai · 5 days left</div>
+                  <div style="display:flex;justify-content:flex-end;margin-top:8px">
+                    <div class="btn btn-primary btn-xs" style="height:26px">Apply Brief</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;padding:8px 18px 12px;background:#fff;border-top:1px solid var(--border);flex-shrink:0">
+            <div class="btn btn-outline btn-sm" style="flex:1">Message</div>
+            <div class="btn btn-dark btn-sm" style="flex:1">Follow Brand</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D10</span><span class="sc-name">Public Profile — Brand View</span></div>
+      <p class="sc-desc">Brand profile showcasing verified business credentials, active campaign requirements, commercial budgets, and direct collaboration application points.</p>
+    </div>
+
+    <!-- D11: MORE OPTIONS SHEET -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <div style="padding:10px 18px;opacity:.35">
+            <h2 class="h-lg">Priya Sharma</h2>
+            <div class="pcard" style="margin-top:10px"><div class="pcard-avatar" style="background:var(--c-yellow)">P</div><div><div class="pcard-name">Priya Sharma</div></div></div>
+          </div>
+
+          <div style="flex:1;background:var(--surface);border-radius:28px 28px 0 0;border-top:1.5px solid #14110F;display:flex;flex-direction:column;box-shadow:var(--sh-lg);overflow:hidden;margin-top:auto">
+            <div class="sh-h" style="margin-top:10px;margin-bottom:8px"></div>
+            
+            <div class="grow" style="padding:4px 18px 14px">
+              <div class="lrow" style="padding:12px 0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                <span style="font-size:13px;font-weight:700">Share Profile</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A39A8F" stroke-width="2" style="margin-left:auto"><polyline points="9 18 15 12 9 6"/></svg>
+              </div>
+
+              <div class="lrow" style="padding:12px 0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span style="font-size:13px;font-weight:700">Copy Profile Link</span>
+              </div>
+
+              <div class="lrow" style="padding:12px 0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                <span style="font-size:13px;font-weight:700;color:var(--error)">Block @priya.creates</span>
+              </div>
+
+              <div class="lrow" style="padding:12px 0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                <span style="font-size:13px;font-weight:700;color:var(--error)">Report This Profile</span>
+              </div>
+            </div>
+
+            <div style="padding:10px 18px 18px;border-top:1px solid var(--divider)">
+              <div class="btn btn-outline btn-sm">Cancel</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D11</span><span class="sc-name">Public Profile — More Options Sheet</span></div>
+      <p class="sc-desc">Contextual action sheet providing safety controls (Block user, Report content per SOW §14 moderation specs) and sharing workflows.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ 07 RECOMMENDATIONS & MICRO-INTERACTIONS ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">07</span><h2 class="sec-t">Screens — Recommendations &amp; Micro-Interactions</h2><span class="sec-note">D12, D13, D15, D16 · rule-based match feed, criteria transparency, quick preview &amp; connect toast</span></div>
+  <div class="screens">
+
+    <!-- D12: RECOMMENDATIONS FEED -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <div class="pad" style="padding-top:6px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:8px">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2.4"><path d="m15 18-6-6 6-6"/></svg>
+                <h2 class="h-md" style="font-size:18px">Recommended for You</h2>
+              </div>
+              <div style="width:34px;height:34px;border-radius:999px;background:var(--surface);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              </div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:11px">
+              <span style="color:var(--text-secondary)">Rule-based matching engine</span>
+              <span style="font-weight:700;color:#14110F;text-decoration:underline">How this works ?</span>
+            </div>
+
+            <div class="role-tabs" style="padding:0;margin-top:10px">
+              <span class="role-tab on">All</span>
+              <span class="role-tab">Creators</span>
+              <span class="role-tab">Brands</span>
+              <span class="role-tab">Pros</span>
+            </div>
+          </div>
+
+          <div class="grow" style="padding:12px 18px">
+            <!-- Recommendation 1 -->
+            <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:18px;padding:12px;margin-bottom:10px;box-shadow:var(--sh-sm)">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="pcard-avatar" style="background:var(--c-yellow)">P<span class="online-dot"></span></div>
+                <div style="flex:1;min-width:0">
+                  <div class="pcard-name">Priya Sharma <svg width="10" height="10" viewBox="0 0 24 24" fill="#2E9E6B"><circle cx="12" cy="12" r="10"/></svg></div>
+                  <div class="pcard-role">Fashion Creator · Mumbai</div>
+                  <div class="pcard-meta"><span>120K</span><span>·</span><span>★ 4.9 (48)</span></div>
+                </div>
+              </div>
+              <div style="margin-top:6px">
+                <span class="match-badge">⭐ Matches your niche: Fashion</span>
+                <span class="match-badge" style="background:#EBF5FF;border-color:#C2E0FF;color:#0F5298">📍 Same city</span>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:10px">
+                <div class="btn btn-outline btn-xs" style="flex:1">View Profile</div>
+                <div class="btn btn-primary btn-xs" style="flex:1">Connect</div>
+              </div>
+            </div>
+
+            <!-- Recommendation 2 -->
+            <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:18px;padding:12px;margin-bottom:10px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="pcard-avatar" style="background:var(--c-sky)">R</div>
+                <div style="flex:1;min-width:0">
+                  <div class="pcard-name">Rohan Varma</div>
+                  <div class="pcard-role">Men's Fashion &amp; Lifestyle · Mumbai</div>
+                  <div class="pcard-meta"><span>45K</span><span>·</span><span>★ 4.8 (26)</span></div>
+                </div>
+              </div>
+              <div style="margin-top:6px">
+                <span class="match-badge">💼 Worked with similar brands</span>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:10px">
+                <div class="btn btn-outline btn-xs" style="flex:1">View Profile</div>
+                <div class="btn btn-primary btn-xs" style="flex:1">Connect</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D12</span><span class="sc-name">Recommendations Feed</span></div>
+      <p class="sc-desc">SOW §13 rule-based matchmaking feed with explicit match reason pills explaining why each profile surfaced (niche alignment, location weighting, past collaboration).</p>
+    </div>
+
+    <!-- D13: HOW MATCHING WORKS SHEET -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <div style="padding:10px 18px;opacity:.35">
+            <h2 class="h-md">Recommended for You</h2>
+            <div class="pcard" style="margin-top:10px"><div class="pcard-avatar" style="background:var(--c-yellow)">P</div><div><div class="pcard-name">Priya Sharma</div></div></div>
+          </div>
+
+          <div style="flex:1;background:var(--surface);border-radius:28px 28px 0 0;border-top:1.5px solid #14110F;display:flex;flex-direction:column;box-shadow:var(--sh-lg);overflow:hidden;margin-top:auto">
+            <div class="sh-h" style="margin-top:10px;margin-bottom:6px"></div>
+            
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 18px 10px;border-bottom:1px solid var(--divider)">
+              <h3 class="h-md" style="font-size:17px">How Matching Works</h3>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </div>
+
+            <div class="grow" style="padding:12px 18px">
+              <p class="body" style="font-size:12px;margin-bottom:12px">CreatorConnect uses deterministic business rules to connect relevant creators and brands:</p>
+              
+              <div style="display:flex;gap:12px;margin-bottom:14px;align-items:flex-start">
+                <div style="width:36px;height:36px;border-radius:12px;background:var(--c-yellow);display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0">1</div>
+                <div>
+                  <div style="font-size:12.5px;font-weight:800">Category &amp; Skill Overlap</div>
+                  <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">We pair creators and briefs sharing primary taxonomy and specific deliverable tags.</div>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:12px;margin-bottom:14px;align-items:flex-start">
+                <div style="width:36px;height:36px;border-radius:12px;background:var(--c-mint);display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0">2</div>
+                <div>
+                  <div style="font-size:12.5px;font-weight:800">Geographic Proximity</div>
+                  <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Profiles within your city and surrounding regional hub are prioritized for in-person shoots.</div>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:12px;margin-bottom:14px;align-items:flex-start">
+                <div style="width:36px;height:36px;border-radius:12px;background:var(--c-lavender);display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0">3</div>
+                <div>
+                  <div style="font-size:12.5px;font-weight:800">Verification &amp; Reviews</div>
+                  <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">Verified accounts with 4.5+ star ratings receive higher algorithmic weight.</div>
+                </div>
+              </div>
+
+              <div class="note" style="padding:10px 12px;font-size:11px;line-height:1.45;border-left-color:var(--primary)">
+                <b>SOW §13 Note:</b> AI-generated semantic matching is explicitly excluded from this phase and will be offered in a subsequent release.
+              </div>
+            </div>
+
+            <div style="padding:10px 18px 18px;border-top:1px solid var(--divider)">
+              <div class="btn btn-primary btn-sm">Got it</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D13</span><span class="sc-name">"How Matching Works" Explainer Sheet</span></div>
+      <p class="sc-desc">Algorithmic transparency sheet communicating the three deterministic matching factors (taxonomy, location, trust rating) per contract specifications.</p>
+    </div>
+
+    <!-- D15: PROFILE QUICK-VIEW SHEET -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <div style="padding:10px 18px;opacity:.35">
+            <h2 class="h-lg">Discover</h2>
+            <div class="pcard" style="margin-top:10px"><div class="pcard-avatar" style="background:var(--c-yellow)">P</div><div><div class="pcard-name">Priya Sharma</div></div></div>
+          </div>
+
+          <div style="flex:1;background:var(--surface);border-radius:28px 28px 0 0;border-top:1.5px solid #14110F;display:flex;flex-direction:column;box-shadow:var(--sh-lg);overflow:hidden;margin-top:auto">
+            <div class="sh-h" style="margin-top:10px;margin-bottom:6px"></div>
+            
+            <div class="grow" style="padding:4px 18px 14px">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:52px;height:52px;border-radius:999px;background:var(--c-yellow);border:2px solid #14110F;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px">P</div>
+                <div>
+                  <div style="font-size:15px;font-weight:900;display:flex;align-items:center;gap:5px">Priya Sharma <svg width="10" height="10" viewBox="0 0 24 24" fill="#2E9E6B"><circle cx="12" cy="12" r="10"/></svg></div>
+                  <div style="font-size:11px;color:var(--text-muted)">@priya.creates · Mumbai</div>
+                  <span class="tagpill" style="background:var(--success-bg);color:var(--success);font-size:9px;margin-top:2px">Verified Creator</span>
+                </div>
+              </div>
+
+              <!-- Quick Stats -->
+              <div style="display:flex;justify-content:space-around;background:var(--bg-secondary);border-radius:12px;padding:8px;margin-top:10px;text-align:center">
+                <div><div style="font-size:12px;font-weight:900">120K</div><div style="font-size:9px;color:var(--text-muted)">FOLLOWERS</div></div>
+                <div><div style="font-size:12px;font-weight:900">4.9 ★</div><div style="font-size:9px;color:var(--text-muted)">RATING</div></div>
+                <div><div style="font-size:12px;font-weight:900">₹8k–15k</div><div style="font-size:9px;color:var(--text-muted)">PER REEL</div></div>
+              </div>
+
+              <p class="body" style="font-size:11.5px;margin-top:8px;line-height:1.35">Fashion and lifestyle creator based in Mumbai. Brand collaborations, reels, and styling lookbooks.</p>
+
+              <!-- Portfolio Thumbnails Strip -->
+              <div style="margin-top:8px">
+                <span class="lbl">Portfolio Preview</span>
+                <div style="display:flex;gap:6px;margin-top:4px">
+                  <div style="width:68px;height:68px;border-radius:10px;background:var(--c-mint);border:1px solid #14110F"></div>
+                  <div style="width:68px;height:68px;border-radius:10px;background:var(--c-sky);border:1px solid #14110F"></div>
+                  <div style="width:68px;height:68px;border-radius:10px;background:var(--c-lavender);border:1px solid #14110F;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800">+10</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;padding:10px 18px 18px;border-top:1px solid var(--divider)">
+              <div class="btn btn-outline btn-sm" style="flex:1">View Full</div>
+              <div class="btn btn-primary btn-sm" style="flex:1">Connect</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D15</span><span class="sc-name">Discovery — Profile Quick-View Sheet</span></div>
+      <p class="sc-desc">Long-press card preview modal that enables rapid evaluation of creators without losing position in the discovery or search result stream.</p>
+    </div>
+
+    <!-- D16: CONNECT CONFIRMATION OVERLAY -->
+    <div class="sc-item">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+          
+          <!-- Background screen with blur effect -->
+          <div style="padding:10px 18px;opacity:.3">
+            <h2 class="h-lg">Discover</h2>
+            <div class="pcard" style="margin-top:10px"><div class="pcard-avatar" style="background:var(--c-yellow)">P</div><div><div class="pcard-name">Priya Sharma</div></div></div>
+          </div>
+
+          <!-- Dimmed Scrim & Center Toast Card -->
+          <div style="position:absolute;inset:0;background:rgba(20,17,15,.6);display:flex;align-items:center;justify-content:center;padding:24px;z-index:30">
+            <div style="background:#fff;border:2px solid #14110F;border-radius:24px;padding:22px 18px;text-align:center;width:100%;box-shadow:var(--sh-lg);position:relative">
+              <div style="width:52px;height:52px;border-radius:999px;background:var(--primary);border:2px solid #14110F;margin:0 auto 10px;display:flex;align-items:center;justify-content:center">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <h3 class="h-md" style="font-size:16px;margin:0">Connection Request Sent!</h3>
+              <div style="font-size:11.5px;color:var(--text-secondary);margin-top:4px">We've notified @priya.creates of your collaboration interest.</div>
+              
+              <!-- Countdown bar -->
+              <div style="height:3px;background:var(--divider);border-radius:999px;margin:14px auto 8px;overflow:hidden;width:80%">
+                <div style="width:100%;height:3px;background:var(--primary);border-radius:999px"></div>
+              </div>
+              
+              <div style="font-size:11px;font-weight:700;color:var(--text-primary);cursor:pointer">Undo request (2s)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id">D16</span><span class="sc-name">Connect Request Sent (Confirmation Overlay)</span></div>
+      <p class="sc-desc">Non-blocking celebratory micro-interaction verifying connection dispatch. Includes a 2-second grace period with undo capability.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ 08 DIALOGS & POPUPS ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">08</span><h2 class="sec-t">Dialogs &amp; Bottom Sheets Catalogue</h2><span class="sec-note">8 dedicated modals &amp; sheets for Module D interactions</span></div>
+  <div class="dgrid">
+
+    <!-- POP-D01: LOCATION PERMISSION -->
+    <div class="sc-item">
+      <div class="dlgcard" style="height:360px">
+        <div class="dc-bg">
+          <div class="searchbar" style="margin-bottom:10px"></div>
+          <div class="pcard"></div><div class="pcard"></div>
+        </div>
+        <div class="dc-dim"></div>
+        <div class="dc-center">
+          <div style="width:48px;height:48px;border-radius:16px;background:var(--c-mint);display:flex;align-items:center;justify-content:center;margin:0 auto 10px">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          </div>
+          <h3 class="h-md" style="font-size:16px;text-align:center">Find Creators Near You</h3>
+          <p class="body" style="font-size:11.5px;text-align:center;margin-top:6px;line-height:1.4">We use your city to prioritize local collaborators for in-person shoots and assignments.</p>
+          <div style="margin-top:14px">
+            <div class="btn btn-primary btn-sm">Allow Location</div>
+            <div class="btn btn-ghost btn-sm" style="margin-top:4px">Enter City Manually</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id" style="background:#B08B3A">POP-D01</span><span class="sc-name">Location Permission Explainer</span></div>
+      <p class="sc-desc">Pre-system permission primer explaining why location is needed before triggering the native OS location prompt.</p>
+    </div>
+
+    <!-- POP-D02: CONNECTION LIMIT -->
+    <div class="sc-item">
+      <div class="dlgcard" style="height:360px">
+        <div class="dc-bg">
+          <div class="searchbar" style="margin-bottom:10px"></div>
+          <div class="pcard"></div><div class="pcard"></div>
+        </div>
+        <div class="dc-dim"></div>
+        <div class="dc-sheet">
+          <div class="sh-h"></div>
+          <div style="width:40px;height:40px;border-radius:12px;background:var(--warning-bg);color:var(--warning);display:flex;align-items:center;justify-content:center;margin-bottom:8px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <h3 class="h-md" style="font-size:16px">Connection Limit Reached</h3>
+          <p class="body" style="font-size:11.5px;margin-top:4px;line-height:1.4">You've reached your free daily limit of 5 connection requests. Upgrade to Creator Pro for unlimited outreach.</p>
+          <div style="margin-top:14px">
+            <div class="btn btn-primary btn-sm">Upgrade to Pro (₹499/mo)</div>
+            <div class="btn btn-ghost btn-sm" style="margin-top:4px">Wait for Tomorrow</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id" style="background:#B08B3A">POP-D02</span><span class="sc-name">Connection Quota Paywall</span></div>
+      <p class="sc-desc">Gentle paywall gate for Free tier users hitting daily outreach quotas per SOW §17 Membership restrictions.</p>
+    </div>
+
+    <!-- POP-D03: SAVE PROFILE -->
+    <div class="sc-item">
+      <div class="dlgcard" style="height:340px">
+        <div class="dc-bg"><div class="pcard"></div><div class="pcard"></div></div>
+        <div class="dc-dim"></div>
+        <div class="dc-center">
+          <div style="width:44px;height:44px;border-radius:999px;background:var(--success-bg);color:var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 10px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <h3 class="h-md" style="font-size:16px;text-align:center">Profile Saved</h3>
+          <p class="body" style="font-size:11.5px;text-align:center;margin-top:4px">Added @priya.creates to your saved collaborators list.</p>
+          <div style="margin-top:14px">
+            <div class="btn btn-primary btn-sm">View Saved Profiles</div>
+            <div class="btn btn-ghost btn-sm" style="margin-top:4px">Done</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id" style="background:#B08B3A">POP-D03</span><span class="sc-name">Save Profile Confirmation</span></div>
+      <p class="sc-desc">Bookmark feedback confirming profile storage in private shortlist collections for future briefs.</p>
+    </div>
+
+    <!-- POP-D04: BLOCK USER -->
+    <div class="sc-item">
+      <div class="dlgcard" style="height:360px">
+        <div class="dc-bg"><div class="pcard"></div><div class="pcard"></div></div>
+        <div class="dc-dim"></div>
+        <div class="dc-center">
+          <div style="width:44px;height:44px;border-radius:999px;background:var(--error-bg);color:var(--error);display:flex;align-items:center;justify-content:center;margin:0 auto 10px">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+          </div>
+          <h3 class="h-md" style="font-size:16px;text-align:center">Block Priya Sharma?</h3>
+          <p class="body" style="font-size:11.5px;text-align:center;margin-top:4px;line-height:1.4">They won't be able to view your profile, send messages, or apply to your assignments.</p>
+          <div style="margin-top:14px">
+            <div class="btn btn-sm" style="background:var(--error);color:#fff">Block User</div>
+            <div class="btn btn-ghost btn-sm" style="margin-top:4px">Cancel</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id" style="background:#B08B3A">POP-D04</span><span class="sc-name">Block User Confirmation</span></div>
+      <p class="sc-desc">Destructive action alert implementing user blocking per SOW §14 moderation architecture.</p>
+    </div>
+
+    <!-- POP-D05: REPORT PROFILE -->
+    <div class="sc-item">
+      <div class="dlgcard" style="height:420px">
+        <div class="dc-bg"><div class="pcard"></div><div class="pcard"></div></div>
+        <div class="dc-dim"></div>
+        <div class="dc-sheet">
+          <div class="sh-h"></div>
+          <h3 class="h-md" style="font-size:16px">Report This Profile</h3>
+          <p class="body" style="font-size:11px;margin-top:2px">Select a reason for moderation review:</p>
+          <div style="margin-top:8px">
+            <div class="lrow" style="padding:10px 0"><span style="font-size:12px;font-weight:600">Spam or misleading information</span></div>
+            <div class="lrow" style="padding:10px 0"><span style="font-size:12px;font-weight:600">Fake or impersonated profile</span></div>
+            <div class="lrow" style="padding:10px 0"><span style="font-size:12px;font-weight:600">Harassment or abusive language</span></div>
+            <div class="lrow" style="padding:10px 0"><span style="font-size:12px;font-weight:600">Off-platform payment soliciting</span></div>
+          </div>
+          <div style="margin-top:12px">
+            <div class="btn btn-primary btn-sm">Submit Report</div>
+            <div class="btn btn-ghost btn-sm" style="margin-top:4px">Cancel</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id" style="background:#B08B3A">POP-D05</span><span class="sc-name">Report Profile Reason Selector</span></div>
+      <p class="sc-desc">Content moderation report sheet funneling violations directly to the Admin Panel review queue (SOW §23).</p>
+    </div>
+
+    <!-- POP-D06: RESET FILTERS -->
+    <div class="sc-item">
+      <div class="dlgcard" style="height:320px">
+        <div class="dc-bg"><div class="pcard"></div><div class="pcard"></div></div>
+        <div class="dc-dim"></div>
+        <div class="dc-center">
+          <h3 class="h-md" style="font-size:16px;text-align:center">Reset All Filters?</h3>
+          <p class="body" style="font-size:11.5px;text-align:center;margin-top:4px">This will clear your city, follower range, and budget preferences.</p>
+          <div style="margin-top:14px">
+            <div class="btn btn-primary btn-sm">Reset Filters</div>
+            <div class="btn btn-ghost btn-sm" style="margin-top:4px">Keep Filters</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id" style="background:#B08B3A">POP-D06</span><span class="sc-name">Reset Filters Confirmation</span></div>
+      <p class="sc-desc">Safety confirmation guarding complex multi-criteria filter configurations from accidental dismissal.</p>
+    </div>
+
+    <!-- POP-D07: OFFLINE CACHE BANNER -->
+    <div class="sc-item">
+      <div class="dlgcard" style="height:340px">
+        <div class="dc-bg"><div class="pcard"></div><div class="pcard"></div></div>
+        <div class="dc-dim"></div>
+        <div class="dc-center">
+          <div style="width:44px;height:44px;border-radius:999px;background:var(--warning-bg);color:var(--warning);display:flex;align-items:center;justify-content:center;margin:0 auto 10px">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/></svg>
+          </div>
+          <h3 class="h-md" style="font-size:16px;text-align:center">You're Offline</h3>
+          <p class="body" style="font-size:11.5px;text-align:center;margin-top:4px">Showing previously cached creators. Connect to the internet to refresh discovery.</p>
+          <div style="margin-top:14px">
+            <div class="btn btn-outline btn-sm">Retry Connection</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id" style="background:#B08B3A">POP-D07</span><span class="sc-name">Offline Mode Indicator</span></div>
+      <p class="sc-desc">Graceful network disconnection handling showing cached search results without hard app crashes.</p>
+    </div>
+
+    <!-- POP-D08: SHARE PROFILE SHEET -->
+    <div class="sc-item">
+      <div class="dlgcard" style="height:380px">
+        <div class="dc-bg"><div class="pcard"></div><div class="pcard"></div></div>
+        <div class="dc-dim"></div>
+        <div class="dc-sheet">
+          <div class="sh-h"></div>
+          <h3 class="h-md" style="font-size:16px">Share Profile</h3>
+          <div style="display:flex;justify-content:space-around;margin:14px 0 10px;text-align:center">
+            <div>
+              <div style="width:44px;height:44px;border-radius:12px;background:#25D366;color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;font-weight:900">WA</div>
+              <span style="font-size:10px;font-weight:700">WhatsApp</span>
+            </div>
+            <div>
+              <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(45deg,#F58529,#DD2A7B,#8134AF);color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;font-weight:900">IG</div>
+              <span style="font-size:10px;font-weight:700">Stories</span>
+            </div>
+            <div>
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--bg-secondary);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 4px">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14110F" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </div>
+              <span style="font-size:10px;font-weight:700">Copy Link</span>
+            </div>
+          </div>
+          <div style="margin-top:14px">
+            <div class="btn btn-outline btn-sm">More Options…</div>
+          </div>
+        </div>
+      </div>
+      <div class="sc-cap"><span class="sc-id" style="background:#B08B3A">POP-D08</span><span class="sc-name">Share Profile Bottom Sheet</span></div>
+      <p class="sc-desc">One-tap social referral sharing promoting virality and external collaboration recruitment.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ 09 BACKEND & DATA MAPPING ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">09</span><h2 class="sec-t">Screen &rarr; Field &rarr; Backend Architecture</h2><span class="sec-note">Contracted SOW technical specification</span></div>
+  <table class="mapping-table">
+    <tr>
+      <th>Screen</th>
+      <th>Roles</th>
+      <th>Reads (Supabase &amp; Redis)</th>
+      <th>Writes (Fastify / REST)</th>
+      <th>SOW Clause &amp; Status</th>
+    </tr>
+    <tr>
+      <td><b>D01 / D02</b><br>Home Dashboard</td>
+      <td>All Roles</td>
+      <td><code>profiles</code>, <code>assignments</code>, <code>stats_cache</code> (views, reviews, unread counts)</td>
+      <td>— (Read-only aggregate feed)</td>
+      <td><span class="tagpill" style="background:var(--success-bg);color:var(--success)">SOW §22 · Committed</span></td>
+    </tr>
+    <tr>
+      <td><b>D04</b><br>Notification Center</td>
+      <td>All Roles</td>
+      <td><code>notifications</code> table (type, payload, read_at, created_at)</td>
+      <td><code>POST /api/v1/notifications/mark-read</code></td>
+      <td><span class="tagpill" style="background:var(--success-bg);color:var(--success)">SOW §20 · FCM &amp; In-App</span></td>
+    </tr>
+    <tr>
+      <td><b>D05 / D06</b><br>Discover &amp; Search</td>
+      <td>All Roles</td>
+      <td><code>profiles</code>, <code>categories</code>, <code>skills</code>, <code>locations</code> with full-text search indexes</td>
+      <td><code>POST /api/v1/search/recent</code> (stored in local secure storage)</td>
+      <td><span class="tagpill" style="background:var(--success-bg);color:var(--success)">SOW §9 · Core Discovery</span></td>
+    </tr>
+    <tr>
+      <td><b>D07 / D08</b><br>Filters &amp; Sorting</td>
+      <td>All Roles</td>
+      <td>Dynamic filter facets, hub boundaries (Delhi NCR, Mumbai MMR)</td>
+      <td>Query parameters passed to <code>GET /api/v1/discover</code></td>
+      <td><span class="tagpill" style="background:var(--success-bg);color:var(--success)">SOW §9 · Filters &amp; Sorting</span></td>
+    </tr>
+    <tr>
+      <td><b>D09 / D10</b><br>Public Profiles</td>
+      <td>All Roles</td>
+      <td><code>profiles</code>, <code>portfolios</code>, <code>reviews</code>, <code>social_verifications</code></td>
+      <td><code>POST /api/v1/connections/request</code></td>
+      <td><span class="tagpill" style="background:var(--success-bg);color:var(--success)">SOW §7, §9, §10 · Public Views</span></td>
+    </tr>
+    <tr>
+      <td><b>D11</b><br>Profile Options</td>
+      <td>All Roles</td>
+      <td>Block status list</td>
+      <td><code>POST /api/v1/users/block</code>, <code>POST /api/v1/reports</code></td>
+      <td><span class="tagpill" style="background:var(--success-bg);color:var(--success)">SOW §14 · Moderation &amp; Safety</span></td>
+    </tr>
+    <tr>
+      <td><b>D12 / D13</b><br>Recommendations</td>
+      <td>All Roles</td>
+      <td>Deterministic matching weights (category overlap + city proximity + 4.5+ star rating)</td>
+      <td>— (Rule-based read)</td>
+      <td><span class="tagpill" style="background:var(--success-bg);color:var(--success)">SOW §13 · Rule-Based Only</span></td>
+    </tr>
+  </table>
+</div>
+
+<!-- ============ 10 NAVIGATION FLOW ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">10</span><h2 class="sec-t">Navigation Flow Architecture</h2><span class="sec-note">GoRouter routing paths &amp; deep linking structure</span></div>
+  <div class="note" style="font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.7">
+    <b>GoRouter Route Tree (Module D):</b><br>
+    /home (Tab 0) ──&gt; /notifications (Modal slide-up)<br>
+    /discover (Tab 1)<br>
+    &nbsp;&nbsp;├── /discover/search?q={query}&amp;category={cat}&amp;city={city} (Push)<br>
+    &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;├── /discover/filters (Bottom Sheet modal)<br>
+    &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;└── /discover/sort (Bottom Sheet modal)<br>
+    &nbsp;&nbsp;├── /discover/recommendations (Push dedicated feed)<br>
+    &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;&nbsp;└── /discover/recommendations/explainer (Bottom Sheet)<br>
+    &nbsp;&nbsp;└── /profile/:userId (Shared Public Profile view)<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── /profile/:userId/options (Bottom Sheet: Report/Block)<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── /chat/:userId (Direct handoff to Module E Chat Thread)
+  </div>
+</div>
+
+<!-- ============ 11 OPEN DECISIONS ============ -->
+<div class="sec">
+  <div class="sec-head"><span class="sec-n">11</span><h2 class="sec-t">Open Decisions Before Flutter Build</h2></div>
+  <div class="note">
+    <b>1. Connect vs. Follow Semantics:</b> The UI implements mutual "Connect" for creator-to-creator and one-way "Follow" for brand profiles. Confirm whether connection requires explicit acceptance in backend messaging (SOW §14).<br><br>
+    <b>2. Regional City Hubs:</b> Screen D07 includes an "Include nearby regional hub" toggle (e.g. Noida/Gurugram included in Delhi NCR). Confirm whether the PostgreSQL database stores latitude/longitude coordinates or uses enum city clusters.<br><br>
+    <b>3. Quota Limits on Free Plan:</b> Screen POP-D02 enforces a 5-connection daily ceiling on Free accounts before prompting for Creator Pro subscription (SOW §17). Confirm initial limit thresholds with client.
+  </div>
+</div>
+
+</div>
+</body>
+</html>

@@ -48,6 +48,22 @@ export class AssignmentsRepository {
     });
   }
 
+  async findAll(params?: { status?: AssignmentStatus; categoryId?: string; brandId?: string }) {
+    return this.prisma.assignment.findMany({
+      where: {
+        deletedAt: null,
+        ...(params?.status ? { status: params.status } : {}),
+        ...(params?.categoryId ? { categoryId: params.categoryId } : {}),
+        ...(params?.brandId ? { brandId: params.brandId } : {}),
+      },
+      include: {
+        requirements: true,
+        brand: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async updateOptimistic(
     id: string,
     expectedVersion: number,

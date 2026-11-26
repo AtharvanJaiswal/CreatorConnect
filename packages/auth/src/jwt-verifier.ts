@@ -20,11 +20,19 @@ export class JwtVerifier implements IAuthenticationProvider {
   private audience: string;
   private clockTolerance: number;
   private jwksUrlStr: string | undefined;
+  private issuerExplicitlyProvided = false;
 
   constructor(options: JwtVerifierOptions = {}) {
-    const rawIssuer = 'issuer' in options ? options.issuer : process.env.SUPABASE_JWT_ISSUER;
-    this.issuer =
-      rawIssuer && rawIssuer.trim() ? rawIssuer.trim().replace(/^["']|["']$/g, '') : undefined;
+    if ('issuer' in options) {
+      this.issuerExplicitlyProvided = true;
+      const rawIssuer = options.issuer;
+      this.issuer =
+        rawIssuer && rawIssuer.trim() ? rawIssuer.trim().replace(/^["']|["']$/g, '') : undefined;
+    } else {
+      const rawIssuer = process.env.SUPABASE_JWT_ISSUER;
+      this.issuer =
+        rawIssuer && rawIssuer.trim() ? rawIssuer.trim().replace(/^["']|["']$/g, '') : undefined;
+    }
 
     this.audience = options.audience || 'authenticated';
     this.clockTolerance = options.clockTolerance ?? 60;
@@ -94,11 +102,14 @@ export class JwtVerifier implements IAuthenticationProvider {
     }
   }
 
+  private hasCustomKeySet = false;
+
   /**
    * Sets a custom key set provider (used for dependency injection / composition root).
    */
   public setKeySet(getKeySet: jose.JWTVerifyGetKey): void {
     this.getKeySet = getKeySet;
+    this.hasCustomKeySet = true;
   }
 
   /**
@@ -112,11 +123,34 @@ export class JwtVerifier implements IAuthenticationProvider {
       throw new AuthInvalidTokenError('Authentication token missing or malformed.');
     }
 
+    const effectiveIssuer = this.issuerExplicitlyProvided
+      ? this.issuer
+      : this.issuer ||
+        (process.env.SUPABASE_JWT_ISSUER?.trim()
+          ? process.env.SUPABASE_JWT_ISSUER.trim().replace(/^["']|["']$/g, '')
+          : undefined);
+
     // FAIL CLOSED: issuer must always be configured.
-    if (!this.issuer) {
+    if (!effectiveIssuer) {
       throw new AuthInvalidTokenError(
         'JWT issuer is not configured. Token verification is disabled until issuer is provided.',
       );
+    }
+
+    if (!this.hasCustomKeySet) {
+      const effectiveJwksUrl =
+        this.jwksUrlStr ||
+        process.env.SUPABASE_JWKS_URL ||
+        `${effectiveIssuer.replace(/\/$/, '')}/.well-known/jwks.json`;
+
+      if (effectiveJwksUrl && (!this.jwksUrlStr || !this.getKeySet)) {
+        this.jwksUrlStr = effectiveJwksUrl;
+        const jwksUrl = new URL(effectiveJwksUrl);
+        this.getKeySet = jose.createRemoteJWKSet(jwksUrl, {
+          cacheMaxAge: 10 * 60 * 1000,
+          cooldownDuration: 30 * 1000,
+        });
+      }
     }
 
     // Inspect header without verification to validate algorithms and kid presence
@@ -147,7 +181,7 @@ export class JwtVerifier implements IAuthenticationProvider {
         audience: this.audience,
         clockTolerance: this.clockTolerance,
         // Exact match against configured issuer (never derived from token payload)
-        issuer: this.issuer,
+        issuer: effectiveIssuer,
       };
 
       const { payload } = await jose.jwtVerify(token, this.getKeySet, verifyOptions);

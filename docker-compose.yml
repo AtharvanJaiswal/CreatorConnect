@@ -162,12 +162,20 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
+      migration-seed:
+        condition: service_completed_successfully
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 3001
       HOST: 0.0.0.0
       LOG_LEVEL: info
+      DATABASE_URL: postgresql://postgres:postgres_local_password@postgres:5432/creatorconnect_dev?schema=public
       REDIS_URL: redis://:redis_local_password@redis:6379/0
+      SUPABASE_JWT_ISSUER: ${SUPABASE_JWT_ISSUER:-https://auth.creatorconnect.local/auth/v1}
+      SUPABASE_JWKS_URL: ${SUPABASE_JWKS_URL:-http://jwks-stub:8080/.well-known/jwks.json}
+      ALLOW_HTTP_JWKS: ${ALLOW_HTTP_JWKS:-true}
       CORS_ORIGIN: http://localhost:3000,http://localhost:3001,http://localhost:3002
     ports:
       - '3001:3001'
