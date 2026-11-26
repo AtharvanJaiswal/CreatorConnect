@@ -164,6 +164,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      migration-seed:
+        condition: service_completed_successfully
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 3001

@@ -1,0 +1,10 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlist test fixtures and public client anon keys"
+paths = [
+  '''apps/web-shell/src/lib/messaging-workflow-service\.spec\.ts''',
+  '''packages/testing/src/operational/staging-preflight\.spec\.ts''',
+  '''apps/app/lib/core/config/env_config\.dart''',
+]

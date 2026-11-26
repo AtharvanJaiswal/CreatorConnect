@@ -5,6 +5,8 @@ import path from 'node:path';
 // Load .env so DATABASE_URL, SUPABASE_JWT_ISSUER, etc. are available to test processes
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
+const pnpmCmd = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -20,15 +22,15 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'pnpm.cmd --filter @creatorconnect/api dev',
+      command: `${pnpmCmd} --filter @creatorconnect/api dev`,
       url: 'http://127.0.0.1:3000/health',
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: true,
       timeout: 120000,
     },
     {
-      command: 'pnpm.cmd --filter @creatorconnect/web-shell dev',
+      command: `${pnpmCmd} --filter @creatorconnect/web-shell dev`,
       url: 'http://127.0.0.1:3002',
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: true,
       timeout: 120000,
     },
   ],

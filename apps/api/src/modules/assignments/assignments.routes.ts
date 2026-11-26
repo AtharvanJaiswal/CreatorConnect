@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import {
   CreateAssignmentInputSchema,
   UpdateAssignmentInputSchema,
@@ -19,6 +19,17 @@ export const assignmentsRoutes: FastifyPluginAsync<AssignmentsRoutesOptions> = a
   options,
 ) => {
   const service = options.assignmentsSvc || assignmentsService;
+
+  const authenticateIfBrandOnly = async (request: FastifyRequest, reply: FastifyReply) => {
+    if ((request.query as { brandOnly?: string })?.brandOnly === 'true') {
+      if (!request.headers.authorization) {
+        return reply
+          .status(401)
+          .send({ message: 'Authentication required for brandOnly assignments' });
+      }
+      await fastify.authenticate(request, reply);
+    }
+  };
 
   // POST /api/v1/assignments
   fastify.post<{ Body: CreateAssignmentInput }>(
@@ -69,6 +80,7 @@ export const assignmentsRoutes: FastifyPluginAsync<AssignmentsRoutesOptions> = a
           windowSeconds: 60,
           onRedisFailure: 'fail-closed',
         }),
+        authenticateIfBrandOnly,
       ],
       schema: {
         description: 'Lists published assignments or brand owned assignments',
@@ -81,12 +93,6 @@ export const assignmentsRoutes: FastifyPluginAsync<AssignmentsRoutesOptions> = a
     },
     async (request, reply) => {
       if (request.query.brandOnly === 'true') {
-        if (!request.headers.authorization) {
-          return reply
-            .status(401)
-            .send({ message: 'Authentication required for brandOnly assignments' });
-        }
-        await fastify.authenticate(request, reply);
         const result = await service.getBrandAssignments(request.user.id);
         return reply.status(200).send(result);
       }

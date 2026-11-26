@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import {
   HomeDashboardResponseSchema,
   DiscoverQuerySchema,
@@ -21,6 +21,12 @@ import { AuthInsufficientRoleError } from '../../errors/app-error.js';
 import { discoveryModuleDService } from './discovery.module-d.service.js';
 
 export const discoveryModuleDRoutes: FastifyPluginAsync = async (fastify) => {
+  const optionalAuthenticate = async (request: FastifyRequest, reply: FastifyReply) => {
+    if (request.headers.authorization && request.headers.authorization.startsWith('Bearer ')) {
+      await fastify.authenticate(request, reply);
+    }
+  };
+
   // 1. GET /api/v1/home/dashboard
   fastify.get<{ Querystring: { role?: string } }>(
     '/api/v1/home/dashboard',
@@ -32,6 +38,7 @@ export const discoveryModuleDRoutes: FastifyPluginAsync = async (fastify) => {
           windowSeconds: 60,
           onRedisFailure: 'bounded-fallback',
         }),
+        optionalAuthenticate,
       ],
       schema: {
         description:
@@ -49,11 +56,6 @@ export const discoveryModuleDRoutes: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request, reply) => {
-      // Authenticate if bearer token is provided
-      if (request.headers.authorization && request.headers.authorization.startsWith('Bearer ')) {
-        await fastify.authenticate(request, reply);
-      }
-
       const user = request.user;
       let role: string;
 
