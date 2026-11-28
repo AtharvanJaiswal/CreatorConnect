@@ -77,13 +77,51 @@ describe('Admin-Only Architecture & Security Audits', () => {
       }
     });
 
-    it('middleware allows /admin/* requests with defense-in-depth security headers', () => {
-      const req = new NextRequest('https://creatorconnect.in/admin/dashboard');
-      const res = middleware(req);
-      expect(res.status).toBe(200);
-      expect(res.headers.get('X-Frame-Options')).toBe('DENY');
-      expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
-      expect(res.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'none'");
+    it('middleware allows /admin/* requests with cryptographic CSP nonces, strict-dynamic, and defense-in-depth headers', () => {
+      vi.stubEnv('NODE_ENV', 'production');
+      try {
+        const req1 = new NextRequest('https://creatorconnect.in/admin/dashboard');
+        const req2 = new NextRequest('https://creatorconnect.in/admin/dashboard');
+        const res1 = middleware(req1);
+        const res2 = middleware(req2);
+
+        expect(res1.status).toBe(200);
+        expect(res1.headers.get('X-Frame-Options')).toBe('DENY');
+        expect(res1.headers.get('X-Content-Type-Options')).toBe('nosniff');
+        expect(res1.headers.get('Cache-Control')).toBe('private, no-store, max-age=0');
+        expect(res1.headers.get('Strict-Transport-Security')).toContain('max-age=63072000');
+
+        const csp1 = res1.headers.get('Content-Security-Policy') || '';
+        const csp2 = res2.headers.get('Content-Security-Policy') || '';
+
+        expect(csp1).toContain("frame-ancestors 'none'");
+        expect(csp1).toContain("object-src 'none'");
+        expect(csp1).toContain('upgrade-insecure-requests');
+        expect(csp1).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9+/]+={0,2}' 'strict-dynamic'/);
+
+        const scriptSrcDirective =
+          csp1
+            .split(';')
+            .map((part) => part.trim())
+            .find((part) => part.startsWith('script-src')) || '';
+        expect(scriptSrcDirective).not.toContain("'unsafe-inline'");
+        expect(scriptSrcDirective).not.toContain("'unsafe-eval'");
+
+        const nonceMatch1 = csp1.match(/'nonce-([^']+)'/);
+        const nonceMatch2 = csp2.match(/'nonce-([^']+)'/);
+        expect(nonceMatch1?.[1]).toBeTruthy();
+        expect(nonceMatch2?.[1]).toBeTruthy();
+        expect(nonceMatch1?.[1]).not.toBe(nonceMatch2?.[1]);
+
+        // Local HTTP requests must not emit HSTS or upgrade-insecure-requests so Firefox/WebKit work on http://127.0.0.1
+        const httpReq = new NextRequest('http://127.0.0.1:3002/admin/dashboard');
+        const httpRes = middleware(httpReq);
+        const httpCsp = httpRes.headers.get('Content-Security-Policy') || '';
+        expect(httpCsp).not.toContain('upgrade-insecure-requests');
+        expect(httpRes.headers.get('Strict-Transport-Security')).toBeNull();
+      } finally {
+        vi.unstubAllEnvs();
+      }
     });
   });
 
@@ -150,6 +188,52 @@ describe('Admin-Only Architecture & Security Audits', () => {
       expect(html).not.toContain('CONFIDENTIAL_PAYMENT_DATA');
     });
 
+    it('blocks bare ADMIN users without assigned adminRoles or adminPermissions (fail-closed)', () => {
+      mockUser = {
+        id: 'bare-admin',
+        email: 'bare-admin@creatorconnect.in',
+        roles: ['ADMIN'],
+        adminRoles: [],
+        adminPermissions: [],
+      };
+      mockPathname = '/admin/disputes';
+
+      const html = renderToStaticMarkup(
+        <AdminRootLayout>
+          <div>SENSITIVE_DISPUTES_TABLE</div>
+        </AdminRootLayout>,
+      );
+
+      expect(html).toContain('Restricted Admin Console');
+      expect(html).toContain('Zero-trust access denied');
+      expect(html).not.toContain('SENSITIVE_DISPUTES_TABLE');
+    });
+
+    it('filters sidebar links strictly by granted permissions for granular roles', () => {
+      mockUser = {
+        id: 'support-admin',
+        email: 'support@creatorconnect.in',
+        roles: ['ADMIN'],
+        adminRoles: ['SUPPORT_ADMIN'],
+        adminPermissions: ['support.manage', 'users.read', 'projects.read'],
+      };
+      mockPathname = '/admin/support';
+
+      const html = renderToStaticMarkup(
+        <AdminRootLayout>
+          <div>SUPPORT_QUEUE</div>
+        </AdminRootLayout>,
+      );
+
+      expect(html).toContain('SUPPORT_QUEUE');
+      expect(html).toContain('Support Inquiries');
+      expect(html).toContain('Users Directory');
+      expect(html).not.toContain('Dual-Approval Refunds');
+      expect(html).not.toContain('Ledger Reconciliation');
+      expect(html).not.toContain('Staff &amp; RBAC');
+      expect(html).not.toContain('Audit Trail');
+    });
+
     it('renders admin shell with navigation and header for authenticated staff', () => {
       mockUser = {
         id: 'admin-1',
@@ -169,6 +253,9 @@ describe('Admin-Only Architecture & Security Audits', () => {
       expect(html).toContain('DASHBOARD_CONTENT');
       expect(html).toContain('Admin Console');
       expect(html).toContain('Dashboard');
+      expect(html).toContain('aria-controls="admin-mobile-drawer"');
+      expect(html).toContain('aria-label="Open navigation menu"');
+      expect(html).toContain('id="admin-mobile-drawer"');
       expect(html).not.toContain('Restricted Admin Console');
     });
 

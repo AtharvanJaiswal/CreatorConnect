@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import {
   getPrismaClient,
@@ -846,5 +846,9 @@ describe('Phase 6: Project Deliverables, Milestone Lifecycle & Escrow Integratio
       .json()
       .items.find((n: any) => n.type === 'ESCROW_RELEASED');
     expect(escrowNotif).toBeDefined();
+  });
+
+  afterAll(async () => {
+    if (app) await app.close();
   });
 });

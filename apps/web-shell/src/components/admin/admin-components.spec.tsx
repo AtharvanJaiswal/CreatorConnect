@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AdminButton } from './ui/AdminButton';
 import { AdminBadge } from './ui/AdminBadge';
 import { PermissionGate } from './ui/PermissionGate';
+import { AdminTable } from './ui/AdminTable';
 
 // Mock the auth provider hook
 const mockUseAuth = vi.fn();
@@ -110,11 +111,12 @@ describe('Admin UI Primitives & Components', () => {
       expect(html).not.toContain('Protected Content');
     });
 
-    it('allows access unconditionally when user has SUPER_ADMIN role', () => {
+    it('allows access unconditionally when user has ADMIN + SUPER_ADMIN role', () => {
       mockUseAuth.mockReturnValue({
         user: {
           id: 'user-1',
           email: 'admin@creatorconnect.in',
+          roles: ['ADMIN'],
           adminRoles: ['SUPER_ADMIN'],
           adminPermissions: [],
         },
@@ -129,11 +131,54 @@ describe('Admin UI Primitives & Components', () => {
       expect(html).toContain('Protected Financial Action');
     });
 
-    it('allows access when user has wildcard * permission', () => {
+    it('fails closed for bare ADMIN users lacking adminPermissions and SUPER_ADMIN', () => {
+      mockUseAuth.mockReturnValue({
+        user: {
+          id: 'user-bare-admin',
+          email: 'bare-admin@creatorconnect.in',
+          roles: ['ADMIN'],
+          adminRoles: [],
+          adminPermissions: [],
+        },
+      });
+
+      const html = renderToStaticMarkup(
+        <PermissionGate permission="users.suspend" showLockedPlaceholder>
+          <div>Dangerous Suspend Action</div>
+        </PermissionGate>,
+      );
+
+      expect(html).not.toContain('Dangerous Suspend Action');
+      expect(html).toContain('Restricted action: Requires users.suspend administrative privilege.');
+    });
+
+    it('fails closed for non-ADMIN users even if stale adminPermissions exist', () => {
+      mockUseAuth.mockReturnValue({
+        user: {
+          id: 'user-non-admin',
+          email: 'creator@creatorconnect.in',
+          roles: ['CREATOR'],
+          adminRoles: ['SUPER_ADMIN'],
+          adminPermissions: ['*'],
+        },
+      });
+
+      const html = renderToStaticMarkup(
+        <PermissionGate permission="users.suspend" fallback={<div>Denied</div>}>
+          <div>Privileged Control</div>
+        </PermissionGate>,
+      );
+
+      expect(html).toBe('<div>Denied</div>');
+      expect(html).not.toContain('Privileged Control');
+    });
+
+    it('allows access when ADMIN user has wildcard * permission', () => {
       mockUseAuth.mockReturnValue({
         user: {
           id: 'user-2',
           email: 'root@creatorconnect.in',
+          roles: ['ADMIN'],
           adminRoles: ['CUSTOM_ADMIN'],
           adminPermissions: ['*'],
         },
@@ -148,11 +193,12 @@ describe('Admin UI Primitives & Components', () => {
       expect(html).toContain('Config Editor');
     });
 
-    it('allows access when user possesses specific permission', () => {
+    it('allows access when ADMIN user possesses specific permission or multi-permission match', () => {
       mockUseAuth.mockReturnValue({
         user: {
           id: 'user-3',
           email: 'mod@creatorconnect.in',
+          roles: ['ADMIN'],
           adminRoles: ['MODERATOR'],
           adminPermissions: ['moderation.queue', 'users.suspend'],
         },
@@ -164,6 +210,13 @@ describe('Admin UI Primitives & Components', () => {
         </PermissionGate>,
       );
       expect(allowedHtml).toContain('Suspend Button');
+
+      const multiAllowedHtml = renderToStaticMarkup(
+        <PermissionGate permissions={['payments.read', 'users.suspend']}>
+          <div>Multi-Perm Action</div>
+        </PermissionGate>,
+      );
+      expect(multiAllowedHtml).toContain('Multi-Perm Action');
 
       const deniedHtml = renderToStaticMarkup(
         <PermissionGate permission="finance.refund" fallback={<div>No Access</div>}>
@@ -179,6 +232,7 @@ describe('Admin UI Primitives & Components', () => {
         user: {
           id: 'user-4',
           email: 'junior@creatorconnect.in',
+          roles: ['ADMIN'],
           adminRoles: ['SUPPORT_AGENT'],
           adminPermissions: ['support.tickets'],
         },
@@ -192,6 +246,27 @@ describe('Admin UI Primitives & Components', () => {
 
       expect(html).not.toContain('Delete User');
       expect(html).toContain('Restricted action: Requires users.delete administrative privilege.');
+    });
+  });
+
+  describe('AdminTable', () => {
+    it('renders accessible fixed-height skeleton rows during loading to prevent CLS', () => {
+      const html = renderToStaticMarkup(
+        <AdminTable
+          columns={[
+            { key: 'id', header: 'ID' },
+            { key: 'status', header: 'Status' },
+          ]}
+          data={[]}
+          isLoading
+        />,
+      );
+
+      expect(html).toContain('aria-busy="true"');
+      expect(html).toContain('scope="col"');
+      expect(html).toContain('motion-reduce:animate-none');
+      expect(html.match(/data-testid="admin-table-skeleton-row"/g)?.length).toBe(8);
+      expect(html).not.toContain('Loading records...');
     });
   });
 });

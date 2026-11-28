@@ -157,7 +157,14 @@ describe('Phase 6 Increment 3: Dispute Resolution, Cancellations, Refunds & Fina
       },
     });
 
-    // 3. Platform Administrator
+    // 3. Platform Administrator with granular dispute moderation role (PLATFORM_ADMIN)
+    const platformAdminRole = await prisma.adminRole.findUniqueOrThrow({
+      where: { name: 'PLATFORM_ADMIN' },
+    });
+    const trustSafetyRole = await prisma.adminRole.findUniqueOrThrow({
+      where: { name: 'TRUST_SAFETY_ADMIN' },
+    });
+
     adminUserId = generateUuidV7();
     adminToken = await createTestJwt({
       sub: `sub_disp_admin_${generateUuidV7().replace(/-/g, '')}`,
@@ -179,6 +186,12 @@ describe('Phase 6 Increment 3: Dispute Resolution, Cancellations, Refunds & Fina
                 create: { id: generateUuidV7(), name: 'ADMIN' },
               },
             },
+          },
+        },
+        adminUserRoles: {
+          create: {
+            id: generateUuidV7(),
+            roleId: platformAdminRole.id,
           },
         },
       },
@@ -218,6 +231,12 @@ describe('Phase 6 Increment 3: Dispute Resolution, Cancellations, Refunds & Fina
               },
             },
           ],
+        },
+        adminUserRoles: {
+          create: {
+            id: generateUuidV7(),
+            roleId: trustSafetyRole.id,
+          },
         },
         brandProfile: {
           create: {
@@ -622,6 +641,89 @@ describe('Phase 6 Increment 3: Dispute Resolution, Cancellations, Refunds & Fina
       });
 
       expect(res.statusCode).toBe(403);
+    });
+
+    it('rejects bare ADMIN and unrelated SUPPORT_ADMIN without dispute permissions from status/resolve/close and admin-wide reads', async () => {
+      const adminRole = await prisma.role.findUniqueOrThrow({ where: { name: 'ADMIN' } });
+      const supportAdminRole = await prisma.adminRole.findUniqueOrThrow({
+        where: { name: 'SUPPORT_ADMIN' },
+      });
+
+      const bareSub = `sub_disp_bare_${generateUuidV7().replace(/-/g, '')}`;
+      const bareEmail = `disp_bare_${generateUuidV7().replace(/-/g, '')}@test.com`;
+      await prisma.user.create({
+        data: {
+          id: generateUuidV7(),
+          supabaseAuthId: bareSub,
+          email: bareEmail,
+          status: 'ACTIVE',
+          userRoles: { create: { id: generateUuidV7(), roleId: adminRole.id } },
+        },
+      });
+      const bareAdminToken = await createTestJwt({ sub: bareSub, email: bareEmail });
+
+      const supportSub = `sub_disp_support_${generateUuidV7().replace(/-/g, '')}`;
+      const supportEmail = `disp_support_${generateUuidV7().replace(/-/g, '')}@test.com`;
+      await prisma.user.create({
+        data: {
+          id: generateUuidV7(),
+          supabaseAuthId: supportSub,
+          email: supportEmail,
+          status: 'ACTIVE',
+          userRoles: { create: { id: generateUuidV7(), roleId: adminRole.id } },
+          adminUserRoles: { create: { id: generateUuidV7(), roleId: supportAdminRole.id } },
+        },
+      });
+      const supportAdminToken = await createTestJwt({ sub: supportSub, email: supportEmail });
+
+      const disputes = await prisma.dispute.findMany({ take: 1 });
+      const targetDisputeId = disputes[0]!.id;
+
+      for (const token of [bareAdminToken, supportAdminToken, bystanderToken]) {
+        const listRes = await app.inject({
+          method: 'GET',
+          url: '/api/v1/disputes',
+          headers: { authorization: `Bearer ${token}` },
+        });
+        expect(listRes.statusCode).toBe(200);
+        expect(listRes.json()).toHaveLength(0);
+
+        const getRes = await app.inject({
+          method: 'GET',
+          url: `/api/v1/disputes/${targetDisputeId}`,
+          headers: { authorization: `Bearer ${token}` },
+        });
+        expect(getRes.statusCode).toBe(403);
+
+        const statusRes = await app.inject({
+          method: 'PATCH',
+          url: `/api/v1/disputes/${targetDisputeId}/status`,
+          headers: { authorization: `Bearer ${token}` },
+          payload: { status: 'UNDER_REVIEW', note: 'Unauthorized escalation attempt' },
+        });
+        expect(statusRes.statusCode).toBe(403);
+        expect(statusRes.json().code).toBe('AUTH_INSUFFICIENT_ROLE');
+
+        const resolveRes = await app.inject({
+          method: 'POST',
+          url: `/api/v1/disputes/${targetDisputeId}/resolve`,
+          headers: { authorization: `Bearer ${token}` },
+          payload: {
+            resolution: 'RESOLVED_FOR_CLIENT',
+            resolutionReason: 'Unauthorized resolution attempt',
+          },
+        });
+        expect(resolveRes.statusCode).toBe(403);
+        expect(resolveRes.json().code).toBe('AUTH_INSUFFICIENT_ROLE');
+
+        const closeRes = await app.inject({
+          method: 'POST',
+          url: `/api/v1/disputes/${targetDisputeId}/close`,
+          headers: { authorization: `Bearer ${token}` },
+        });
+        expect(closeRes.statusCode).toBe(403);
+        expect(closeRes.json().code).toBe('AUTH_INSUFFICIENT_ROLE');
+      }
     });
   });
 

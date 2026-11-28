@@ -15,19 +15,15 @@ export default function ErrorBoundary({
   }, [error]);
 
   return (
-    <div style={{ padding: '2rem', textAlign: 'center' }}>
-      <h2 style={{ color: '#ef4444' }}>Application Error</h2>
-      <p style={{ color: '#9ca3af' }}>An unexpected error occurred in the Web Shell.</p>
+    <div className="p-8 text-center">
+      <h2 className="text-lg font-semibold text-red-500">Application Error</h2>
+      <p className="mt-2 text-sm text-neutral-500">
+        An unexpected error occurred in the Web Shell.
+      </p>
       <button
+        type="button"
         onClick={() => reset()}
-        style={{
-          backgroundColor: '#2563eb',
-          color: '#ffffff',
-          border: 'none',
-          padding: '0.5rem 1rem',
-          borderRadius: '4px',
-          cursor: 'pointer',
-        }}
+        className="mt-4 cursor-pointer rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
       >
         Retry
       </button>

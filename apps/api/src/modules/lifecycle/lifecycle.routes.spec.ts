@@ -36,6 +36,16 @@ describe('Lifecycle & Privacy Routes Integration (HTTP Endpoints)', () => {
         email,
         status: UserStatus.ACTIVE,
         userRoles: { create: { id: generateUuidV7(), roleId: role.id } },
+        ...(roleName === 'ADMIN'
+          ? {
+              adminUserRoles: {
+                create: {
+                  id: generateUuidV7(),
+                  role: { connect: { name: 'USER_ADMIN' } },
+                },
+              },
+            }
+          : {}),
       },
     });
 

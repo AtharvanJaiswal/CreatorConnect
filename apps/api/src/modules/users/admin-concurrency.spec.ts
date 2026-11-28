@@ -24,6 +24,9 @@ describe('Concurrency-Safe Last Active Admin Invariant', () => {
 
   it('prohibits concurrent admin deactivations from eliminating the last active admin', async () => {
     const adminRole = await prisma.role.findUniqueOrThrow({ where: { name: RoleType.ADMIN } });
+    const userAdminRole = await prisma.adminRole.findUniqueOrThrow({
+      where: { name: 'USER_ADMIN' },
+    });
 
     // 1. Suspend ALL active admins from previous test runs.
     //    With singleFork: true in vitest.config.ts, spec files run serially in one process,
@@ -56,6 +59,13 @@ describe('Concurrency-Safe Last Active Admin Invariant', () => {
       data: [
         { id: generateUuidV7(), userId: adminAId, roleId: adminRole.id },
         { id: generateUuidV7(), userId: adminBId, roleId: adminRole.id },
+      ],
+    });
+
+    await prisma.adminUserRole.createMany({
+      data: [
+        { id: generateUuidV7(), userId: adminAId, roleId: userAdminRole.id },
+        { id: generateUuidV7(), userId: adminBId, roleId: userAdminRole.id },
       ],
     });
 

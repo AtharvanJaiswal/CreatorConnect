@@ -21,6 +21,7 @@ import {
 } from '@creatorconnect/contracts';
 import { ProblemDetailsSchema } from '@creatorconnect/validation';
 import { Type, type Static } from '@sinclair/typebox';
+import { hasAnyAdminPermission } from '@creatorconnect/auth';
 import { supportService, SupportService } from './support.service.js';
 
 const TicketIdParamSchema = Type.Object({
@@ -142,7 +143,11 @@ export const supportRoutes: FastifyPluginAsync<SupportRoutesOptions> = async (fa
       },
     },
     async (request, reply) => {
-      const isStaff = (request.user.roles || []).includes('ADMIN');
+      const isStaff = hasAnyAdminPermission(request.user, [
+        'support.manage',
+        'support.reply',
+        'support.notes',
+      ]);
       const messages = await service.listMessages(
         request.user.id,
         request.params.id,
@@ -214,7 +219,7 @@ export const supportRoutes: FastifyPluginAsync<SupportRoutesOptions> = async (fa
       },
     },
     async (request, reply) => {
-      const isStaff = (request.user.roles || []).includes('ADMIN');
+      const isStaff = hasAnyAdminPermission(request.user, ['support.manage']);
       const ticket = await service.resolveTicket(request.user.id, request.params.id, isStaff);
       return reply.status(200).send(ticket);
     },
@@ -241,21 +246,21 @@ export const supportRoutes: FastifyPluginAsync<SupportRoutesOptions> = async (fa
       },
     },
     async (request, reply) => {
-      const isStaff = (request.user.roles || []).includes('ADMIN');
+      const isStaff = hasAnyAdminPermission(request.user, ['support.manage']);
       const ticket = await service.reopenTicket(request.user.id, request.params.id, isStaff);
       return reply.status(200).send(ticket);
     },
   );
 
   // ==============================================================================
-  // Staff Routes (Requires ADMIN Role)
+  // Staff Routes (Granular support.* Administrative Permissions)
   // ==============================================================================
 
   // GET /api/v1/staff/support/tickets - Staff Queue
   fastify.get<{ Querystring: StaffSupportTicketQuery }>(
     '/api/v1/staff/support/tickets',
     {
-      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN'])],
+      preHandler: [fastify.authenticate, fastify.requireAdminPermission('support.manage')],
       schema: {
         description: 'Staff queue for managing and filtering all platform support inquiries',
         tags: ['Staff Support'],
@@ -279,7 +284,7 @@ export const supportRoutes: FastifyPluginAsync<SupportRoutesOptions> = async (fa
   fastify.get<{ Params: TicketIdParam }>(
     '/api/v1/staff/support/tickets/:id',
     {
-      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN'])],
+      preHandler: [fastify.authenticate, fastify.requireAdminPermission('support.manage')],
       schema: {
         description: 'Staff-authorized view of a ticket including internal context',
         tags: ['Staff Support'],
@@ -304,7 +309,7 @@ export const supportRoutes: FastifyPluginAsync<SupportRoutesOptions> = async (fa
   fastify.post<{ Params: TicketIdParam; Body: AssignSupportTicketInput }>(
     '/api/v1/staff/support/tickets/:id/assign',
     {
-      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN'])],
+      preHandler: [fastify.authenticate, fastify.requireAdminPermission('support.manage')],
       schema: {
         description: 'Assigns or reassigns a support ticket to a designated staff member',
         tags: ['Staff Support'],
@@ -336,7 +341,7 @@ export const supportRoutes: FastifyPluginAsync<SupportRoutesOptions> = async (fa
   fastify.post<{ Params: TicketIdParam; Body: CreateSupportMessageInput }>(
     '/api/v1/staff/support/tickets/:id/messages',
     {
-      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN'])],
+      preHandler: [fastify.authenticate, fastify.requireAdminPermission('support.reply')],
       schema: {
         description: 'Sends an official staff response message to the customer',
         tags: ['Staff Support'],
@@ -368,7 +373,7 @@ export const supportRoutes: FastifyPluginAsync<SupportRoutesOptions> = async (fa
   fastify.post<{ Params: TicketIdParam; Body: CreateSupportInternalNoteInput }>(
     '/api/v1/staff/support/tickets/:id/notes',
     {
-      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN'])],
+      preHandler: [fastify.authenticate, fastify.requireAdminPermission('support.notes')],
       schema: {
         description: 'Creates a private internal note visible exclusively to staff',
         tags: ['Staff Support'],
@@ -400,7 +405,7 @@ export const supportRoutes: FastifyPluginAsync<SupportRoutesOptions> = async (fa
   fastify.post<{ Params: TicketIdParam; Body: UpdateSupportTicketStatusInput }>(
     '/api/v1/staff/support/tickets/:id/status',
     {
-      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN'])],
+      preHandler: [fastify.authenticate, fastify.requireAdminPermission('support.manage')],
       schema: {
         description: 'Updates ticket status with state machine transition validation',
         tags: ['Staff Support'],

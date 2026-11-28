@@ -144,16 +144,17 @@ export class DataErasureOrchestrator {
         }
         supabaseAuthId = userRow.supabase_auth_id;
 
-        // 2. TOCTOU Legal Hold Check under lock
-        const activeHolds = await this.holdService.getActiveHolds(userId);
-        if (activeHolds.length > 0) {
-          const firstHold = activeHolds[0];
-          const reason = `Erasure blocked at execution time: ${activeHolds.length} active legal hold(s) present (${firstHold ? firstHold.reason : 'ACTIVE_HOLD'}).`;
-          await this.privacyRepo.updateRequest(tx, requestId, {
-            status: 'REJECTED_LEGAL_HOLD',
-            rejectionReason: reason,
-          });
-          throw new LegalHoldActiveError(reason);
+        // 2. TOCTOU Legal Hold Check under parent User row lock within the active transaction
+        try {
+          await this.holdService.assertNoActiveHolds(tx, userId);
+        } catch (err) {
+          if (err instanceof LegalHoldActiveError) {
+            await this.privacyRepo.updateRequest(tx, requestId, {
+              status: 'REJECTED_LEGAL_HOLD',
+              rejectionReason: err.message,
+            });
+          }
+          throw err;
         }
 
         // 3. In-Place Database Pseudonymization (if not already pseudonymized)

@@ -8,21 +8,16 @@ import { AdminButton } from '../../../components/admin/ui/AdminButton';
 import { AdminInput } from '../../../components/admin/ui/AdminInput';
 import { AdminModal } from '../../../components/admin/ui/AdminModal';
 import { PermissionGate } from '../../../components/admin/ui/PermissionGate';
+import { AdminErrorBanner } from '../../../components/admin/ui/AdminErrorBanner';
 import { apiClient } from '../../../lib/api-client';
-
-interface AdminRoleItem {
-  id: string;
-  name: string;
-  description: string | null | undefined;
-  isSystem: boolean;
-  permissions: string[];
-  userCount?: number | undefined;
-}
+import { parseAdminApiError, type AdminErrorState } from '../../../lib/admin-error';
+import type { AdminRoleResponse, AdminPermissionResponse } from '@creatorconnect/contracts';
 
 export default function AdminRolesPage() {
-  const [roles, setRoles] = useState<AdminRoleItem[]>([]);
-  const [allPermissions, setAllPermissions] = useState<any[]>([]);
+  const [roles, setRoles] = useState<AdminRoleResponse[]>([]);
+  const [allPermissions, setAllPermissions] = useState<AdminPermissionResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<AdminErrorState | null>(null);
 
   // Create Role Modal
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -34,64 +29,18 @@ export default function AdminRolesPage() {
 
   const fetchRolesData = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
-      const [rolesData, permsData]: any = await Promise.all([
-        apiClient.get('/api/v1/admin/roles'),
-        apiClient.get('/api/v1/admin/permissions'),
+      const [rolesData, permsData] = await Promise.all([
+        apiClient.get<AdminRoleResponse[]>('/api/v1/admin/roles'),
+        apiClient.get<AdminPermissionResponse[]>('/api/v1/admin/permissions'),
       ]);
       setRoles(Array.isArray(rolesData) ? rolesData : []);
       setAllPermissions(Array.isArray(permsData) ? permsData : []);
-    } catch {
-      // Fallback
-      setRoles([
-        {
-          id: 'role-1',
-          name: 'SUPER_ADMIN',
-          description: 'Universal administrative super-access across all subsystems',
-          isSystem: true,
-          permissions: ['*'],
-          userCount: 1,
-        },
-        {
-          id: 'role-2',
-          name: 'FINANCE_ADMIN',
-          description: 'Payment reconciliation, refund dual-approvals, and fee management',
-          isSystem: true,
-          permissions: ['payments.read', 'payments.refund.approve', 'payments.reconcile'],
-          userCount: 2,
-        },
-        {
-          id: 'role-3',
-          name: 'TRUST_SAFETY_ADMIN',
-          description: 'Abuse report triage, user suspensions, and review moderation',
-          isSystem: true,
-          permissions: ['reports.review', 'reports.resolve', 'reviews.moderate', 'users.suspend'],
-          userCount: 3,
-        },
-      ]);
-      setAllPermissions([
-        { id: 'p1', name: 'users.read', module: 'Users', description: 'Read user directory' },
-        { id: 'p2', name: 'users.suspend', module: 'Users', description: 'Suspend user accounts' },
-        { id: 'p3', name: 'payments.read', module: 'Finance', description: 'Inspect ledger' },
-        {
-          id: 'p4',
-          name: 'payments.refund.approve',
-          module: 'Finance',
-          description: 'Approve refunds',
-        },
-        {
-          id: 'p5',
-          name: 'reports.review',
-          module: 'Moderation',
-          description: 'Review abuse reports',
-        },
-        {
-          id: 'p6',
-          name: 'settings.manage',
-          module: 'Config',
-          description: 'Change platform settings',
-        },
-      ]);
+    } catch (err) {
+      setRoles([]);
+      setAllPermissions([]);
+      setFetchError(parseAdminApiError(err, 'Failed to load RBAC roles and permissions matrix.'));
     } finally {
       setIsLoading(false);
     }
@@ -137,7 +86,7 @@ export default function AdminRolesPage() {
     }
   };
 
-  const columns: Column<AdminRoleItem>[] = [
+  const columns: Column<AdminRoleResponse>[] = [
     {
       key: 'name',
       header: 'Role Name & Scope',
@@ -222,6 +171,7 @@ export default function AdminRolesPage() {
       </div>
 
       {/* Table */}
+      {fetchError && <AdminErrorBanner error={fetchError} onRetry={fetchRolesData} />}
       <AdminTable columns={columns} data={roles} isLoading={isLoading} />
 
       {/* Create Modal */}

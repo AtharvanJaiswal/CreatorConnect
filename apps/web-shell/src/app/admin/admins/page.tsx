@@ -9,19 +9,26 @@ import { AdminButton } from '../../../components/admin/ui/AdminButton';
 import { AdminInput, AdminSelect } from '../../../components/admin/ui/AdminInput';
 import { AdminModal } from '../../../components/admin/ui/AdminModal';
 import { PermissionGate } from '../../../components/admin/ui/PermissionGate';
+import { AdminErrorBanner } from '../../../components/admin/ui/AdminErrorBanner';
 import { apiClient } from '../../../lib/api-client';
+import { parseAdminApiError, type AdminErrorState } from '../../../lib/admin-error';
+import type { AdminUserRoleResponse, AdminRoleResponse } from '@creatorconnect/contracts';
 
-interface AdminStaffUser {
-  userId: string;
-  email: string;
-  roles: string[];
-  permissions: string[];
-  assignedAt: string;
-}
+const DEFAULT_ROLE_OPTIONS = [
+  { value: 'SUPER_ADMIN', label: 'SUPER_ADMIN (Universal Authority)' },
+  { value: 'PLATFORM_ADMIN', label: 'PLATFORM_ADMIN (Marketplace & Disputes)' },
+  { value: 'FINANCE_ADMIN', label: 'FINANCE_ADMIN (Disbursements & Ledgers)' },
+  { value: 'TRUST_SAFETY_ADMIN', label: 'TRUST_SAFETY_ADMIN (Reports & Suspensions)' },
+  { value: 'CONTENT_ADMIN', label: 'CONTENT_ADMIN (Reviews & Moderation)' },
+  { value: 'USER_ADMIN', label: 'USER_ADMIN (Account Directory & Privacy)' },
+  { value: 'SUPPORT_ADMIN', label: 'SUPPORT_ADMIN (Customer Inquiries)' },
+];
 
 export default function AdminStaffPage() {
-  const [admins, setAdmins] = useState<AdminStaffUser[]>([]);
+  const [admins, setAdmins] = useState<AdminUserRoleResponse[]>([]);
+  const [roleOptions, setRoleOptions] = useState(DEFAULT_ROLE_OPTIONS);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<AdminErrorState | null>(null);
 
   // Assign Role Modal
   const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -31,39 +38,29 @@ export default function AdminStaffPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Revoke Role Modal
-  const [revokingUser, setRevokingUser] = useState<AdminStaffUser | null>(null);
+  const [revokingUser, setRevokingUser] = useState<AdminUserRoleResponse | null>(null);
   const [revokingRole, setRevokingRole] = useState<string>('');
 
   const fetchAdmins = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
-      const data: any = await apiClient.get('/api/v1/admin/admins');
-      setAdmins(Array.isArray(data) ? data : []);
-    } catch {
-      // Fallback staff directory
-      setAdmins([
-        {
-          userId: '0192a0e2-1234-7000-8000-000000000099',
-          email: 'superadmin@creatorconnect.in',
-          roles: ['SUPER_ADMIN'],
-          permissions: ['*'],
-          assignedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 180).toISOString(),
-        },
-        {
-          userId: '0192a0e2-1234-7000-8000-000000000098',
-          email: 'finance.lead@creatorconnect.in',
-          roles: ['FINANCE_ADMIN'],
-          permissions: ['payments.read', 'payments.refund.approve', 'payments.reconcile'],
-          assignedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 90).toISOString(),
-        },
-        {
-          userId: '0192a0e2-1234-7000-8000-000000000097',
-          email: 'safety.lead@creatorconnect.in',
-          roles: ['TRUST_SAFETY_ADMIN'],
-          permissions: ['reports.review', 'reports.resolve', 'reviews.moderate', 'users.suspend'],
-          assignedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 60).toISOString(),
-        },
+      const [adminsData, rolesData] = await Promise.all([
+        apiClient.get<AdminUserRoleResponse[]>('/api/v1/admin/admins'),
+        apiClient.get<AdminRoleResponse[]>('/api/v1/admin/roles').catch(() => null),
       ]);
+      setAdmins(Array.isArray(adminsData) ? adminsData : []);
+      if (Array.isArray(rolesData) && rolesData.length > 0) {
+        setRoleOptions(
+          rolesData.map((r) => ({
+            value: r.name,
+            label: `${r.name}${r.description ? ` (${r.description})` : ''}`,
+          })),
+        );
+      }
+    } catch (err) {
+      setAdmins([]);
+      setFetchError(parseAdminApiError(err, 'Failed to retrieve administrative staff roster.'));
     } finally {
       setIsLoading(false);
     }
@@ -119,7 +116,7 @@ export default function AdminStaffPage() {
     }
   };
 
-  const columns: Column<AdminStaffUser>[] = [
+  const columns: Column<AdminUserRoleResponse>[] = [
     {
       key: 'email',
       header: 'Staff Member & Identity',
@@ -239,6 +236,7 @@ export default function AdminStaffPage() {
       </div>
 
       {/* Lockout Guard Banner */}
+      {fetchError && <AdminErrorBanner error={fetchError} onRetry={fetchAdmins} />}
       <div className="p-4 rounded-2xl bg-[#FFF8D6] border border-[#FCE192] flex items-center gap-3 text-xs text-[#7A5B00] font-medium">
         <ShieldCheck className="w-5 h-5 shrink-0" />
         <span>
@@ -292,15 +290,7 @@ export default function AdminStaffPage() {
             label="Role to Assign"
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value)}
-            options={[
-              { value: 'SUPER_ADMIN', label: 'SUPER_ADMIN (Universal Authority)' },
-              { value: 'FINANCE_ADMIN', label: 'FINANCE_ADMIN (Disbursements & Ledgers)' },
-              { value: 'TRUST_SAFETY_ADMIN', label: 'TRUST_SAFETY_ADMIN (Reports & Suspensions)' },
-              { value: 'USER_ADMIN', label: 'USER_ADMIN (Account Directory)' },
-              { value: 'CONTENT_MODERATOR', label: 'CONTENT_MODERATOR (Reviews & Showreels)' },
-              { value: 'SUPPORT_ADMIN', label: 'SUPPORT_ADMIN (Customer Inquiries)' },
-              { value: 'ANALYTICS_VIEWER', label: 'ANALYTICS_VIEWER (Read-Only Metrics)' },
-            ]}
+            options={roleOptions}
           />
         </div>
       </AdminModal>

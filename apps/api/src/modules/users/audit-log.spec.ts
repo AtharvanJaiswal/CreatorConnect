@@ -34,6 +34,9 @@ describe('Audit Log previousStatus Accuracy (Fix M3)', () => {
     adminEmail = `audit_admin_${Date.now()}@test.com`;
 
     const adminRole = await prisma.role.findUniqueOrThrow({ where: { name: RoleType.ADMIN } });
+    const userAdminRole = await prisma.adminRole.findUniqueOrThrow({
+      where: { name: 'USER_ADMIN' },
+    });
 
     await prisma.user.create({
       data: {
@@ -45,6 +48,12 @@ describe('Audit Log previousStatus Accuracy (Fix M3)', () => {
           create: {
             id: generateUuidV7(),
             roleId: adminRole.id,
+          },
+        },
+        adminUserRoles: {
+          create: {
+            id: generateUuidV7(),
+            roleId: userAdminRole.id,
           },
         },
       },

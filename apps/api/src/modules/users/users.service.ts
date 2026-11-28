@@ -5,6 +5,7 @@ import { IUserRepository, userRepository } from '../../repositories/user.reposit
 import { redisCache, RedisCacheService } from '../../services/redis-cache.js';
 import { IdentityNotSyncedError } from '../../errors/app-error.js';
 import { loggerConfig } from '../../plugins/logger.js';
+import { toUserResponse } from './user-response.mapper.js';
 
 /**
  * Module-level structured logger for UsersService.
@@ -27,18 +28,7 @@ export class UsersService {
       throw new IdentityNotSyncedError('User profile not found.');
     }
 
-    return {
-      id: user.id,
-      supabaseAuthId: user.supabaseAuthId,
-      email: user.email,
-      firstName: user.firstName ?? null,
-      lastName: user.lastName ?? null,
-      avatarUrl: null,
-      status: user.status,
-      roles: user.roles,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    return toUserResponse(user);
   }
 
   public async updateProfile(userId: string, input: UpdateProfileRequest): Promise<UserResponse> {
@@ -52,18 +42,7 @@ export class UsersService {
     // Invalidate cached identity to keep profile up to date
     await this.cache.invalidateUser(userId, updated.supabaseAuthId);
 
-    return {
-      id: updated.id,
-      supabaseAuthId: updated.supabaseAuthId,
-      email: updated.email,
-      firstName: updated.firstName ?? null,
-      lastName: updated.lastName ?? null,
-      avatarUrl: input.avatarUrl || null,
-      status: updated.status,
-      roles: updated.roles,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    return toUserResponse(updated, input.avatarUrl || null);
   }
 
   /**
@@ -101,18 +80,7 @@ export class UsersService {
       );
     }
 
-    return {
-      id: updated.id,
-      supabaseAuthId: updated.supabaseAuthId,
-      email: updated.email,
-      firstName: updated.firstName ?? null,
-      lastName: updated.lastName ?? null,
-      avatarUrl: null,
-      status: updated.status,
-      roles: updated.roles,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    return toUserResponse(updated);
   }
 }
 

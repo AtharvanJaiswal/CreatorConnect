@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { getPrismaClient } from '@creatorconnect/database';
 import { generateUuidV7 } from '@creatorconnect/utils';
@@ -700,5 +700,9 @@ describe('Phase 11: Saved Creators, Shortlists & Hiring Invitations', () => {
       });
       expect(outbox).not.toBeNull();
     });
+  });
+
+  afterAll(async () => {
+    if (app) await app.close();
   });
 });

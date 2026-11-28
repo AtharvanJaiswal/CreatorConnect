@@ -135,7 +135,10 @@ describe('Phase 6 Increment 5: Final Hardening, Financial Reconciliation & Relea
       },
     });
 
-    // 3. Admin User (ADMIN)
+    // 3. Admin User (ADMIN + PLATFORM_ADMIN)
+    const platformAdminRole = await prisma.adminRole.findUniqueOrThrow({
+      where: { name: 'PLATFORM_ADMIN' },
+    });
     adminUserId = generateUuidV7();
     adminToken = await createTestJwt({
       sub: `sub_e2e_admin_${generateUuidV7().replace(/-/g, '')}`,
@@ -160,6 +163,12 @@ describe('Phase 6 Increment 5: Final Hardening, Financial Reconciliation & Relea
                 create: { id: generateUuidV7(), name: 'ADMIN' },
               },
             },
+          },
+        },
+        adminUserRoles: {
+          create: {
+            id: generateUuidV7(),
+            roleId: platformAdminRole.id,
           },
         },
       },

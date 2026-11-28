@@ -15,9 +15,13 @@ export class CommunityService {
     return await this.repo.listPosts(options);
   }
 
-  async getPostById(id: string, currentUserId?: string, userRoles: string[] = []) {
-    const isAdmin = userRoles.includes('ADMIN');
-    return await this.repo.getPostById(id, currentUserId, isAdmin);
+  async getPostById(
+    id: string,
+    currentUserId?: string,
+    _userRoles: string[] = [],
+    canViewHidden = false,
+  ) {
+    return await this.repo.getPostById(id, currentUserId, canViewHidden);
   }
 
   async createPost(
@@ -112,10 +116,11 @@ export class CommunityService {
   async moderatePost(
     postId: string,
     moderatorId: string,
-    userRoles: string[],
+    _userRoles: string[],
     data: { action: 'HIDE' | 'UNHIDE' | 'DELETE'; reason: string },
+    isAuthorizedModerator = false,
   ) {
-    if (!userRoles.includes('ADMIN')) {
+    if (!isAuthorizedModerator) {
       throw new CommunityModerationUnauthorizedError();
     }
     return await this.repo.moderatePost(postId, moderatorId, data.action, data.reason);

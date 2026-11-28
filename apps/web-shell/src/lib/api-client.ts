@@ -48,8 +48,18 @@ class ApiClient {
   private tokenGetter: (() => string | null) | null = null;
 
   constructor(baseUrl?: string) {
-    this.baseUrl =
-      baseUrl || (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_URL || '' : '');
+    if (baseUrl !== undefined) {
+      this.baseUrl = baseUrl;
+    } else if (typeof window !== 'undefined') {
+      // In browser contexts, use relative same-origin paths so Next.js rewrites
+      // proxy /api/* cleanly without violating CSP connect-src 'self'.
+      this.baseUrl = '';
+    } else {
+      this.baseUrl =
+        typeof process !== 'undefined'
+          ? process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || ''
+          : '';
+    }
   }
 
   public setTokenGetter(getter: () => string | null): void {
@@ -65,8 +75,10 @@ class ApiClient {
     }
     if (typeof window !== 'undefined') {
       const testToken =
-        (window as any).__TEST_ACCESS_TOKEN__ ||
-        localStorage.getItem('creatorconnect_test_access_token');
+        (window as { __TEST_ACCESS_TOKEN__?: string }).__TEST_ACCESS_TOKEN__ ||
+        (typeof localStorage !== 'undefined'
+          ? localStorage.getItem('creatorconnect_test_access_token')
+          : null);
       if (testToken) return testToken;
     }
     return null;
@@ -147,7 +159,11 @@ class ApiClient {
 
         try {
           const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
+          if (
+            contentType &&
+            (contentType.includes('application/json') ||
+              contentType.includes('application/problem+json'))
+          ) {
             problem = await response.json();
             errorMessage = problem?.detail || problem?.title || errorMessage;
           } else {

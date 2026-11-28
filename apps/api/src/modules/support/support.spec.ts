@@ -98,6 +98,12 @@ describe('Phase 3B: Support Ticketing, Persistence, API & Authorization', () => 
             role: { connect: { name: 'ADMIN' } },
           },
         },
+        adminUserRoles: {
+          create: {
+            id: generateUuidV7(),
+            role: { connect: { name: 'SUPPORT_ADMIN' } },
+          },
+        },
       },
     });
   });

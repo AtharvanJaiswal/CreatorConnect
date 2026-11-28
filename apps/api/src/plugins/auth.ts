@@ -1,8 +1,9 @@
 import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import fp from 'fastify-plugin';
-import type { RoleType } from '@creatorconnect/contracts';
+import type { RoleType, AdminPermission } from '@creatorconnect/contracts';
 import {
   defineAbilitiesFor,
+  hasAnyAdminPermission,
   type AppAbility,
   type UserIdentity,
   defaultJwtVerifier,
@@ -23,6 +24,9 @@ declare module 'fastify' {
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requireRole: (
       allowedRoles: RoleType[],
+    ) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    requireAdminPermission: (
+      requiredPermission: AdminPermission | readonly AdminPermission[],
     ) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
   interface FastifyRequest {
@@ -80,6 +84,10 @@ const authPluginAsync: FastifyPluginAsync<AuthPluginOptions> = async (fastify, o
 
     // Status is authoritatively ACTIVE in PostgreSQL. Now load user metadata and roles.
     let user = await cache.getCachedUserBySub(tokenPayload.sub);
+    if (user && user.roles.includes('ADMIN') && !Array.isArray(user.adminPermissions)) {
+      // Stale cached ADMIN record lacking authoritative adminPermissions array: force DB refresh
+      user = null;
+    }
     if (!user) {
       user = await userRepo.findBySub(tokenPayload.sub);
       if (user) {
@@ -113,8 +121,39 @@ const authPluginAsync: FastifyPluginAsync<AuthPluginOptions> = async (fastify, o
     };
   };
 
+  /**
+   * Pre-handler hook enforcing fine-grained Administrative Permission Control.
+   * Deny-by-default: Requires user.roles to contain 'ADMIN' and user.adminPermissions to contain
+   * at least one required permission (or explicit SUPER_ADMIN / '*').
+   */
+  const requireAdminPermission = (
+    requiredPermission: AdminPermission | readonly AdminPermission[],
+  ) => {
+    const requiredList = Array.isArray(requiredPermission)
+      ? requiredPermission
+      : [requiredPermission];
+
+    return async (request: FastifyRequest, _reply: FastifyReply) => {
+      if (!request.user) {
+        throw new AuthInvalidTokenError('User identity context missing.');
+      }
+
+      const isAdmin = request.user.roles.includes('ADMIN');
+      if (!isAdmin) {
+        throw new AuthInsufficientRoleError('Access requires platform administrator role.');
+      }
+
+      if (!hasAnyAdminPermission(request.user, requiredList)) {
+        throw new AuthInsufficientRoleError(
+          `Access requires administrative permission: ${requiredList.join(' | ')}`,
+        );
+      }
+    };
+  };
+
   fastify.decorate('authenticate', authenticate);
   fastify.decorate('requireRole', requireRole);
+  fastify.decorate('requireAdminPermission', requireAdminPermission);
 };
 
 export const authPlugin = fp(authPluginAsync, {

@@ -19,6 +19,7 @@ import type {
 } from '@creatorconnect/contracts';
 import { profilesRepository, ProfilesRepository } from './profiles.repository.js';
 import { mediaService, MediaService } from '../media/media.service.js';
+import { sanitizeAuditMetadata } from '../admin/audit/audit-sanitizer.js';
 import {
   NotFoundError,
   ForbiddenError,
@@ -476,7 +477,7 @@ export class ProfilesService {
       action: l.action,
       entity: l.entity,
       entityId: l.entityId,
-      metadata: l.metadata as any,
+      metadata: sanitizeAuditMetadata(l.metadata),
       createdAt: l.createdAt.toISOString(),
     }));
   }

@@ -1,17 +1,26 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../../providers/auth-provider';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
+import { hasAdminConsoleAccess, type AdminUserLike } from '../../lib/admin-permissions';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import '../../styles/admin.css';
 
 export default function AdminRootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, isLoading } = useAuth();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
+  const { user, isLoading, authError } = useAuth() as ReturnType<typeof useAuth> & {
+    authError?: string | null;
+  };
 
   const isLoginPage = pathname === '/admin/login';
 
@@ -32,11 +41,11 @@ export default function AdminRootLayout({ children }: { children: React.ReactNod
     );
   }
 
-  const userRoles = (user as any)?.roles || [];
-  const adminRoles = (user as any)?.adminRoles || [];
-  const adminPermissions = (user as any)?.adminPermissions || [];
-  const isStaff =
-    userRoles.includes('ADMIN') || adminRoles.length > 0 || adminPermissions.length > 0;
+  const adminUser = user as AdminUserLike | null | undefined;
+  const userRoles = Array.isArray(adminUser?.roles) ? adminUser.roles : [];
+  const isBareAdminWithoutPermissions =
+    Boolean(user) && userRoles.includes('ADMIN') && !hasAdminConsoleAccess(adminUser);
+  const isStaff = hasAdminConsoleAccess(adminUser);
 
   if (!user || !isStaff) {
     return (
@@ -49,8 +58,11 @@ export default function AdminRootLayout({ children }: { children: React.ReactNod
             Restricted Admin Console
           </h2>
           <p className="text-sm text-[#6F675E] mb-6 leading-relaxed">
-            Administrative privileges required. Please sign in with an authorized staff account or
-            contact your platform super-administrator.
+            {authError
+              ? authError
+              : isBareAdminWithoutPermissions
+                ? 'Your account does not hold any assigned administrative roles or permissions. Zero-trust access denied.'
+                : 'Administrative privileges required. Please sign in with an authorized staff account or contact your platform super-administrator.'}
           </p>
           <div className="flex flex-col gap-3">
             <Link
@@ -67,10 +79,18 @@ export default function AdminRootLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-[#FAF6EF] flex flex-row font-sans-body text-[#14110F] selection:bg-[#FFD64A] selection:text-[#14110F]">
-      <AdminSidebar />
+      <AdminSidebar
+        mobileOpen={mobileNavOpen}
+        onMobileClose={() => setMobileNavOpen(false)}
+        restoreFocusRef={mobileMenuButtonRef}
+      />
       <div className="flex-1 flex flex-col min-w-0">
-        <AdminHeader />
-        <main className="flex-1 p-6 sm:p-8 overflow-y-auto">{children}</main>
+        <AdminHeader
+          isMobileMenuOpen={mobileNavOpen}
+          onOpenMobileMenu={() => setMobileNavOpen(true)}
+          mobileMenuButtonRef={mobileMenuButtonRef}
+        />
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

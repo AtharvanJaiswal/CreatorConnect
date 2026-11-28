@@ -7,23 +7,21 @@ import { AdminBadge } from '../../../components/admin/ui/AdminBadge';
 import { AdminButton } from '../../../components/admin/ui/AdminButton';
 import { AdminModal } from '../../../components/admin/ui/AdminModal';
 import { PermissionGate } from '../../../components/admin/ui/PermissionGate';
+import { AdminErrorBanner } from '../../../components/admin/ui/AdminErrorBanner';
 import { apiClient } from '../../../lib/api-client';
-
-interface PlatformSettingItem {
-  id: string;
-  key: string;
-  value: any;
-  version: number;
-  description?: string | null | undefined;
-  updatedAt: string;
-}
+import { parseAdminApiError, type AdminErrorState } from '../../../lib/admin-error';
+import type {
+  PlatformSettingResponse,
+  PlatformSettingAuditResponse,
+} from '@creatorconnect/contracts';
 
 export default function AdminConfigPage() {
-  const [settings, setSettings] = useState<PlatformSettingItem[]>([]);
+  const [settings, setSettings] = useState<PlatformSettingResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<AdminErrorState | null>(null);
 
   // Edit Modal State
-  const [editingSetting, setEditingSetting] = useState<PlatformSettingItem | null>(null);
+  const [editingSetting, setEditingSetting] = useState<PlatformSettingResponse | null>(null);
   const [editValueStr, setEditValueStr] = useState('');
   const [editReason, setEditReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,43 +29,21 @@ export default function AdminConfigPage() {
 
   // History State
   const [historyKey, setHistoryKey] = useState<string | null>(null);
-  const [historyList, setHistoryList] = useState<any[]>([]);
+  const [historyList, setHistoryList] = useState<PlatformSettingAuditResponse[]>([]);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   const fetchSettings = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
-      const data: any = await apiClient.get('/api/v1/admin/settings');
+      const data = await apiClient.get<PlatformSettingResponse[]>('/api/v1/admin/settings');
       setSettings(Array.isArray(data) ? data : []);
-    } catch {
-      // Fallback settings
-      setSettings([
-        {
-          id: 'set-01',
-          key: 'platform.fee.percent',
-          value: 10,
-          version: 3,
-          description: 'Standard platform take-rate deducted from milestone escrows upon release',
-          updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString(),
-        },
-        {
-          id: 'set-02',
-          key: 'feature.escrow.auto_release_days',
-          value: 14,
-          version: 2,
-          description:
-            'Days following deliverable submission before milestone funds auto-release if no review',
-          updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
-        },
-        {
-          id: 'set-03',
-          key: 'referral.commission.basis_points',
-          value: 200,
-          version: 1,
-          description: 'Affiliate commission (200 bps = 2.0%) paid on referred client spend',
-          updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 60).toISOString(),
-        },
-      ]);
+    } catch (err) {
+      setSettings([]);
+      setFetchError(
+        parseAdminApiError(err, 'Failed to retrieve platform configuration parameters.'),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +53,7 @@ export default function AdminConfigPage() {
     fetchSettings();
   }, [fetchSettings]);
 
-  const handleOpenEdit = (setting: PlatformSettingItem) => {
+  const handleOpenEdit = (setting: PlatformSettingResponse) => {
     setEditingSetting(setting);
     setEditValueStr(JSON.stringify(setting.value));
     setEditReason('');
@@ -87,11 +63,15 @@ export default function AdminConfigPage() {
   const handleOpenHistory = async (key: string) => {
     setHistoryKey(key);
     setIsLoadingHistory(true);
+    setHistoryError(null);
     try {
-      const data: any = await apiClient.get(`/api/v1/admin/settings/${key}/history`);
+      const data = await apiClient.get<PlatformSettingAuditResponse[]>(
+        `/api/v1/admin/settings/${key}/history`,
+      );
       setHistoryList(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (err) {
       setHistoryList([]);
+      setHistoryError(parseAdminApiError(err, 'Failed to load setting version history.').detail);
     } finally {
       setIsLoadingHistory(false);
     }
@@ -99,8 +79,8 @@ export default function AdminConfigPage() {
 
   const handleSaveSetting = async () => {
     if (!editingSetting) return;
-    if (!editReason.trim()) {
-      setErrorMsg('Mandatory audit justification is required.');
+    if (editReason.trim().length < 3) {
+      setErrorMsg('Mandatory audit justification (at least 3 characters) is required.');
       return;
     }
 
@@ -122,28 +102,29 @@ export default function AdminConfigPage() {
       });
 
       setEditingSetting(null);
-      fetchSettings();
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to update setting.');
+      await fetchSettings();
+    } catch (err: unknown) {
+      setErrorMsg(parseAdminApiError(err, 'Failed to update setting.').detail);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleRollback = async (key: string, targetVersion: number) => {
+    setHistoryError(null);
     try {
       await apiClient.post(`/api/v1/admin/settings/${key}/rollback`, {
         targetVersion,
         reason: `Rolled back to version ${targetVersion} via Admin Console`,
       });
       setHistoryKey(null);
-      fetchSettings();
-    } catch (err: any) {
-      alert(`Rollback failed: ${err.message}`);
+      await fetchSettings();
+    } catch (err: unknown) {
+      setHistoryError(parseAdminApiError(err, 'Rollback failed.').detail);
     }
   };
 
-  const columns: Column<PlatformSettingItem>[] = [
+  const columns: Column<PlatformSettingResponse>[] = [
     {
       key: 'key',
       header: 'Parameter Key & Purpose',
@@ -238,6 +219,7 @@ export default function AdminConfigPage() {
       </div>
 
       {/* Table */}
+      {fetchError && <AdminErrorBanner error={fetchError} onRetry={fetchSettings} />}
       <AdminTable columns={columns} data={settings} isLoading={isLoading} />
 
       {/* Update Modal */}
@@ -311,6 +293,11 @@ export default function AdminConfigPage() {
         }
       >
         <div className="space-y-3">
+          {historyError && (
+            <div className="p-3 bg-[#FBE9E7] text-[#D8483C] text-xs font-bold rounded-xl">
+              {historyError}
+            </div>
+          )}
           {isLoadingHistory ? (
             <div className="py-8 text-center text-xs text-[#6F675E]">Loading audit log...</div>
           ) : historyList.length === 0 ? (
@@ -329,7 +316,7 @@ export default function AdminConfigPage() {
                     <span className="text-[#6F675E]">Changed: {JSON.stringify(h.newValue)}</span>
                   </div>
                   <p className="text-[11px] text-[#A39A8F] mt-0.5">
-                    {h.changeReason || 'No reason provided'}
+                    {h.reason || 'No reason provided'}
                   </p>
                 </div>
                 <PermissionGate permission="settings.manage">

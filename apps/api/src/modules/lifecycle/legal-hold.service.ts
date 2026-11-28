@@ -44,6 +44,7 @@ export interface ReleaseHoldParams {
   holdId: string;
   releasedById: string;
   releaseNotes: string;
+  expectedUserId?: string;
 }
 
 /**
@@ -360,12 +361,12 @@ export class LegalHoldService {
    * Releases an active legal hold under parent-row locking.
    */
   public async releaseHold(params: ReleaseHoldParams): Promise<LegalHoldRecord> {
-    const { holdId, releasedById, releaseNotes } = params;
+    const { holdId, releasedById, releaseNotes, expectedUserId } = params;
 
     return await this.prisma.$transaction(async (tx) => {
       // Find the hold first to determine the target userId
       const existing = await this.holdRepo.getHoldById(tx, holdId);
-      if (!existing) {
+      if (!existing || (expectedUserId && existing.userId !== expectedUserId)) {
         throw new LegalHoldNotFoundError(`Legal hold with ID ${holdId} was not found.`);
       }
 

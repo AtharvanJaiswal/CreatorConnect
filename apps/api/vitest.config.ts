@@ -5,6 +5,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.spec.ts'],
+    setupFiles: ['./src/test/vitest.setup.ts'],
     fileParallelism: false,
     // Run all test files in a single Node.js fork to guarantee serial file execution and
     // shared PostgreSQL/Redis state isolation in both standalone and vitest workspace mode.

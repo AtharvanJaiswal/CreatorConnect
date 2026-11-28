@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Loader2, Inbox } from 'lucide-react';
+import { Inbox } from 'lucide-react';
 
 export interface Column<T> {
   key: string;
@@ -33,15 +33,24 @@ export function AdminTable<T extends Record<string, any>>({
   pagination,
 }: AdminTableProps<T>) {
   return (
-    <div className="w-full flex flex-col bg-white border border-[#E7E0D5] rounded-2xl overflow-hidden shadow-[0_4px_16px_rgba(20,17,15,0.02)]">
-      <div className="overflow-x-auto custom-scrollbar">
+    <div
+      className="w-full flex flex-col bg-white border border-[#E7E0D5] rounded-2xl overflow-hidden shadow-[0_4px_16px_rgba(20,17,15,0.02)]"
+      aria-busy={isLoading}
+    >
+      <div
+        role="region"
+        aria-label="Administrative records table"
+        tabIndex={0}
+        className="overflow-x-auto custom-scrollbar min-h-[440px]"
+      >
         <table className="w-full border-collapse text-left font-sans-body">
           <thead>
             <tr className="bg-[#FAF6EF] border-b border-[#E7E0D5]">
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className={`py-3.5 px-4 text-xs font-bold text-[#6F675E] uppercase tracking-wider ${
+                  scope="col"
+                  className={`py-3.5 px-4 text-xs font-bold text-[#6F675E] uppercase tracking-wider whitespace-nowrap ${
                     col.headerClassName || ''
                   }`}
                 >
@@ -52,19 +61,31 @@ export function AdminTable<T extends Record<string, any>>({
           </thead>
           <tbody className="divide-y divide-[#EFE9DF]">
             {isLoading ? (
-              <tr>
-                <td colSpan={columns.length} className="py-16 text-center text-[#6F675E]">
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <Loader2 className="w-6 h-6 animate-spin text-[#FFD64A]" />
-                    <span className="text-sm font-medium">Loading records...</span>
-                  </div>
-                </td>
-              </tr>
+              Array.from({ length: 8 }).map((_, skeletonIdx) => (
+                <tr
+                  key={`skeleton-${skeletonIdx}`}
+                  aria-hidden="true"
+                  data-testid="admin-table-skeleton-row"
+                  className="h-14"
+                >
+                  {columns.map((col) => (
+                    <td
+                      key={`${col.key}-${skeletonIdx}`}
+                      className={`py-3 px-4 ${col.className || ''}`}
+                    >
+                      <div className="h-4 w-3/4 rounded-md bg-[#EFE9DF] animate-pulse motion-reduce:animate-none" />
+                    </td>
+                  ))}
+                </tr>
+              ))
             ) : data.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="py-16 text-center text-[#6F675E]">
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <Inbox className="w-8 h-8 text-[#A39A8F]" />
+              <tr className="h-[392px]">
+                <td
+                  colSpan={columns.length}
+                  className="py-16 text-center text-[#6F675E] align-middle"
+                >
+                  <div className="flex flex-col items-center justify-center gap-2" role="status">
+                    <Inbox className="w-8 h-8 text-[#A39A8F]" aria-hidden="true" />
                     <span className="text-sm font-medium">{emptyMessage}</span>
                   </div>
                 </td>
@@ -74,7 +95,7 @@ export function AdminTable<T extends Record<string, any>>({
                 <tr
                   key={row.id || idx}
                   onClick={() => onRowClick && onRowClick(row)}
-                  className={`transition-colors ${
+                  className={`min-h-14 transition-colors ${
                     onRowClick ? 'cursor-pointer hover:bg-[#FDFBF7]' : 'hover:bg-[#FAF6EF]/50'
                   }`}
                 >

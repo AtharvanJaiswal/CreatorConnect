@@ -9,27 +9,20 @@ import { AdminButton } from '../../../components/admin/ui/AdminButton';
 import { AdminInput, AdminSelect } from '../../../components/admin/ui/AdminInput';
 import { AdminModal } from '../../../components/admin/ui/AdminModal';
 import { PermissionGate } from '../../../components/admin/ui/PermissionGate';
+import { AdminErrorBanner } from '../../../components/admin/ui/AdminErrorBanner';
 import { apiClient } from '../../../lib/api-client';
-
-interface AdminReviewItem {
-  id: string;
-  projectId: string;
-  authorId: string;
-  targetUserId: string;
-  rating: number;
-  comment: string;
-  status: string;
-  createdAt: string;
-}
+import { parseAdminApiError, type AdminErrorState } from '../../../lib/admin-error';
+import type { AdminReviewListItem, AdminReviewListResponse } from '@creatorconnect/contracts';
 
 export default function AdminReviewsPage() {
-  const [reviews, setReviews] = useState<AdminReviewItem[]>([]);
+  const [reviews, setReviews] = useState<AdminReviewListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<AdminErrorState | null>(null);
   const [search, setSearch] = useState('');
   const [ratingFilter, setRatingFilter] = useState('ALL');
 
   // Moderate Review Modal
-  const [selectedReview, setSelectedReview] = useState<AdminReviewItem | null>(null);
+  const [selectedReview, setSelectedReview] = useState<AdminReviewListItem | null>(null);
   const [modAction, setModAction] = useState<'FLAG' | 'HIDE' | 'REMOVE' | 'RESTORE'>('HIDE');
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,50 +30,31 @@ export default function AdminReviewsPage() {
 
   const fetchReviews = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
       const params: Record<string, any> = {};
-      if (search.trim()) params.search = search.trim();
       if (ratingFilter !== 'ALL') {
         params.minRating = parseInt(ratingFilter, 10);
         params.maxRating = parseInt(ratingFilter, 10);
       }
 
-      const data: any = await apiClient.get('/api/v1/admin/reviews', { params });
+      const data = await apiClient.get<AdminReviewListResponse>('/api/v1/admin/reviews', {
+        params,
+      });
       setReviews(data?.items || []);
-    } catch {
-      // Fallback records
-      setReviews([
-        {
-          id: 'rev-01',
-          projectId: 'proj-01',
-          authorId: 'user-brand-1',
-          targetUserId: 'user-creator-1',
-          rating: 5,
-          comment: 'Exceptional 4K color grade. Delivered ahead of Diwali festival schedule.',
-          status: 'VISIBLE',
-          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-        },
-        {
-          id: 'rev-02',
-          projectId: 'proj-02',
-          authorId: 'user-client-2',
-          targetUserId: 'user-talent-2',
-          rating: 1,
-          comment: 'Unprofessional communication and refused to respond to revision brief.',
-          status: 'FLAGGED',
-          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
-        },
-      ]);
+    } catch (err) {
+      setReviews([]);
+      setFetchError(parseAdminApiError(err, 'Failed to fetch platform reviews from backend API.'));
     } finally {
       setIsLoading(false);
     }
-  }, [search, ratingFilter]);
+  }, [ratingFilter]);
 
   useEffect(() => {
     fetchReviews();
   }, [fetchReviews]);
 
-  const handleOpenModeration = (review: AdminReviewItem) => {
+  const handleOpenModeration = (review: AdminReviewListItem) => {
     setSelectedReview(review);
     setModAction(review.status === 'HIDDEN' ? 'RESTORE' : 'HIDE');
     setReason('');
@@ -89,8 +63,8 @@ export default function AdminReviewsPage() {
 
   const handleExecuteModeration = async () => {
     if (!selectedReview) return;
-    if (!reason.trim()) {
-      setError('Please provide a mandatory audit justification.');
+    if (reason.trim().length < 5) {
+      setError('Please provide at least 5 characters of audit justification.');
       return;
     }
 
@@ -103,15 +77,27 @@ export default function AdminReviewsPage() {
         reason: reason.trim(),
       });
       setSelectedReview(null);
-      fetchReviews();
-    } catch (err: any) {
-      setError(err.message || 'Review moderation failed.');
+      await fetchReviews();
+    } catch (err: unknown) {
+      setError(parseAdminApiError(err, 'Review moderation failed.').detail);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const columns: Column<AdminReviewItem>[] = [
+  const filteredReviews = search.trim()
+    ? reviews.filter((r) => {
+        const q = search.trim().toLowerCase();
+        return (
+          r.feedback.toLowerCase().includes(q) ||
+          r.projectId.toLowerCase().includes(q) ||
+          r.reviewerEmail.toLowerCase().includes(q) ||
+          r.revieweeEmail.toLowerCase().includes(q)
+        );
+      })
+    : reviews;
+
+  const columns: Column<AdminReviewListItem>[] = [
     {
       key: 'rating',
       header: 'Score',
@@ -124,12 +110,12 @@ export default function AdminReviewsPage() {
     },
     {
       key: 'comment',
-      header: 'Public Review Comment',
+      header: 'Public Review Feedback',
       render: (row) => (
         <div className="flex flex-col max-w-lg">
-          <span className="text-sm text-[#14110F] font-medium">&ldquo;{row.comment}&rdquo;</span>
+          <span className="text-sm text-[#14110F] font-medium">&ldquo;{row.feedback}&rdquo;</span>
           <span className="text-xs text-[#6F675E] font-mono-code mt-0.5">
-            Project: {row.projectId}
+            {row.reviewerEmail} → {row.revieweeEmail} · Project: {row.projectId}
           </span>
         </div>
       ),
@@ -140,7 +126,11 @@ export default function AdminReviewsPage() {
       render: (row) => (
         <AdminBadge
           variant={
-            row.status === 'VISIBLE' ? 'success' : row.status === 'HIDDEN' ? 'danger' : 'warning'
+            row.status === 'PUBLISHED' || row.status === 'VISIBLE'
+              ? 'success'
+              : row.status === 'HIDDEN' || row.status === 'REMOVED'
+                ? 'danger'
+                : 'warning'
           }
           size="sm"
           dot
@@ -206,6 +196,7 @@ export default function AdminReviewsPage() {
       </div>
 
       {/* Filter Bar */}
+      {fetchError && <AdminErrorBanner error={fetchError} onRetry={fetchReviews} />}
       <AdminCard padding="sm">
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
           <div className="sm:col-span-8">
@@ -235,7 +226,7 @@ export default function AdminReviewsPage() {
       </AdminCard>
 
       {/* Table */}
-      <AdminTable columns={columns} data={reviews} isLoading={isLoading} />
+      <AdminTable columns={columns} data={filteredReviews} isLoading={isLoading} />
 
       {/* Moderation Modal */}
       <AdminModal

@@ -15,68 +15,42 @@ import {
 } from 'lucide-react';
 import { AdminCard, AdminCardHeader } from '../../../components/admin/ui/AdminCard';
 import { AdminButton } from '../../../components/admin/ui/AdminButton';
+import { AdminErrorBanner } from '../../../components/admin/ui/AdminErrorBanner';
 import { apiClient } from '../../../lib/api-client';
+import { parseAdminApiError, type AdminErrorState } from '../../../lib/admin-error';
+import type { DashboardOverviewResponse } from '@creatorconnect/contracts';
 
-interface DashboardMetrics {
-  totalUsers: number;
-  activeUsers: number;
-  newRegistrations: number;
-  registrationGrowthPercent: number;
-  suspendedAccounts: number;
-  totalTransactions: number;
-  successfulPayments: number;
-  paymentSuccessRate: number;
-  totalTransactionVolumeMinor: string;
-  platformRevenueMinor: string;
-  pendingRefundsCount: number;
-  projectsCreated: number;
-  projectsInProgress: number;
-  projectsCompleted: number;
-  projectsDisputed: number;
-  openSupportTickets: number;
-  pendingModerationReports: number;
-}
+type DashboardMetrics = DashboardOverviewResponse['metrics'];
 
 export default function AdminDashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [period, setPeriod] = useState<string>('30d');
   const [isLoading, setIsLoading] = useState(true);
-  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [fetchError, setFetchError] = useState<AdminErrorState | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
   const fetchOverview = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
-      const data: any = await apiClient.get('/api/v1/admin/dashboard/overview', {
-        params: { period },
-      });
+      const data = await apiClient.get<DashboardOverviewResponse>(
+        '/api/v1/admin/dashboard/overview',
+        { params: { period } },
+      );
       if (data?.metrics) {
         setMetrics(data.metrics);
-        setPeriod(data.period || period);
+        if (data.period) setPeriod(data.period);
+      } else {
+        setMetrics(null);
       }
-    } catch {
-      // Fallback baseline for initial load or offline dev
-      setMetrics({
-        totalUsers: 1420,
-        activeUsers: 1180,
-        newRegistrations: 94,
-        registrationGrowthPercent: 12.4,
-        suspendedAccounts: 3,
-        totalTransactions: 382,
-        successfulPayments: 371,
-        paymentSuccessRate: 97.1,
-        totalTransactionVolumeMinor: '482500000',
-        platformRevenueMinor: '48250000',
-        pendingRefundsCount: 2,
-        projectsCreated: 154,
-        projectsInProgress: 42,
-        projectsCompleted: 108,
-        projectsDisputed: 4,
-        openSupportTickets: 7,
-        pendingModerationReports: 3,
-      });
+      setLastRefreshed(new Date());
+    } catch (err) {
+      setMetrics(null);
+      setFetchError(
+        parseAdminApiError(err, 'Failed to load executive overview telemetry from backend API.'),
+      );
     } finally {
       setIsLoading(false);
-      setLastRefreshed(new Date());
     }
   }, [period]);
 
@@ -104,8 +78,8 @@ export default function AdminDashboardPage() {
             Executive Operations Dashboard
           </h1>
           <p className="text-xs sm:text-sm text-[#6F675E] mt-1">
-            Real-time multi-sided platform health, liquidity, and trust metrics. Last updated at{' '}
-            {lastRefreshed.toLocaleTimeString()}.
+            Real-time multi-sided platform health, liquidity, and trust metrics.
+            {lastRefreshed ? ` Last updated at ${lastRefreshed.toLocaleTimeString()}.` : ''}
           </p>
         </div>
 
@@ -138,6 +112,8 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      {fetchError && <AdminErrorBanner error={fetchError} onRetry={fetchOverview} />}
+
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Total Users */}
@@ -152,11 +128,15 @@ export default function AdminDashboardPage() {
               </div>
             </div>
             <div className="text-3xl font-black text-[#14110F] font-mono-code mb-1">
-              {metrics?.totalUsers.toLocaleString() || '—'}
+              {metrics ? metrics.totalUsers.toLocaleString() : '—'}
             </div>
             <div className="flex items-center gap-1.5 text-xs text-[#2E9E6B] font-semibold">
               <TrendingUp className="w-3.5 h-3.5" />
-              <span>+{metrics?.registrationGrowthPercent || 0}% this period</span>
+              <span>
+                {metrics
+                  ? `+${metrics.registrationGrowthPercent}% this period`
+                  : 'Awaiting metrics'}
+              </span>
             </div>
           </div>
           <div className="mt-4 pt-3 border-t border-[#EFE9DF] flex items-center justify-between text-xs text-[#6F675E]">
@@ -216,7 +196,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
             <div className="text-3xl font-black text-[#14110F] font-mono-code mb-1">
-              {metrics?.projectsCreated || '—'}
+              {metrics ? metrics.projectsCreated.toLocaleString() : '—'}
             </div>
             <div className="text-xs text-[#6F675E]">
               In Escrow / Active:{' '}
@@ -291,7 +271,9 @@ export default function AdminDashboardPage() {
                       Pending Dual-Approval Refunds
                     </h4>
                     <p className="text-xs text-[#6F675E]">
-                      2 refund requests require independent four-eyes review
+                      {metrics
+                        ? `${metrics.pendingRefundsCount} refund request(s) awaiting review`
+                        : 'Inspect dual-approval refund queue'}
                     </p>
                   </div>
                 </div>
@@ -365,39 +347,44 @@ export default function AdminDashboardPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
               <div className="p-3.5 rounded-xl bg-[#FAF6EF] border border-[#E7E0D5]">
                 <span className="text-[10px] font-bold text-[#6F675E] uppercase tracking-wider block">
-                  Realtime Socket.IO
+                  Realtime Gateway
                 </span>
-                <span className="text-sm font-bold text-[#2E9E6B] flex items-center gap-1.5 mt-1">
-                  <span className="w-2 h-2 rounded-full bg-[#2E9E6B]" />
-                  <span>Healthy</span>
+                <span className="text-sm font-bold text-[#14110F] flex items-center gap-1.5 mt-1">
+                  <span>Socket.IO Active</span>
                 </span>
               </div>
               <div className="p-3.5 rounded-xl bg-[#FAF6EF] border border-[#E7E0D5]">
                 <span className="text-[10px] font-bold text-[#6F675E] uppercase tracking-wider block">
                   BullMQ Worker
                 </span>
-                <span className="text-sm font-bold text-[#2E9E6B] flex items-center gap-1.5 mt-1">
-                  <span className="w-2 h-2 rounded-full bg-[#2E9E6B]" />
-                  <span>0 Failed</span>
-                </span>
+                <Link
+                  href="/admin/jobs"
+                  className="text-sm font-bold text-[#2B73C2] hover:underline flex items-center gap-1.5 mt-1"
+                >
+                  <span>Inspect Queues</span>
+                </Link>
               </div>
               <div className="p-3.5 rounded-xl bg-[#FAF6EF] border border-[#E7E0D5]">
                 <span className="text-[10px] font-bold text-[#6F675E] uppercase tracking-wider block">
-                  Postgres Database
+                  Ledger Reconciliation
                 </span>
-                <span className="text-sm font-bold text-[#2E9E6B] flex items-center gap-1.5 mt-1">
-                  <span className="w-2 h-2 rounded-full bg-[#2E9E6B]" />
-                  <span>Migration 0015</span>
-                </span>
+                <Link
+                  href="/admin/reconciliation"
+                  className="text-sm font-bold text-[#2B73C2] hover:underline flex items-center gap-1.5 mt-1"
+                >
+                  <span>Run Balance Audit</span>
+                </Link>
               </div>
               <div className="p-3.5 rounded-xl bg-[#FAF6EF] border border-[#E7E0D5]">
                 <span className="text-[10px] font-bold text-[#6F675E] uppercase tracking-wider block">
-                  Media Storage (R2)
+                  Privacy &amp; Lifecycle
                 </span>
-                <span className="text-sm font-bold text-[#2E9E6B] flex items-center gap-1.5 mt-1">
-                  <span className="w-2 h-2 rounded-full bg-[#2E9E6B]" />
-                  <span>Operational</span>
-                </span>
+                <Link
+                  href="/admin/lifecycle"
+                  className="text-sm font-bold text-[#2B73C2] hover:underline flex items-center gap-1.5 mt-1"
+                >
+                  <span>Legal Holds</span>
+                </Link>
               </div>
             </div>
           </AdminCard>

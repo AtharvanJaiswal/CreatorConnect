@@ -11,22 +11,15 @@ import { AdminButton } from '../../../components/admin/ui/AdminButton';
 import { AdminInput, AdminSelect } from '../../../components/admin/ui/AdminInput';
 import { AdminModal } from '../../../components/admin/ui/AdminModal';
 import { PermissionGate } from '../../../components/admin/ui/PermissionGate';
+import { AdminErrorBanner } from '../../../components/admin/ui/AdminErrorBanner';
 import { apiClient } from '../../../lib/api-client';
-
-interface AdminUserItem {
-  id: string;
-  email: string | null;
-  phoneNumber: string | null;
-  status: string;
-  roles: string[];
-  isVerified: boolean;
-  createdAt: string;
-}
+import { parseAdminApiError, type AdminErrorState } from '../../../lib/admin-error';
+import type { AdminUserListItem, AdminUserListResponse } from '@creatorconnect/contracts';
 
 export default function AdminUsersPage() {
   const router = useRouter();
 
-  const [users, setUsers] = useState<AdminUserItem[]>([]);
+  const [users, setUsers] = useState<AdminUserListItem[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
@@ -34,9 +27,10 @@ export default function AdminUsersPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<AdminErrorState | null>(null);
 
   // Suspension / Reactivation Modal State
-  const [targetUser, setTargetUser] = useState<AdminUserItem | null>(null);
+  const [targetUser, setTargetUser] = useState<AdminUserListItem | null>(null);
   const [modalAction, setModalAction] = useState<'suspend' | 'reactivate' | null>(null);
   const [actionReason, setActionReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,50 +38,25 @@ export default function AdminUsersPage() {
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
       const params: Record<string, any> = { page, limit };
       if (search.trim()) params.search = search.trim();
       if (statusFilter !== 'ALL') params.status = statusFilter;
       if (roleFilter !== 'ALL') params.role = roleFilter;
 
-      const data: any = await apiClient.get('/api/v1/admin/users', { params });
+      const data = await apiClient.get<AdminUserListResponse>('/api/v1/admin/users', { params });
       if (data?.items) {
         setUsers(data.items);
-        setTotalUsers(data.total || data.items.length);
+        setTotalUsers(data.total ?? data.items.length);
+      } else {
+        setUsers([]);
+        setTotalUsers(0);
       }
-    } catch {
-      // Fallback baseline for demo or dev environment
-      const mockUsers: AdminUserItem[] = [
-        {
-          id: '0192a0e2-1234-7000-8000-000000000001',
-          email: 'vikram.cinematographer@creatorconnect.in',
-          phoneNumber: '+919876543210',
-          status: 'ACTIVE',
-          roles: ['CREATOR', 'TALENT'],
-          isVerified: true,
-          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
-        },
-        {
-          id: '0192a0e2-1234-7000-8000-000000000002',
-          email: 'priya.marketing@zomatofresh.com',
-          phoneNumber: '+919876543211',
-          status: 'ACTIVE',
-          roles: ['BRAND'],
-          isVerified: true,
-          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 18).toISOString(),
-        },
-        {
-          id: '0192a0e2-1234-7000-8000-000000000003',
-          email: 'flagged.editor@unknown.net',
-          phoneNumber: '+919876543212',
-          status: 'SUSPENDED',
-          roles: ['TALENT'],
-          isVerified: false,
-          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-        },
-      ];
-      setUsers(mockUsers);
-      setTotalUsers(mockUsers.length);
+    } catch (err) {
+      setUsers([]);
+      setTotalUsers(0);
+      setFetchError(parseAdminApiError(err, 'Failed to fetch user directory from backend API.'));
     } finally {
       setIsLoading(false);
     }
@@ -97,7 +66,7 @@ export default function AdminUsersPage() {
     fetchUsers();
   }, [fetchUsers]);
 
-  const handleOpenActionModal = (user: AdminUserItem, action: 'suspend' | 'reactivate') => {
+  const handleOpenActionModal = (user: AdminUserListItem, action: 'suspend' | 'reactivate') => {
     setTargetUser(user);
     setModalAction(action);
     setActionReason('');
@@ -135,18 +104,22 @@ export default function AdminUsersPage() {
     }
   };
 
-  const columns: Column<AdminUserItem>[] = [
+  const columns: Column<AdminUserListItem>[] = [
     {
       key: 'user',
       header: 'Account Identity',
-      render: (row) => (
-        <div className="flex flex-col">
-          <span className="font-bold text-[#14110F]">{row.email || 'No email provided'}</span>
-          <span className="text-xs text-[#6F675E] font-mono-code">
-            {row.phoneNumber || row.id.slice(0, 8) + '...'}
-          </span>
-        </div>
-      ),
+      render: (row) => {
+        const displayName = [row.firstName, row.lastName].filter(Boolean).join(' ');
+        return (
+          <div className="flex flex-col">
+            <span className="font-bold text-[#14110F]">{row.email}</span>
+            <span className="text-xs text-[#6F675E] font-mono-code">
+              {displayName ? `${displayName} · ` : ''}
+              {row.id.slice(0, 8)}...
+            </span>
+          </div>
+        );
+      },
     },
     {
       key: 'roles',
@@ -213,23 +186,25 @@ export default function AdminUsersPage() {
             <Eye className="w-4 h-4" />
           </Link>
 
-          <PermissionGate permission="users.suspend">
-            {row.status === 'SUSPENDED' ? (
+          {row.status === 'SUSPENDED' ? (
+            <PermissionGate permission="users.reactivate">
               <button
                 onClick={() => handleOpenActionModal(row, 'reactivate')}
                 className="btn-pill btn-pill-secondary text-xs px-3 py-1 font-bold"
               >
                 Reactivate
               </button>
-            ) : (
+            </PermissionGate>
+          ) : (
+            <PermissionGate permission="users.suspend">
               <button
                 onClick={() => handleOpenActionModal(row, 'suspend')}
                 className="btn-pill btn-pill-outline text-xs px-3 py-1 text-[#D8483C] hover:bg-[#FBE9E7] border-[#F6C4C0] font-bold"
               >
                 Suspend
               </button>
-            )}
-          </PermissionGate>
+            </PermissionGate>
+          )}
         </div>
       ),
     },
@@ -244,8 +219,8 @@ export default function AdminUsersPage() {
             User Management Directory
           </h1>
           <p className="text-xs sm:text-sm text-[#6F675E] mt-1">
-            Global search, multi-role profile inspection, and administrative account governance.
-            Total accounts: {totalUsers}.
+            Global search, multi-role profile inspection, and administrative account governance.{' '}
+            <span className="block sm:inline tabular-nums">Total accounts: {totalUsers}.</span>
           </p>
         </div>
 
@@ -259,6 +234,8 @@ export default function AdminUsersPage() {
           Refresh
         </AdminButton>
       </div>
+
+      {fetchError && <AdminErrorBanner error={fetchError} onRetry={fetchUsers} />}
 
       {/* Filters Bar */}
       <AdminCard padding="sm" className="bg-white">

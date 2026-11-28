@@ -2,6 +2,7 @@ import type { SelfSelectableRole, SyncUserResponse } from '@creatorconnect/contr
 import { RoleType } from '@creatorconnect/database';
 import { IUserRepository, userRepository } from '../../repositories/user.repository.js';
 import { IdentityEmailConflictError, RoleEscalationAttemptError } from '../../errors/app-error.js';
+import { toUserResponse } from '../users/user-response.mapper.js';
 
 const ALLOWED_SELF_ROLES: SelfSelectableRole[] = ['CREATOR', 'PROFESSIONAL', 'BRAND', 'PODCASTER'];
 
@@ -33,18 +34,7 @@ export class AuthService {
     const existingBySub = await this.userRepo.findBySub(sub);
     if (existingBySub) {
       return {
-        user: {
-          id: existingBySub.id,
-          supabaseAuthId: existingBySub.supabaseAuthId,
-          email: existingBySub.email,
-          firstName: existingBySub.firstName ?? null,
-          lastName: existingBySub.lastName ?? null,
-          avatarUrl: null,
-          status: existingBySub.status,
-          roles: existingBySub.roles,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+        user: toUserResponse(existingBySub),
         isNewUser: false,
       };
     }
@@ -54,18 +44,7 @@ export class AuthService {
     if (existingByEmail) {
       if (existingByEmail.supabaseAuthId === sub) {
         return {
-          user: {
-            id: existingByEmail.id,
-            supabaseAuthId: existingByEmail.supabaseAuthId,
-            email: existingByEmail.email,
-            firstName: existingByEmail.firstName ?? null,
-            lastName: existingByEmail.lastName ?? null,
-            avatarUrl: null,
-            status: existingByEmail.status,
-            roles: existingByEmail.roles,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
+          user: toUserResponse(existingByEmail),
           isNewUser: false,
         };
       }
@@ -102,18 +81,7 @@ export class AuthService {
       );
 
       return {
-        user: {
-          id: createdUser.id,
-          supabaseAuthId: createdUser.supabaseAuthId,
-          email: createdUser.email,
-          firstName: createdUser.firstName ?? null,
-          lastName: createdUser.lastName ?? null,
-          avatarUrl: null,
-          status: createdUser.status,
-          roles: createdUser.roles,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+        user: toUserResponse(createdUser),
         isNewUser: true,
       };
     } catch (err: any) {
@@ -123,18 +91,7 @@ export class AuthService {
         const reloadedUser = await this.userRepo.findBySub(sub);
         if (reloadedUser) {
           return {
-            user: {
-              id: reloadedUser.id,
-              supabaseAuthId: reloadedUser.supabaseAuthId,
-              email: reloadedUser.email,
-              firstName: reloadedUser.firstName ?? null,
-              lastName: reloadedUser.lastName ?? null,
-              avatarUrl: null,
-              status: reloadedUser.status,
-              roles: reloadedUser.roles,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
+            user: toUserResponse(reloadedUser),
             isNewUser: false,
           };
         }

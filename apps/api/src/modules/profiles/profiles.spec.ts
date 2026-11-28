@@ -504,7 +504,45 @@ describe('Profiles Domain Integration Tests', () => {
       expect(logs[0].entity).toBe('BrandProfile');
       expect(logs[0].action).toBe('BRAND_PROFILE_UPDATED');
       expect(logs[0].metadata.companyName).toBe('Acme Media Labs International');
+
+      // 3. Seed an audit entry with sensitive metadata keys and confirm sanitization
+      const sensitiveAuditId = generateUuidV7();
+      await prisma.auditLog.create({
+        data: {
+          id: sensitiveAuditId,
+          userId: brandUserId,
+          action: 'BRAND_PROFILE_UPDATED',
+          entity: 'BrandProfile',
+          entityId: bodyIdFromBrandProfile(logs[0].entityId),
+          metadata: {
+            companyName: 'Sanitized Lab',
+            apiSecret: 'super-secret-value',
+            dbUrl: 'postgresql://admin:pass@db.internal:5432/prod',
+          },
+        },
+      });
+      try {
+        const sanitizedRes = await app.inject({
+          method: 'GET',
+          url: '/api/v1/profiles/brand/audit',
+          headers: { authorization: `Bearer ${brandToken}` },
+        });
+        expect(sanitizedRes.statusCode).toBe(200);
+        const match = sanitizedRes
+          .json()
+          .find((entry: { id: string }) => entry.id === sensitiveAuditId);
+        expect(match).toBeDefined();
+        expect(match.metadata.companyName).toBe('Sanitized Lab');
+        expect(match.metadata.apiSecret).toBe('[REDACTED]');
+        expect(match.metadata.dbUrl).toBe('[REDACTED_CONNECTION_STRING]');
+      } finally {
+        await prisma.auditLog.deleteMany({ where: { id: sensitiveAuditId } });
+      }
     });
+
+    function bodyIdFromBrandProfile(id: string | null): string | null {
+      return id;
+    }
 
     it('retrieves public creator profile with strict allowlist (zero email/phone/sub leakage)', async () => {
       // Ensure profile is PUBLIC

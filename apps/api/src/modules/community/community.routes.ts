@@ -23,8 +23,23 @@ import {
   type RsvpEventInput,
   type FollowHubInput,
   type ModerateCommunityPostInput,
+  type AdminPermission,
 } from '@creatorconnect/contracts';
+import { hasAnyAdminPermission } from '@creatorconnect/auth';
 import { communityService, CommunityService } from './community.service.js';
+
+const COMMUNITY_READ_MODERATION_PERMISSIONS: readonly AdminPermission[] = [
+  'reports.review',
+  'reports.resolve',
+  'reviews.moderate',
+  'projects.moderate',
+];
+
+const COMMUNITY_MODERATE_PERMISSIONS: readonly AdminPermission[] = [
+  'reports.resolve',
+  'reviews.moderate',
+  'projects.moderate',
+];
 
 export interface CommunityRoutesOptions {
   communitySvc?: CommunityService;
@@ -171,8 +186,10 @@ export const communityRoutes: FastifyPluginAsync<CommunityRoutesOptions> = async
     },
     async (request, reply) => {
       const currentUserId = request.user?.id;
-      const userRoles = (request.user?.roles as string[]) || [];
-      const post = await service.getPostById(request.params.id, currentUserId, userRoles);
+      const isModerator = request.user
+        ? hasAnyAdminPermission(request.user, COMMUNITY_READ_MODERATION_PERMISSIONS)
+        : false;
+      const post = await service.getPostById(request.params.id, currentUserId, [], isModerator);
       return reply.code(200).send(post);
     },
   );
@@ -452,7 +469,10 @@ export const communityRoutes: FastifyPluginAsync<CommunityRoutesOptions> = async
   fastify.patch<{ Params: IdParams; Body: ModerateCommunityPostInput }>(
     '/api/v1/admin/community/posts/:id/moderate',
     {
-      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN'])],
+      preHandler: [
+        fastify.authenticate,
+        fastify.requireAdminPermission(COMMUNITY_MODERATE_PERMISSIONS),
+      ],
       schema: {
         description: 'Moderates a community post (HIDE, UNHIDE, DELETE) with audit reason',
         tags: ['Admin', 'Community'],
@@ -474,12 +494,16 @@ export const communityRoutes: FastifyPluginAsync<CommunityRoutesOptions> = async
       },
     },
     async (request, reply) => {
-      const userRoles = (request.user.roles as string[]) || [];
+      const isAuthorizedModerator = hasAnyAdminPermission(
+        request.user,
+        COMMUNITY_MODERATE_PERMISSIONS,
+      );
       const result = await service.moderatePost(
         request.params.id,
         request.user.id,
-        userRoles,
+        [],
         request.body,
+        isAuthorizedModerator,
       );
       return reply.code(200).send(result);
     },

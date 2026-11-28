@@ -67,6 +67,8 @@ export const UserResponseSchema = Type.Object({
   avatarUrl: Type.Union([Type.String(), Type.Null()]),
   status: UserStatusSchema,
   roles: Type.Array(RoleTypeSchema),
+  adminRoles: Type.Optional(Type.Array(Type.String())),
+  adminPermissions: Type.Optional(Type.Array(Type.String())),
   createdAt: Type.String({ format: 'date-time' }),
   updatedAt: Type.String({ format: 'date-time' }),
 });

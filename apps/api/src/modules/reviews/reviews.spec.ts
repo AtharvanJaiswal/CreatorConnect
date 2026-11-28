@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { getPrismaClient } from '@creatorconnect/database';
 import { generateUuidV7 } from '@creatorconnect/utils';
@@ -1023,5 +1023,9 @@ describe('Phase 6 Increment 4: Reviews, Reputation Scoring & Platform Governance
       expect(repRes.json().totalReviews).toBe(2);
       expect(repRes.json().averageRating).toBe(4);
     });
+  });
+
+  afterAll(async () => {
+    if (app) await app.close();
   });
 });

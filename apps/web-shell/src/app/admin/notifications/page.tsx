@@ -8,59 +8,47 @@ import { AdminButton } from '../../../components/admin/ui/AdminButton';
 import { AdminInput, AdminSelect } from '../../../components/admin/ui/AdminInput';
 import { AdminModal } from '../../../components/admin/ui/AdminModal';
 import { PermissionGate } from '../../../components/admin/ui/PermissionGate';
+import { AdminErrorBanner } from '../../../components/admin/ui/AdminErrorBanner';
 import { apiClient } from '../../../lib/api-client';
+import { parseAdminApiError, type AdminErrorState } from '../../../lib/admin-error';
+import type {
+  NotificationCampaignResponse,
+  CampaignListResponse,
+  EstimateCampaignResponse,
+} from '@creatorconnect/contracts';
 
-interface CampaignItem {
-  id: string;
-  title: string;
-  body: string;
-  channel: string;
-  targetRole?: string | null | undefined;
-  targetCount: number;
-  sentCount: number;
-  deliveredCount: number;
-  failedCount: number;
-  status: string;
-  createdAt: string;
-}
+type AudienceKey = 'ALL_USERS' | 'CREATORS' | 'BRANDS' | 'ACTIVE_USERS';
 
 export default function AdminNotificationsPage() {
-  const [campaigns, setCampaigns] = useState<CampaignItem[]>([]);
+  const [campaigns, setCampaigns] = useState<NotificationCampaignResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<AdminErrorState | null>(null);
 
   // Composer State
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [channel, setChannel] = useState<'PUSH' | 'IN_APP'>('PUSH');
-  const [targetRole, setTargetRole] = useState<string>('ALL');
+  const [channel, setChannel] = useState<'PUSH' | 'IN_APP' | 'EMAIL'>('PUSH');
+  const [targetAudience, setTargetAudience] = useState<AudienceKey>('ALL_USERS');
   const [estimatedAudience, setEstimatedAudience] = useState<number | null>(null);
+  const [estimateError, setEstimateError] = useState<string | null>(null);
   const [isEstimating, setIsEstimating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const fetchCampaigns = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
-      const data: any = await apiClient.get('/api/v1/admin/notifications/campaigns');
+      const data = await apiClient.get<CampaignListResponse>(
+        '/api/v1/admin/notifications/campaigns',
+      );
       setCampaigns(data?.items || []);
-    } catch {
-      // Fallback
-      setCampaigns([
-        {
-          id: 'camp-01',
-          title: 'Festival Season Commercial Briefs Are Live!',
-          body: 'Top agencies are posting 4K camera crew briefs. Update your showreel to get shortlisted.',
-          channel: 'PUSH',
-          targetRole: 'CREATOR',
-          targetCount: 1140,
-          sentCount: 1140,
-          deliveredCount: 1098,
-          failedCount: 42,
-          status: 'COMPLETED',
-          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString(),
-        },
-      ]);
+    } catch (err) {
+      setCampaigns([]);
+      setFetchError(
+        parseAdminApiError(err, 'Failed to fetch notification broadcast campaigns from API.'),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -75,25 +63,35 @@ export default function AdminNotificationsPage() {
     if (!isComposerOpen) return;
     const calculateEstimate = async () => {
       setIsEstimating(true);
+      setEstimateError(null);
       try {
-        const res: any = await apiClient.post('/api/v1/admin/notifications/campaigns/estimate', {
-          targetRole: targetRole === 'ALL' ? undefined : targetRole,
-        });
-        setEstimatedAudience(res?.estimatedRecipients || 1280);
-      } catch {
-        setEstimatedAudience(1280);
+        const res = await apiClient.post<EstimateCampaignResponse>(
+          '/api/v1/admin/notifications/campaigns/estimate',
+          { targetType: targetAudience },
+        );
+        setEstimatedAudience(res?.estimatedCount ?? 0);
+      } catch (err) {
+        setEstimatedAudience(null);
+        setEstimateError(parseAdminApiError(err, 'Unable to estimate audience size.').detail);
       } finally {
         setIsEstimating(false);
       }
     };
     calculateEstimate();
-  }, [isComposerOpen, targetRole]);
+  }, [isComposerOpen, targetAudience]);
 
   const handleSendCampaign = async () => {
-    if (!title.trim() || !body.trim()) {
-      setErrorMsg('Both title and body are required.');
+    if (title.trim().length < 3 || body.trim().length < 5) {
+      setErrorMsg('Title (min 3 chars) and message body (min 5 chars) are required.');
       return;
     }
+
+    const createTargetType =
+      targetAudience === 'CREATORS'
+        ? 'CREATORS_ONLY'
+        : targetAudience === 'BRANDS'
+          ? 'BRANDS_ONLY'
+          : targetAudience;
 
     setIsSubmitting(true);
     setErrorMsg(null);
@@ -101,57 +99,57 @@ export default function AdminNotificationsPage() {
     try {
       await apiClient.post('/api/v1/admin/notifications/campaigns', {
         title: title.trim(),
-        body: body.trim(),
-        channel,
-        targetRole: targetRole === 'ALL' ? undefined : targetRole,
+        message: body.trim(),
+        targetType: createTargetType,
+        channels: [channel],
       });
 
       setIsComposerOpen(false);
       setTitle('');
       setBody('');
-      fetchCampaigns();
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to dispatch notification campaign.');
+      await fetchCampaigns();
+    } catch (err: unknown) {
+      setErrorMsg(parseAdminApiError(err, 'Failed to dispatch notification campaign.').detail);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const columns: Column<CampaignItem>[] = [
+  const columns: Column<NotificationCampaignResponse>[] = [
     {
       key: 'title',
       header: 'Campaign Title & Message',
       render: (row) => (
         <div className="flex flex-col max-w-md">
           <span className="font-bold text-[#14110F]">{row.title}</span>
-          <span className="text-xs text-[#6F675E] line-clamp-1">{row.body}</span>
+          <span className="text-xs text-[#6F675E] line-clamp-1">{row.message}</span>
         </div>
       ),
     },
     {
       key: 'channel',
-      header: 'Channel & Target',
+      header: 'Channels & Target',
       render: (row) => (
-        <div className="flex items-center gap-1.5">
-          <AdminBadge variant="neutral" size="sm">
-            {row.channel}
-          </AdminBadge>
-          {row.targetRole && (
-            <AdminBadge variant="purple" size="sm">
-              {row.targetRole}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {row.channels.map((ch) => (
+            <AdminBadge key={ch} variant="neutral" size="sm">
+              {ch}
             </AdminBadge>
-          )}
+          ))}
+          <AdminBadge variant="purple" size="sm">
+            {row.targetType}
+          </AdminBadge>
         </div>
       ),
     },
     {
       key: 'metrics',
-      header: 'Delivery Rate',
+      header: 'Delivery Metrics',
       render: (row) => (
         <span className="text-xs font-mono-code font-bold text-[#14110F]">
-          {row.deliveredCount.toLocaleString()} / {row.targetCount.toLocaleString()}
+          {row.sentCount.toLocaleString()} / {row.estimatedRecipients.toLocaleString()}
           <span className="text-[#2E9E6B] ml-1">
-            ({Math.round((row.deliveredCount / Math.max(1, row.targetCount)) * 100)}%)
+            ({Math.round((row.sentCount / Math.max(1, row.estimatedRecipients)) * 100)}%)
           </span>
         </span>
       ),
@@ -209,6 +207,7 @@ export default function AdminNotificationsPage() {
       </div>
 
       {/* Table */}
+      {fetchError && <AdminErrorBanner error={fetchError} onRetry={fetchCampaigns} />}
       <AdminTable columns={columns} data={campaigns} isLoading={isLoading} />
 
       {/* Composer Modal with Mobile Preview */}
@@ -270,22 +269,23 @@ export default function AdminNotificationsPage() {
               <AdminSelect
                 label="Delivery Channel"
                 value={channel}
-                onChange={(e) => setChannel(e.target.value as any)}
+                onChange={(e) => setChannel(e.target.value as 'PUSH' | 'IN_APP' | 'EMAIL')}
                 options={[
                   { value: 'PUSH', label: 'Push Notification' },
                   { value: 'IN_APP', label: 'In-App Bell Only' },
+                  { value: 'EMAIL', label: 'Email Dispatch' },
                 ]}
               />
 
               <AdminSelect
                 label="Target Audience"
-                value={targetRole}
-                onChange={(e) => setTargetRole(e.target.value)}
+                value={targetAudience}
+                onChange={(e) => setTargetAudience(e.target.value as AudienceKey)}
                 options={[
-                  { value: 'ALL', label: 'All Users' },
-                  { value: 'CREATOR', label: 'Creators Only' },
-                  { value: 'TALENT', label: 'Production Crew' },
-                  { value: 'BRAND', label: 'Brand Sponsors' },
+                  { value: 'ALL_USERS', label: 'All Users' },
+                  { value: 'CREATORS', label: 'Creators Only' },
+                  { value: 'BRANDS', label: 'Brand Sponsors' },
+                  { value: 'ACTIVE_USERS', label: 'Active Users Only' },
                 ]}
               />
             </div>
@@ -295,7 +295,11 @@ export default function AdminNotificationsPage() {
               <strong className="text-[#14110F] font-mono-code font-bold">
                 {isEstimating
                   ? 'Calculating...'
-                  : `${estimatedAudience?.toLocaleString() || 0} devices`}
+                  : estimateError
+                    ? 'Estimate unavailable'
+                    : estimatedAudience !== null
+                      ? `${estimatedAudience.toLocaleString()} devices`
+                      : '—'}
               </strong>
             </div>
           </div>

@@ -8,25 +8,18 @@ import { AdminButton } from '../../../components/admin/ui/AdminButton';
 import { AdminSelect } from '../../../components/admin/ui/AdminInput';
 import { AdminModal } from '../../../components/admin/ui/AdminModal';
 import { PermissionGate } from '../../../components/admin/ui/PermissionGate';
+import { AdminErrorBanner } from '../../../components/admin/ui/AdminErrorBanner';
 import { apiClient } from '../../../lib/api-client';
-
-interface SupportTicketItem {
-  id: string;
-  subject: string;
-  category: string;
-  priority: string;
-  status: string;
-  userId: string;
-  assignedToId?: string | null | undefined;
-  createdAt: string;
-}
+import { parseAdminApiError, type AdminErrorState } from '../../../lib/admin-error';
+import type { SupportTicketResponse, SupportTicketListResponse } from '@creatorconnect/contracts';
 
 export default function AdminSupportPage() {
-  const [tickets, setTickets] = useState<SupportTicketItem[]>([]);
+  const [tickets, setTickets] = useState<SupportTicketResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<AdminErrorState | null>(null);
 
   // Response Modal State
-  const [selectedTicket, setSelectedTicket] = useState<SupportTicketItem | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<SupportTicketResponse | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
   const [newStatus, setNewStatus] = useState<string>('RESOLVED');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,33 +27,13 @@ export default function AdminSupportPage() {
 
   const fetchTickets = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
-      const data: any = await apiClient.get('/api/v1/admin/support/tickets');
+      const data = await apiClient.get<SupportTicketListResponse>('/api/v1/admin/support/tickets');
       setTickets(data?.items || []);
-    } catch {
-      // Fallback
-      setTickets([
-        {
-          id: 'tick-01',
-          subject: 'UPI payout failed on completed brief #proj-02',
-          category: 'PAYMENTS',
-          priority: 'HIGH',
-          status: 'OPEN',
-          userId: 'user-creator-1',
-          assignedToId: null,
-          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-        },
-        {
-          id: 'tick-02',
-          subject: 'Question on tax invoice generation for Q3 brand campaign',
-          category: 'BILLING',
-          priority: 'NORMAL',
-          status: 'IN_PROGRESS',
-          userId: 'user-client-1',
-          assignedToId: 'user-ops-1',
-          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 18).toISOString(),
-        },
-      ]);
+    } catch (err) {
+      setTickets([]);
+      setFetchError(parseAdminApiError(err, 'Failed to fetch support tickets from backend API.'));
     } finally {
       setIsLoading(false);
     }
@@ -80,26 +53,25 @@ export default function AdminSupportPage() {
     setErrorMsg(null);
 
     try {
-      // 1. Post reply message
       await apiClient.post(`/api/v1/admin/support/tickets/${selectedTicket.id}/reply`, {
         body: replyMessage.trim(),
       });
 
-      // 2. Update ticket status
       await apiClient.post(`/api/v1/admin/support/tickets/${selectedTicket.id}/status`, {
         status: newStatus,
+        expectedVersion: selectedTicket.version,
       });
 
       setSelectedTicket(null);
-      fetchTickets();
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to submit response.');
+      await fetchTickets();
+    } catch (err: unknown) {
+      setErrorMsg(parseAdminApiError(err, 'Failed to submit response.').detail);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const columns: Column<SupportTicketItem>[] = [
+  const columns: Column<SupportTicketResponse>[] = [
     {
       key: 'subject',
       header: 'Ticket Subject & Category',
@@ -107,7 +79,7 @@ export default function AdminSupportPage() {
         <div className="flex flex-col max-w-md">
           <span className="font-bold text-[#14110F]">{row.subject}</span>
           <span className="text-xs text-[#6F675E] font-mono-code">
-            ID: {row.id} • {row.category}
+            #{row.ticketNumber} • {row.category} • Requester: {row.requesterId.slice(0, 8)}...
           </span>
         </div>
       ),
@@ -116,7 +88,10 @@ export default function AdminSupportPage() {
       key: 'priority',
       header: 'Priority',
       render: (row) => (
-        <AdminBadge variant={row.priority === 'HIGH' ? 'danger' : 'neutral'} size="sm">
+        <AdminBadge
+          variant={row.priority === 'HIGH' || row.priority === 'URGENT' ? 'danger' : 'neutral'}
+          size="sm"
+        >
           {row.priority}
         </AdminBadge>
       ),
@@ -198,6 +173,7 @@ export default function AdminSupportPage() {
       </div>
 
       {/* Table */}
+      {fetchError && <AdminErrorBanner error={fetchError} onRetry={fetchTickets} />}
       <AdminTable columns={columns} data={tickets} isLoading={isLoading} />
 
       {/* Reply Modal */}

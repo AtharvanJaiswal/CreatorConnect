@@ -30,6 +30,7 @@ import { dataErasureOrchestrator, DataErasureOrchestrator } from './data-erasure
 import { privacyAuditService, PrivacyAuditService } from './privacy-audit.service.js';
 import { userRepository, IUserRepository } from '../../repositories/user.repository.js';
 import {
+  AppError,
   AuthInvalidTokenError,
   UserSuspendedError,
   IdentityNotSyncedError,
@@ -342,7 +343,7 @@ export const lifecycleRoutes: FastifyPluginAsync<LifecycleRoutesOptions> = async
   fastify.post<{ Params: IdParam; Body: CreateLegalHoldRequest }>(
     '/api/v1/admin/users/:id/legal-holds',
     {
-      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN'])],
+      preHandler: [fastify.authenticate, fastify.requireAdminPermission('users.privacy')],
       schema: {
         description: 'Apply legal hold to user with parent-row locking',
         tags: ['Admin', 'LegalHold'],
@@ -381,7 +382,7 @@ export const lifecycleRoutes: FastifyPluginAsync<LifecycleRoutesOptions> = async
   fastify.delete<{ Params: HoldIdParam; Body: ReleaseLegalHoldRequest }>(
     '/api/v1/admin/users/:id/legal-holds/:holdId',
     {
-      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN'])],
+      preHandler: [fastify.authenticate, fastify.requireAdminPermission('users.privacy')],
       schema: {
         description: 'Release active legal hold with parent-row locking',
         tags: ['Admin', 'LegalHold'],
@@ -404,6 +405,7 @@ export const lifecycleRoutes: FastifyPluginAsync<LifecycleRoutesOptions> = async
         holdId: request.params.holdId,
         releasedById: request.user.id,
         releaseNotes: body.releaseNotes,
+        expectedUserId: request.params.id,
       });
 
       return reply.status(200).send({
@@ -418,7 +420,7 @@ export const lifecycleRoutes: FastifyPluginAsync<LifecycleRoutesOptions> = async
   fastify.get<{ Params: IdParam }>(
     '/api/v1/admin/users/:id/legal-holds',
     {
-      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN'])],
+      preHandler: [fastify.authenticate, fastify.requireAdminPermission('users.privacy')],
       schema: {
         description: 'List active legal holds for user',
         tags: ['Admin', 'LegalHold'],
@@ -433,6 +435,10 @@ export const lifecycleRoutes: FastifyPluginAsync<LifecycleRoutesOptions> = async
       },
     },
     async (request, reply) => {
+      const targetUser = await userRepo.findById(request.params.id);
+      if (!targetUser) {
+        throw new NotFoundError(`User with ID ${request.params.id} was not found.`);
+      }
       const holds = await holdSvc.getActiveHolds(request.params.id);
       return reply.status(200).send(
         holds.map((h) => ({
@@ -445,14 +451,14 @@ export const lifecycleRoutes: FastifyPluginAsync<LifecycleRoutesOptions> = async
   );
 
   // ============================================================================
-  // 4. Admin Erasure Workflow Execution
+  // 4. Admin Erasure Workflow Execution (Stage A Governance Hard-Stop)
   // ============================================================================
 
   // POST /api/v1/admin/privacy/requests/:id/execute
   fastify.post<{ Params: IdParam }>(
     '/api/v1/admin/privacy/requests/:id/execute',
     {
-      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN'])],
+      preHandler: [fastify.authenticate, fastify.requireAdminPermission('users.privacy')],
       schema: {
         description: 'Execute multi-stage erasure workflow for confirmed request',
         tags: ['Admin', 'Privacy'],
@@ -475,6 +481,15 @@ export const lifecycleRoutes: FastifyPluginAsync<LifecycleRoutesOptions> = async
       },
     },
     async (request, reply) => {
+      if (process.env.PHASE_3B9_GOVERNANCE_APPROVED !== 'true') {
+        throw new AppError(
+          403,
+          'STAGE_A_GOVERNANCE_BLOCKED',
+          'Phase 3B.9 Governance Approval Required',
+          'Destructive privacy erasure execution is blocked pending Phase 3B.9 Stage A governance sign-off (0/12 LDR approved).',
+        );
+      }
+
       const result = await erasureOrchestrator.executeErasure(request.params.id);
       return reply.status(200).send({
         requestId: result.requestId,

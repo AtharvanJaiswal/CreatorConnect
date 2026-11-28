@@ -8,76 +8,39 @@ import { AdminTable, Column } from '../../../components/admin/ui/AdminTable';
 import { AdminBadge } from '../../../components/admin/ui/AdminBadge';
 import { AdminButton } from '../../../components/admin/ui/AdminButton';
 import { AdminInput, AdminSelect } from '../../../components/admin/ui/AdminInput';
+import { AdminErrorBanner } from '../../../components/admin/ui/AdminErrorBanner';
 import { apiClient } from '../../../lib/api-client';
-
-interface AdminPaymentItem {
-  id: string;
-  projectId: string;
-  clientId: string;
-  provider: string;
-  providerPaymentId: string | null;
-  amountMinor: string;
-  feeMinor: string;
-  status: string;
-  createdAt: string;
-}
+import { parseAdminApiError, type AdminErrorState } from '../../../lib/admin-error';
+import type { AdminPaymentListItem, AdminPaymentListResponse } from '@creatorconnect/contracts';
 
 export default function AdminPaymentsPage() {
-  const [payments, setPayments] = useState<AdminPaymentItem[]>([]);
+  const [payments, setPayments] = useState<AdminPaymentListItem[]>([]);
+  const [totalVolumeMinor, setTotalVolumeMinor] = useState<string>('0');
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<AdminErrorState | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   const fetchPayments = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
       const params: Record<string, any> = {};
-      if (search.trim()) params.search = search.trim();
       if (statusFilter !== 'ALL') params.status = statusFilter;
 
-      const data: any = await apiClient.get('/api/v1/admin/payments', { params });
+      const data = await apiClient.get<AdminPaymentListResponse>('/api/v1/admin/payments', {
+        params,
+      });
       setPayments(data?.items || []);
-    } catch {
-      // Fallback data
-      setPayments([
-        {
-          id: 'pi-01',
-          projectId: 'proj-01',
-          clientId: 'client-1',
-          provider: 'RAZORPAY',
-          providerPaymentId: 'pay_Nz82Kx9281a',
-          amountMinor: '12500000',
-          feeMinor: '1250000',
-          status: 'SUCCEEDED',
-          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-        },
-        {
-          id: 'pi-02',
-          projectId: 'proj-02',
-          clientId: 'client-2',
-          provider: 'RAZORPAY',
-          providerPaymentId: 'pay_Mz19Ka8392b',
-          amountMinor: '8000000',
-          feeMinor: '800000',
-          status: 'SUCCEEDED',
-          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString(),
-        },
-        {
-          id: 'pi-03',
-          projectId: 'proj-03',
-          clientId: 'client-3',
-          provider: 'RAZORPAY',
-          providerPaymentId: null,
-          amountMinor: '25000000',
-          feeMinor: '2500000',
-          status: 'REQUIRES_PAYMENT_METHOD',
-          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
-        },
-      ]);
+      setTotalVolumeMinor(data?.totalVolumeMinor || '0');
+    } catch (err) {
+      setPayments([]);
+      setTotalVolumeMinor('0');
+      setFetchError(parseAdminApiError(err, 'Failed to load payment intents from backend API.'));
     } finally {
       setIsLoading(false);
     }
-  }, [search, statusFilter]);
+  }, [statusFilter]);
 
   useEffect(() => {
     fetchPayments();
@@ -89,11 +52,23 @@ export default function AdminPaymentsPage() {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
-      maximumFractionDigits: 0,
+      maximumFractionDigits: 2,
     }).format(val / 100);
   };
 
-  const columns: Column<AdminPaymentItem>[] = [
+  const filteredPayments = search.trim()
+    ? payments.filter((p) => {
+        const q = search.trim().toLowerCase();
+        return (
+          p.id.toLowerCase().includes(q) ||
+          (p.providerPaymentId || '').toLowerCase().includes(q) ||
+          (p.projectTitle || '').toLowerCase().includes(q) ||
+          p.clientEmail.toLowerCase().includes(q)
+        );
+      })
+    : payments;
+
+  const columns: Column<AdminPaymentListItem>[] = [
     {
       key: 'id',
       header: 'Payment Intent & Provider ID',
@@ -101,7 +76,7 @@ export default function AdminPaymentsPage() {
         <div className="flex flex-col font-mono-code">
           <span className="font-bold text-[#14110F] text-xs">{row.id}</span>
           <span className="text-[10px] text-[#6F675E]">
-            {row.providerPaymentId || 'Pending Provider Intent'}
+            {row.providerPaymentId || 'Pending Provider Intent'} · {row.clientEmail}
           </span>
         </div>
       ),
@@ -117,10 +92,10 @@ export default function AdminPaymentsPage() {
     },
     {
       key: 'fee',
-      header: 'Platform Fee (10%)',
+      header: 'Platform Fee',
       render: (row) => (
         <span className="text-xs text-[#2E9E6B] font-mono-code font-bold">
-          +{formatCurrency(row.feeMinor)}
+          +{formatCurrency(row.platformFeeMinor)}
         </span>
       ),
     },
@@ -158,7 +133,7 @@ export default function AdminPaymentsPage() {
           </h1>
           <p className="text-xs sm:text-sm text-[#6F675E] mt-1">
             Real-time Razorpay escrow intentions, gateway status tracking, and platform take-rate
-            ledger records.
+            ledger records. Total filtered volume: {formatCurrency(totalVolumeMinor)}.
           </p>
         </div>
 
@@ -186,6 +161,8 @@ export default function AdminPaymentsPage() {
           </AdminButton>
         </div>
       </div>
+
+      {fetchError && <AdminErrorBanner error={fetchError} onRetry={fetchPayments} />}
 
       {/* Filter Bar */}
       <AdminCard padding="sm">
@@ -215,7 +192,7 @@ export default function AdminPaymentsPage() {
       </AdminCard>
 
       {/* Table */}
-      <AdminTable columns={columns} data={payments} isLoading={isLoading} />
+      <AdminTable columns={columns} data={filteredPayments} isLoading={isLoading} />
     </div>
   );
 }

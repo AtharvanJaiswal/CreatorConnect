@@ -107,6 +107,12 @@ describe('Phase 3A: Community Hub, Events & Moderation Integration Endpoints', (
             role: { connect: { name: 'ADMIN' } },
           },
         },
+        adminUserRoles: {
+          create: {
+            id: generateUuidV7(),
+            role: { connect: { name: 'TRUST_SAFETY_ADMIN' } },
+          },
+        },
       },
     });
   });

@@ -1,4 +1,4 @@
-import type { RoleType, UserStatus } from '@creatorconnect/contracts';
+import type { RoleType, UserStatus, AdminPermission } from '@creatorconnect/contracts';
 
 /**
  * Verified user identity attached to request context.
@@ -11,6 +11,8 @@ export interface UserIdentity {
   status: UserStatus;
   firstName?: string | null;
   lastName?: string | null;
+  adminRoles?: string[] | undefined;
+  adminPermissions?: AdminPermission[] | undefined;
 }
 
 /**

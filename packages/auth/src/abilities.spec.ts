@@ -27,11 +27,39 @@ describe('Pure CASL Authorization Abilities', () => {
     status: 'ACTIVE',
   };
 
-  const adminUser: UserIdentity = {
+  const bareAdminUser: UserIdentity = {
     id: '018f3a5e-2b1c-7f4d-9a8b-987654321def',
-    supabaseAuthId: 'sub_admin_456',
-    email: 'admin@example.com',
+    supabaseAuthId: 'sub_admin_bare_456',
+    email: 'admin-bare@example.com',
     roles: ['ADMIN'],
+    adminRoles: [],
+    adminPermissions: [],
+    status: 'ACTIVE',
+  };
+
+  const superAdminUser: UserIdentity = {
+    id: '018f3a5e-2b1c-7f4d-9a8b-987654321aaa',
+    supabaseAuthId: 'sub_super_admin_789',
+    email: 'superadmin@example.com',
+    roles: ['ADMIN'],
+    adminRoles: ['SUPER_ADMIN'],
+    adminPermissions: ['*'],
+    status: 'ACTIVE',
+  };
+
+  const financeAdminUser: UserIdentity = {
+    id: '018f3a5e-2b1c-7f4d-9a8b-987654321bbb',
+    supabaseAuthId: 'sub_finance_admin_101',
+    email: 'financeadmin@example.com',
+    roles: ['ADMIN'],
+    adminRoles: ['FINANCE_ADMIN'],
+    adminPermissions: [
+      'payments.read',
+      'payments.refund.request',
+      'payments.refund.approve',
+      'payments.reconcile',
+      'audit.read',
+    ],
     status: 'ACTIVE',
   };
 
@@ -52,11 +80,55 @@ describe('Pure CASL Authorization Abilities', () => {
     expect(ability.can('delete', 'User')).toBe(false);
   });
 
-  it('allows an admin to manage all resources (admin override)', () => {
-    const ability = defineAbilitiesFor(adminUser);
+  it('fails closed for bare ADMIN users with missing or empty adminPermissions', () => {
+    const undefinedPermsAdmin: UserIdentity = {
+      id: bareAdminUser.id,
+      supabaseAuthId: bareAdminUser.supabaseAuthId,
+      email: bareAdminUser.email,
+      roles: ['ADMIN'],
+      status: 'ACTIVE',
+    };
+
+    for (const user of [bareAdminUser, undefinedPermsAdmin]) {
+      const ability = defineAbilitiesFor(user);
+      expect(ability.can('manage', 'all')).toBe(false);
+      expect(ability.can('read', subject('User', { id: 'any-user-id' }))).toBe(false);
+      expect(ability.can('update', subject('User', { id: 'any-user-id' }))).toBe(false);
+      expect(ability.can('read', 'AuditLog' as any)).toBe(false);
+      expect(ability.can('update', 'Dispute' as any)).toBe(false);
+      // Still allows managing own self profile
+      expect(ability.can('read', subject('User', { id: user.id }))).toBe(true);
+      expect(ability.can('update', subject('User', { id: user.id }))).toBe(true);
+    }
+  });
+
+  it('grants universal manage authority ONLY to explicit SUPER_ADMIN or wildcard "*" admins', () => {
+    const ability = defineAbilitiesFor(superAdminUser);
     expect(ability.can('read', 'User')).toBe(true);
     expect(ability.can('update', subject('User', { id: 'any-user-id' }))).toBe(true);
     expect(ability.can('manage', 'all')).toBe(true);
+
+    const wildcardAdmin = defineAbilitiesFor({
+      ...bareAdminUser,
+      adminRoles: ['CUSTOM'],
+      adminPermissions: ['*'],
+    });
+    expect(wildcardAdmin.can('manage', 'all')).toBe(true);
+  });
+
+  it('grants granular FINANCE_ADMIN permissions without escalating to unrelated subjects', () => {
+    const ability = defineAbilitiesFor(financeAdminUser);
+    expect(ability.can('manage', 'all')).toBe(false);
+    expect(ability.can('read', 'Payment' as any)).toBe(true);
+    expect(ability.can('update', 'Refund' as any)).toBe(true);
+    expect(ability.can('update', 'Dispute' as any)).toBe(true);
+    expect(ability.can('create', 'Reconciliation' as any)).toBe(true);
+    expect(ability.can('read', 'AuditLog' as any)).toBe(true);
+    // Must not manage users or admins
+    expect(ability.can('read', subject('User', { id: 'other-user-id' }))).toBe(false);
+    expect(ability.can('update', 'AdminUser' as any)).toBe(false);
+    // Still manages own self profile
+    expect(ability.can('update', subject('User', { id: financeAdminUser.id }))).toBe(true);
   });
 
   it('enforces role-gated assignment creation (BRAND only)', () => {

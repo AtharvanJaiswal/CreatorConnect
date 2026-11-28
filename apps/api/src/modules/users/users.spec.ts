@@ -70,6 +70,9 @@ describe('Users & Profile Integration Endpoints', () => {
     expect(body.email).toBe(email);
     expect(body.roles).toContain('CREATOR');
     expect(body.status).toBe('ACTIVE');
+    // Ordinary non-admin users must not receive admin RBAC fields
+    expect(body.adminRoles).toBeUndefined();
+    expect(body.adminPermissions).toBeUndefined();
   });
 
   it('authoritatively rejects SUSPENDED users with 403 USER_SUSPENDED', async () => {
@@ -184,13 +187,16 @@ describe('Users & Profile Integration Endpoints', () => {
     expect(res.json().code).toBe('AUTH_INSUFFICIENT_ROLE');
   });
 
-  it('allows an ADMIN to update another user status', async () => {
-    // 1. Create an admin user in PostgreSQL
+  it('allows an ADMIN with USER_ADMIN permissions to update another user status and denies bare ADMIN', async () => {
+    // 1. Create an admin user with USER_ADMIN role in PostgreSQL
     const adminId = generateUuidV7();
     const adminSub = `sub_admin_${Date.now()}`;
     const adminEmail = `admin_${Date.now()}@test.com`;
 
     const adminRole = await prisma.role.findUniqueOrThrow({ where: { name: RoleType.ADMIN } });
+    const userAdminRole = await prisma.adminRole.findUniqueOrThrow({
+      where: { name: 'USER_ADMIN' },
+    });
 
     await prisma.user.create({
       data: {
@@ -204,8 +210,34 @@ describe('Users & Profile Integration Endpoints', () => {
             roleId: adminRole.id,
           },
         },
+        adminUserRoles: {
+          create: {
+            id: generateUuidV7(),
+            roleId: userAdminRole.id,
+          },
+        },
       },
     });
+
+    // 1b. Bare ADMIN without AdminUserRole
+    const bareId = generateUuidV7();
+    const bareSub = `sub_bare_status_${Date.now()}`;
+    const bareEmail = `bare_status_${Date.now()}@test.com`;
+    await prisma.user.create({
+      data: {
+        id: bareId,
+        supabaseAuthId: bareSub,
+        email: bareEmail,
+        status: UserStatus.ACTIVE,
+        userRoles: {
+          create: {
+            id: generateUuidV7(),
+            roleId: adminRole.id,
+          },
+        },
+      },
+    });
+    const bareToken = await createTestJwt({ sub: bareSub, email: bareEmail });
 
     // 2. Create a normal user to be updated
     const targetSub = `sub_target_${Date.now()}`;
@@ -220,7 +252,18 @@ describe('Users & Profile Integration Endpoints', () => {
     });
     const targetUserId = syncRes.json().user.id;
 
-    // 3. Admin calls status update
+    // 2b. Bare ADMIN attempt must be denied with 403 and zero mutation
+    const deniedBareRes = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/users/${targetUserId}/status`,
+      headers: { authorization: `Bearer ${bareToken}` },
+      payload: { status: 'SUSPENDED' },
+    });
+    expect(deniedBareRes.statusCode).toBe(403);
+    const unchangedUser = await prisma.user.findUnique({ where: { id: targetUserId } });
+    expect(unchangedUser?.status).toBe(UserStatus.ACTIVE);
+
+    // 3. Authorized USER_ADMIN calls status update
     const adminToken = await createTestJwt({ sub: adminSub, email: adminEmail });
     const res = await app.inject({
       method: 'PATCH',
@@ -235,5 +278,62 @@ describe('Users & Profile Integration Endpoints', () => {
     // Verify DB
     const dbUser = await prisma.user.findUnique({ where: { id: targetUserId } });
     expect(dbUser?.status).toBe(UserStatus.SUSPENDED);
+  });
+
+  it('hydrates authoritative adminRoles and adminPermissions on GET /api/v1/users/me for ADMIN users while failing closed for bare ADMIN', async () => {
+    const adminRole = await prisma.role.findUniqueOrThrow({ where: { name: RoleType.ADMIN } });
+    const userAdminRole = await prisma.adminRole.findUniqueOrThrow({
+      where: { name: 'USER_ADMIN' },
+    });
+
+    // 1. Bare ADMIN without any AdminUserRole assignment
+    const bareAdminId = generateUuidV7();
+    const bareAdminSub = `sub_bare_me_${Date.now()}`;
+    const bareAdminEmail = `bare_me_${Date.now()}@test.com`;
+    await prisma.user.create({
+      data: {
+        id: bareAdminId,
+        supabaseAuthId: bareAdminSub,
+        email: bareAdminEmail,
+        status: UserStatus.ACTIVE,
+        userRoles: { create: { id: generateUuidV7(), roleId: adminRole.id } },
+      },
+    });
+    const bareToken = await createTestJwt({ sub: bareAdminSub, email: bareAdminEmail });
+    const bareRes = await app.inject({
+      method: 'GET',
+      url: '/api/v1/users/me',
+      headers: { authorization: `Bearer ${bareToken}` },
+    });
+    expect(bareRes.statusCode).toBe(200);
+    expect(bareRes.json().roles).toEqual(['ADMIN']);
+    expect(bareRes.json().adminRoles).toEqual([]);
+    expect(bareRes.json().adminPermissions).toEqual([]);
+
+    // 2. Assigned USER_ADMIN
+    const assignedAdminId = generateUuidV7();
+    const assignedSub = `sub_assigned_me_${Date.now()}`;
+    const assignedEmail = `assigned_me_${Date.now()}@test.com`;
+    await prisma.user.create({
+      data: {
+        id: assignedAdminId,
+        supabaseAuthId: assignedSub,
+        email: assignedEmail,
+        status: UserStatus.ACTIVE,
+        userRoles: { create: { id: generateUuidV7(), roleId: adminRole.id } },
+        adminUserRoles: { create: { id: generateUuidV7(), roleId: userAdminRole.id } },
+      },
+    });
+    const assignedToken = await createTestJwt({ sub: assignedSub, email: assignedEmail });
+    const assignedRes = await app.inject({
+      method: 'GET',
+      url: '/api/v1/users/me',
+      headers: { authorization: `Bearer ${assignedToken}` },
+    });
+    expect(assignedRes.statusCode).toBe(200);
+    expect(assignedRes.json().adminRoles).toEqual(['USER_ADMIN']);
+    expect(assignedRes.json().adminPermissions).toContain('users.read');
+    expect(assignedRes.json().adminPermissions).toContain('users.suspend');
+    expect(assignedRes.json().adminPermissions).not.toContain('*');
   });
 });

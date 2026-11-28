@@ -9,35 +9,22 @@ import { AdminButton } from '../../../components/admin/ui/AdminButton';
 import { AdminInput, AdminSelect } from '../../../components/admin/ui/AdminInput';
 import { AdminModal } from '../../../components/admin/ui/AdminModal';
 import { PermissionGate } from '../../../components/admin/ui/PermissionGate';
+import { AdminErrorBanner } from '../../../components/admin/ui/AdminErrorBanner';
 import { apiClient } from '../../../lib/api-client';
-
-interface CreatorVerificationItem {
-  id: string;
-  userId: string;
-  displayName: string;
-  email?: string;
-  category: string;
-  rating: number;
-  completedProjects: number;
-  isVerified: boolean;
-  createdAt: string;
-}
-
-interface ClientVerificationItem {
-  id: string;
-  userId: string;
-  companyName: string;
-  industry: string;
-  totalProjects: number;
-  isVerified: boolean;
-  createdAt: string;
-}
+import { parseAdminApiError, type AdminErrorState } from '../../../lib/admin-error';
+import type {
+  AdminCreatorListItem,
+  AdminCreatorListResponse,
+  AdminClientListItem,
+  AdminClientListResponse,
+} from '@creatorconnect/contracts';
 
 export default function AdminVerificationPage() {
   const [activeTab, setActiveTab] = useState<'creators' | 'clients'>('creators');
-  const [creators, setCreators] = useState<CreatorVerificationItem[]>([]);
-  const [clients, setClients] = useState<ClientVerificationItem[]>([]);
+  const [creators, setCreators] = useState<AdminCreatorListItem[]>([]);
+  const [clients, setClients] = useState<AdminClientListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<AdminErrorState | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'VERIFIED' | 'UNVERIFIED'>('ALL');
 
@@ -50,6 +37,7 @@ export default function AdminVerificationPage() {
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
       const params: Record<string, any> = {};
       if (search.trim()) params.search = search.trim();
@@ -57,59 +45,22 @@ export default function AdminVerificationPage() {
       if (statusFilter === 'UNVERIFIED') params.isVerified = false;
 
       if (activeTab === 'creators') {
-        const data: any = await apiClient.get('/api/v1/admin/creators', { params });
+        const data = await apiClient.get<AdminCreatorListResponse>('/api/v1/admin/creators', {
+          params,
+        });
         setCreators(data?.items || []);
       } else {
-        const data: any = await apiClient.get('/api/v1/admin/clients', { params });
+        const data = await apiClient.get<AdminClientListResponse>('/api/v1/admin/clients', {
+          params,
+        });
         setClients(data?.items || []);
       }
-    } catch {
-      // Fallback data for inspection
-      if (activeTab === 'creators') {
-        setCreators([
-          {
-            id: 'cr-1',
-            userId: '0192a0e2-1234-7000-8000-000000000001',
-            displayName: 'Aarav Sharma — Editor & VFX',
-            category: 'POST_PRODUCTION',
-            rating: 4.9,
-            completedProjects: 12,
-            isVerified: false,
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-          },
-          {
-            id: 'cr-2',
-            userId: '0192a0e2-1234-7000-8000-000000000002',
-            displayName: 'Rohan Mehra — Commercial DP',
-            category: 'CINEMATOGRAPHY',
-            rating: 5.0,
-            completedProjects: 26,
-            isVerified: true,
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 60).toISOString(),
-          },
-        ]);
-      } else {
-        setClients([
-          {
-            id: 'cl-1',
-            userId: '0192a0e2-1234-7000-8000-000000000003',
-            companyName: 'Zomato Fresh Studio',
-            industry: 'FOOD_TECH',
-            totalProjects: 18,
-            isVerified: true,
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 90).toISOString(),
-          },
-          {
-            id: 'cl-2',
-            userId: '0192a0e2-1234-7000-8000-000000000004',
-            companyName: 'Zepto Media Agency',
-            industry: 'QUICK_COMMERCE',
-            totalProjects: 5,
-            isVerified: false,
-            createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
-          },
-        ]);
-      }
+    } catch (err) {
+      setCreators([]);
+      setClients([]);
+      setFetchError(
+        parseAdminApiError(err, 'Failed to load verification queue records from backend API.'),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -158,23 +109,28 @@ export default function AdminVerificationPage() {
     }
   };
 
-  const creatorColumns: Column<CreatorVerificationItem>[] = [
+  const creatorColumns: Column<AdminCreatorListItem>[] = [
     {
       key: 'name',
       header: 'Creator Profile',
-      render: (row) => (
-        <div className="flex flex-col">
-          <span className="font-bold text-[#14110F]">{row.displayName}</span>
-          <span className="text-xs text-[#6F675E]">{row.category}</span>
-        </div>
-      ),
+      render: (row) => {
+        const name = [row.firstName, row.lastName].filter(Boolean).join(' ') || row.email;
+        return (
+          <div className="flex flex-col">
+            <span className="font-bold text-[#14110F]">{name}</span>
+            <span className="text-xs text-[#6F675E]">
+              {row.email} · {row.visibility} · {row.portfolioCount} portfolio items
+            </span>
+          </div>
+        );
+      },
     },
     {
       key: 'rating',
       header: 'Reputation',
       render: (row) => (
         <span className="text-xs font-bold text-[#C98A16]">
-          ★ {row.rating.toFixed(2)} ({row.completedProjects} briefs)
+          ★ {Number(row.averageRating ?? 0).toFixed(2)} ({row.completedProjects} briefs)
         </span>
       ),
     },
@@ -229,14 +185,16 @@ export default function AdminVerificationPage() {
     },
   ];
 
-  const clientColumns: Column<ClientVerificationItem>[] = [
+  const clientColumns: Column<AdminClientListItem>[] = [
     {
       key: 'name',
       header: 'Brand Organization',
       render: (row) => (
         <div className="flex flex-col">
           <span className="font-bold text-[#14110F]">{row.companyName}</span>
-          <span className="text-xs text-[#6F675E]">{row.industry}</span>
+          <span className="text-xs text-[#6F675E]">
+            {row.industry || 'General'} · {row.email}
+          </span>
         </div>
       ),
     },
@@ -324,6 +282,7 @@ export default function AdminVerificationPage() {
       </div>
 
       {/* Tabs */}
+      {fetchError && <AdminErrorBanner error={fetchError} onRetry={fetchData} />}
       <div className="flex border-b border-[#E7E0D5] gap-6">
         <button
           onClick={() => setActiveTab('creators')}
@@ -392,7 +351,14 @@ export default function AdminVerificationPage() {
         isOpen={Boolean(selectedEntity)}
         onClose={() => setSelectedEntity(null)}
         title={verifyAction ? 'Approve Verified Badge' : 'Revoke Verified Badge'}
-        subtitle={`Target: ${selectedEntity?.displayName || selectedEntity?.companyName || 'Profile'}`}
+        subtitle={`Target: ${
+          selectedEntity
+            ? [selectedEntity.firstName, selectedEntity.lastName].filter(Boolean).join(' ') ||
+              selectedEntity.companyName ||
+              selectedEntity.email ||
+              selectedEntity.id
+            : 'Profile'
+        }`}
         footer={
           <>
             <AdminButton variant="outline" size="sm" onClick={() => setSelectedEntity(null)}>

@@ -11,8 +11,10 @@ import {
   type AddDisputeEvidenceInput,
   type UpdateDisputeStatusInput,
   type ResolveDisputeInput,
+  type AdminPermission,
 } from '@creatorconnect/contracts';
 import { Type, type Static } from '@sinclair/typebox';
+import { hasAnyAdminPermission } from '@creatorconnect/auth';
 import {
   IdParamSchema,
   type IdParam,
@@ -20,6 +22,20 @@ import {
   UuidSchema,
 } from '@creatorconnect/validation';
 import { disputesService, DisputesService } from './disputes.service.js';
+
+const DISPUTE_ADMIN_READ_PERMISSIONS: readonly AdminPermission[] = [
+  'projects.moderate',
+  'reports.review',
+  'reports.resolve',
+  'payments.read',
+  'payments.refund.approve',
+];
+
+const DISPUTE_ADMIN_MANAGE_PERMISSIONS: readonly AdminPermission[] = [
+  'projects.moderate',
+  'reports.resolve',
+  'payments.refund.approve',
+];
 
 export interface DisputesRoutesOptions {
   disputesSvc?: DisputesService;
@@ -66,7 +82,7 @@ export const disputesRoutes: FastifyPluginAsync<DisputesRoutesOptions> = async (
       },
     },
     async (request, reply) => {
-      const isAdmin = (request.user.roles || []).includes('ADMIN');
+      const isAdmin = hasAnyAdminPermission(request.user, DISPUTE_ADMIN_MANAGE_PERMISSIONS);
       const result = await service.openDispute(request.user.id, request.body, isAdmin);
       return reply.status(201).send(result);
     },
@@ -89,7 +105,7 @@ export const disputesRoutes: FastifyPluginAsync<DisputesRoutesOptions> = async (
       },
     },
     async (request, reply) => {
-      const isAdmin = (request.user.roles || []).includes('ADMIN');
+      const isAdmin = hasAnyAdminPermission(request.user, DISPUTE_ADMIN_READ_PERMISSIONS);
       const results = await service.listDisputes(request.user.id, request.query, isAdmin);
       return reply.send(results);
     },
@@ -114,7 +130,7 @@ export const disputesRoutes: FastifyPluginAsync<DisputesRoutesOptions> = async (
       },
     },
     async (request, reply) => {
-      const isAdmin = (request.user.roles || []).includes('ADMIN');
+      const isAdmin = hasAnyAdminPermission(request.user, DISPUTE_ADMIN_READ_PERMISSIONS);
       const result = await service.getDispute(request.user.id, request.params.id, isAdmin);
       return reply.send(result);
     },
@@ -149,7 +165,7 @@ export const disputesRoutes: FastifyPluginAsync<DisputesRoutesOptions> = async (
       },
     },
     async (request, reply) => {
-      const isAdmin = (request.user.roles || []).includes('ADMIN');
+      const isAdmin = hasAnyAdminPermission(request.user, DISPUTE_ADMIN_MANAGE_PERMISSIONS);
       const result = await service.addEvidence(
         request.user.id,
         request.params.id,
@@ -164,9 +180,13 @@ export const disputesRoutes: FastifyPluginAsync<DisputesRoutesOptions> = async (
   fastify.patch<{ Params: IdParam; Body: UpdateDisputeStatusInput }>(
     '/api/v1/disputes/:id/status',
     {
-      preHandler: [fastify.authenticate],
+      preHandler: [
+        fastify.authenticate,
+        fastify.requireAdminPermission(DISPUTE_ADMIN_MANAGE_PERMISSIONS),
+      ],
       schema: {
-        description: 'Transitions dispute lifecycle status (ADMIN only)',
+        description:
+          'Transitions dispute lifecycle status (Admin with dispute resolution permissions only)',
         tags: ['Disputes'],
         security: [{ bearerAuth: [] }],
         params: IdParamSchema,
@@ -181,12 +201,11 @@ export const disputesRoutes: FastifyPluginAsync<DisputesRoutesOptions> = async (
       },
     },
     async (request, reply) => {
-      const isAdmin = (request.user.roles || []).includes('ADMIN');
       const result = await service.updateDisputeStatus(
         request.user.id,
         request.params.id,
         request.body,
-        isAdmin,
+        true,
       );
       return reply.send(result);
     },
@@ -196,9 +215,13 @@ export const disputesRoutes: FastifyPluginAsync<DisputesRoutesOptions> = async (
   fastify.post<{ Params: IdParam; Body: ResolveDisputeInput }>(
     '/api/v1/disputes/:id/resolve',
     {
-      preHandler: [fastify.authenticate],
+      preHandler: [
+        fastify.authenticate,
+        fastify.requireAdminPermission(DISPUTE_ADMIN_MANAGE_PERMISSIONS),
+      ],
       schema: {
-        description: 'Arbitrates and resolves dispute for client or creator (ADMIN only)',
+        description:
+          'Arbitrates and resolves dispute for client or creator (Admin with dispute resolution permissions only)',
         tags: ['Disputes'],
         security: [{ bearerAuth: [] }],
         params: IdParamSchema,
@@ -213,12 +236,11 @@ export const disputesRoutes: FastifyPluginAsync<DisputesRoutesOptions> = async (
       },
     },
     async (request, reply) => {
-      const isAdmin = (request.user.roles || []).includes('ADMIN');
       const result = await service.resolveDispute(
         request.user.id,
         request.params.id,
         request.body,
-        isAdmin,
+        true,
       );
       return reply.send(result);
     },
@@ -228,9 +250,13 @@ export const disputesRoutes: FastifyPluginAsync<DisputesRoutesOptions> = async (
   fastify.post<{ Params: IdParam }>(
     '/api/v1/disputes/:id/close',
     {
-      preHandler: [fastify.authenticate],
+      preHandler: [
+        fastify.authenticate,
+        fastify.requireAdminPermission(DISPUTE_ADMIN_MANAGE_PERMISSIONS),
+      ],
       schema: {
-        description: 'Finalizes and closes a resolved dispute (ADMIN only)',
+        description:
+          'Finalizes and closes a resolved dispute (Admin with dispute resolution permissions only)',
         tags: ['Disputes'],
         security: [{ bearerAuth: [] }],
         params: IdParamSchema,
@@ -244,8 +270,7 @@ export const disputesRoutes: FastifyPluginAsync<DisputesRoutesOptions> = async (
       },
     },
     async (request, reply) => {
-      const isAdmin = (request.user.roles || []).includes('ADMIN');
-      const result = await service.closeDispute(request.user.id, request.params.id, isAdmin);
+      const result = await service.closeDispute(request.user.id, request.params.id, true);
       return reply.send(result);
     },
   );

@@ -58,6 +58,26 @@ export class LastAdminLockoutError extends AppError {
   }
 }
 
+export class LastSuperAdminLockoutError extends AppError {
+  constructor(
+    detail = 'Operation rejected: At least one active Super Administrator must remain on the platform.',
+  ) {
+    super(400, 'LAST_SUPER_ADMIN_LOCKOUT_PREVENTED', 'Last Super Admin Lockout Prevented', detail);
+  }
+}
+
+export class AdminRoleNotFoundError extends AppError {
+  constructor(detail = 'Administrative role not found.') {
+    super(404, 'ADMIN_ROLE_NOT_FOUND', 'Role Not Found', detail);
+  }
+}
+
+export class SystemRoleImmutableError extends AppError {
+  constructor(detail = 'System administrative roles cannot be renamed or deleted.') {
+    super(400, 'SYSTEM_ROLE_IMMUTABLE', 'System Role Immutable', detail);
+  }
+}
+
 // ==============================================================================
 // Phase 3B.8 Account Lifecycle & Privacy Governance Domain Errors
 // ==============================================================================
@@ -128,9 +148,23 @@ export class BadRequestError extends AppError {
   }
 }
 
+export class InvalidAuditCursorError extends AppError {
+  constructor(detail = 'The audit pagination cursor is invalid, malformed, or expired.') {
+    super(400, 'INVALID_AUDIT_CURSOR', 'Invalid Audit Cursor', detail);
+  }
+}
+
 export class ForbiddenError extends AppError {
   constructor(detail = 'You are not authorized to perform this operation.') {
     super(403, 'FORBIDDEN', 'Access Forbidden', detail);
+  }
+}
+
+export class ConflictOfInterestError extends AppError {
+  constructor(
+    detail = 'Anti-conflict-of-interest policy prevents approving self-initiated requests.',
+  ) {
+    super(403, 'CONFLICT_OF_INTEREST', 'Conflict Of Interest Violation', detail);
   }
 }
 

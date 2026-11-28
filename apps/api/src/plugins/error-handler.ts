@@ -39,14 +39,15 @@ export function errorHandler(
 
   request.log.error({ err: error, reqId: request.id }, 'API Request Error Encountered');
 
+  const isProdInternalError = statusCode >= 500 && process.env.NODE_ENV === 'production';
+
   const problem = createProblemDetails({
-    type: `https://api.creatorconnect.com/errors/${error.code || 'internal-server-error'}`,
-    title: error.name || 'Internal Server Error',
+    type: `https://api.creatorconnect.com/errors/${isProdInternalError ? 'internal-server-error' : error.code || 'internal-server-error'}`,
+    title: isProdInternalError ? 'Internal Server Error' : error.name || 'Internal Server Error',
     status: statusCode,
-    detail:
-      statusCode === 500 && process.env.NODE_ENV === 'production'
-        ? 'An unexpected error occurred. Please try again later.'
-        : error.message,
+    detail: isProdInternalError
+      ? 'An unexpected error occurred. Please try again later.'
+      : error.message,
     instance: request.url,
     requestId: request.id,
   });

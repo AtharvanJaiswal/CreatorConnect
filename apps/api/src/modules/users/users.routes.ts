@@ -8,7 +8,7 @@ import {
   type UserStatus,
 } from '@creatorconnect/contracts';
 import { IdParamSchema, type IdParam, ProblemDetailsSchema } from '@creatorconnect/validation';
-import { subject } from '@creatorconnect/auth';
+import { subject, hasAnyAdminPermission } from '@creatorconnect/auth';
 import { usersService, UsersService } from './users.service.js';
 import { AuthInsufficientRoleError } from '../../errors/app-error.js';
 
@@ -74,7 +74,10 @@ export const usersRoutes: FastifyPluginAsync<UsersRoutesOptions> = async (fastif
   fastify.patch<{ Params: IdParam; Body: UpdateUserStatusRequest }>(
     '/api/v1/admin/users/:id/status',
     {
-      preHandler: [fastify.authenticate, fastify.requireRole(['ADMIN'])],
+      preHandler: [
+        fastify.authenticate,
+        fastify.requireAdminPermission(['users.suspend', 'users.reactivate']),
+      ],
       schema: {
         description:
           'Administratively updates a user account status (ACTIVE, SUSPENDED, DEACTIVATED)',
@@ -94,6 +97,13 @@ export const usersRoutes: FastifyPluginAsync<UsersRoutesOptions> = async (fastif
     async (request, reply) => {
       const targetUserId = request.params.id;
       const newStatus = request.body.status as UserStatus;
+      const requiredPerm = request.body.status === 'ACTIVE' ? 'users.reactivate' : 'users.suspend';
+
+      if (!hasAnyAdminPermission(request.user, [requiredPerm])) {
+        throw new AuthInsufficientRoleError(
+          `Access requires administrative permission: ${requiredPerm}`,
+        );
+      }
 
       const updated = await service.updateUserStatus(
         targetUserId,

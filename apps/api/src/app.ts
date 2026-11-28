@@ -31,6 +31,17 @@ import { collaborationRoutes } from './modules/collaboration/index.js';
 import { communityRoutes } from './modules/community/index.js';
 import { supportRoutes } from './modules/support/index.js';
 import { lifecycleRoutes } from './modules/lifecycle/lifecycle.routes.js';
+import { adminRbacRoutes } from './modules/admin/rbac/admin-rbac.routes.js';
+import { adminDashboardRoutes } from './modules/admin/dashboard/admin-dashboard.routes.js';
+import { adminUsersRoutes } from './modules/admin/users/admin-users.routes.js';
+import { adminMarketplaceRoutes } from './modules/admin/marketplace/admin-marketplace.routes.js';
+import { adminFinanceRoutes } from './modules/admin/finance/admin-finance.routes.js';
+import { adminModerationRoutes } from './modules/admin/moderation/admin-moderation.routes.js';
+import { adminSupportRoutes } from './modules/admin/support/admin-support.routes.js';
+import { adminConfigRoutes } from './modules/admin/config/admin-config.routes.js';
+import { adminNotificationsRoutes } from './modules/admin/notifications/admin-notifications.routes.js';
+import { adminJobsRoutes } from './modules/admin/jobs/admin-jobs.routes.js';
+import { adminAuditRoutes } from './modules/admin/audit/admin-audit.routes.js';
 
 export async function buildApp(opts: FastifyServerOptions = {}): Promise<FastifyInstance> {
   const defaultTrustProxy = process.env.TRUST_PROXY
@@ -212,6 +223,17 @@ export async function buildApp(opts: FastifyServerOptions = {}): Promise<Fastify
   await app.register(communityRoutes);
   await app.register(supportRoutes);
   await app.register(lifecycleRoutes);
+  await app.register(adminRbacRoutes);
+  await app.register(adminDashboardRoutes);
+  await app.register(adminUsersRoutes);
+  await app.register(adminMarketplaceRoutes);
+  await app.register(adminFinanceRoutes);
+  await app.register(adminModerationRoutes);
+  await app.register(adminSupportRoutes);
+  await app.register(adminConfigRoutes);
+  await app.register(adminNotificationsRoutes);
+  await app.register(adminJobsRoutes);
+  await app.register(adminAuditRoutes);
 
   return app;
 }

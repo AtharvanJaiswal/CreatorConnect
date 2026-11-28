@@ -9,26 +9,20 @@ import { AdminButton } from '../../../components/admin/ui/AdminButton';
 import { AdminInput, AdminSelect } from '../../../components/admin/ui/AdminInput';
 import { AdminModal } from '../../../components/admin/ui/AdminModal';
 import { PermissionGate } from '../../../components/admin/ui/PermissionGate';
+import { AdminErrorBanner } from '../../../components/admin/ui/AdminErrorBanner';
 import { apiClient } from '../../../lib/api-client';
-
-interface AdminReportItem {
-  id: string;
-  reporterId: string;
-  targetType: string;
-  targetId: string;
-  reason: string;
-  status: string;
-  createdAt: string;
-}
+import { parseAdminApiError, type AdminErrorState } from '../../../lib/admin-error';
+import type { AdminReportListItem, AdminReportListResponse } from '@creatorconnect/contracts';
 
 export default function AdminModerationPage() {
-  const [reports, setReports] = useState<AdminReportItem[]>([]);
+  const [reports, setReports] = useState<AdminReportListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<AdminErrorState | null>(null);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [search, setSearch] = useState('');
 
   // Adjudication Modal State
-  const [selectedReport, setSelectedReport] = useState<AdminReportItem | null>(null);
+  const [selectedReport, setSelectedReport] = useState<AdminReportListItem | null>(null);
   const [adjudicationAction, setAdjudicationAction] = useState<'resolve' | 'dismiss'>('resolve');
   const [penaltyAction, setPenaltyAction] = useState<string>('CONTENT_REMOVED');
   const [notes, setNotes] = useState('');
@@ -37,54 +31,28 @@ export default function AdminModerationPage() {
 
   const fetchReports = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
       const params: Record<string, any> = {};
       if (statusFilter !== 'ALL') params.status = statusFilter;
-      if (search.trim()) params.search = search.trim();
 
-      const data: any = await apiClient.get('/api/v1/admin/reports', { params });
+      const data = await apiClient.get<AdminReportListResponse>('/api/v1/admin/reports', {
+        params,
+      });
       setReports(data?.items || []);
-    } catch {
-      // Fallback records
-      setReports([
-        {
-          id: 'rep-01',
-          reporterId: 'user-reporter-1',
-          targetType: 'USER_PROFILE',
-          targetId: 'user-flagged-1',
-          reason: 'Spam brief soliciting off-platform cryptocurrency payments',
-          status: 'PENDING',
-          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-        },
-        {
-          id: 'rep-02',
-          reporterId: 'user-reporter-2',
-          targetType: 'DELIVERABLE',
-          targetId: 'deliv-2',
-          reason: 'Uploaded deliverable contains unlicensed commercial copyrighted music',
-          status: 'PENDING',
-          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
-        },
-        {
-          id: 'rep-03',
-          reporterId: 'user-reporter-3',
-          targetType: 'REVIEW',
-          targetId: 'rev-3',
-          reason: 'Abusive language and personal threats in review comment',
-          status: 'RESOLVED',
-          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-        },
-      ]);
+    } catch (err) {
+      setReports([]);
+      setFetchError(parseAdminApiError(err, 'Failed to retrieve moderation reports from backend.'));
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, search]);
+  }, [statusFilter]);
 
   useEffect(() => {
     fetchReports();
   }, [fetchReports]);
 
-  const handleOpenAdjudication = (report: AdminReportItem, action: 'resolve' | 'dismiss') => {
+  const handleOpenAdjudication = (report: AdminReportListItem, action: 'resolve' | 'dismiss') => {
     setSelectedReport(report);
     setAdjudicationAction(action);
     setPenaltyAction('CONTENT_REMOVED');
@@ -94,8 +62,9 @@ export default function AdminModerationPage() {
 
   const handleExecuteAdjudication = async () => {
     if (!selectedReport) return;
-    if (!notes.trim()) {
-      setError('A mandatory adjudication explanation is required.');
+    const trimmed = notes.trim();
+    if (trimmed.length < 5) {
+      setError('A mandatory adjudication explanation (at least 5 characters) is required.');
       return;
     }
 
@@ -106,32 +75,47 @@ export default function AdminModerationPage() {
       if (adjudicationAction === 'resolve') {
         await apiClient.post(`/api/v1/admin/reports/${selectedReport.id}/resolve`, {
           action: penaltyAction,
-          resolutionNotes: notes.trim(),
+          notes: trimmed,
         });
       } else {
         await apiClient.post(`/api/v1/admin/reports/${selectedReport.id}/dismiss`, {
-          dismissalReason: notes.trim(),
+          reason: trimmed,
         });
       }
 
       setSelectedReport(null);
-      fetchReports();
-    } catch (err: any) {
-      setError(err.message || 'Adjudication failed.');
+      await fetchReports();
+    } catch (err: unknown) {
+      setError(parseAdminApiError(err, 'Adjudication failed.').detail);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const columns: Column<AdminReportItem>[] = [
+  const filteredReports = search.trim()
+    ? reports.filter((r) => {
+        const q = search.trim().toLowerCase();
+        return (
+          r.category.toLowerCase().includes(q) ||
+          r.details.toLowerCase().includes(q) ||
+          r.targetId.toLowerCase().includes(q) ||
+          r.reporterEmail.toLowerCase().includes(q)
+        );
+      })
+    : reports;
+
+  const columns: Column<AdminReportListItem>[] = [
     {
       key: 'reason',
       header: 'Report Rationale & Target',
       render: (row) => (
         <div className="flex flex-col max-w-md">
-          <span className="font-bold text-[#14110F]">{row.reason}</span>
+          <span className="font-bold text-[#14110F]">
+            [{row.category}] {row.details}
+          </span>
           <span className="text-xs text-[#6F675E]">
-            Target: <strong className="text-[#14110F]">{row.targetType}</strong> ({row.targetId})
+            Target: <strong className="text-[#14110F]">{row.targetType}</strong> ({row.targetId}) ·
+            By {row.reporterEmail}
           </span>
         </div>
       ),
@@ -216,6 +200,7 @@ export default function AdminModerationPage() {
       </div>
 
       {/* Filters */}
+      {fetchError && <AdminErrorBanner error={fetchError} onRetry={fetchReports} />}
       <AdminCard padding="sm">
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
           <div className="sm:col-span-8">
@@ -243,7 +228,7 @@ export default function AdminModerationPage() {
       </AdminCard>
 
       {/* Table */}
-      <AdminTable columns={columns} data={reports} isLoading={isLoading} />
+      <AdminTable columns={columns} data={filteredReports} isLoading={isLoading} />
 
       {/* Adjudication Modal */}
       <AdminModal

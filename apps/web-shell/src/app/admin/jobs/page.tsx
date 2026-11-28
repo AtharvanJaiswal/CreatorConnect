@@ -6,60 +6,28 @@ import { AdminCard } from '../../../components/admin/ui/AdminCard';
 import { AdminBadge } from '../../../components/admin/ui/AdminBadge';
 import { AdminButton } from '../../../components/admin/ui/AdminButton';
 import { PermissionGate } from '../../../components/admin/ui/PermissionGate';
+import { AdminErrorBanner } from '../../../components/admin/ui/AdminErrorBanner';
 import { apiClient } from '../../../lib/api-client';
-
-interface QueueMetrics {
-  name: string;
-  waiting: number;
-  active: number;
-  completed: number;
-  failed: number;
-  delayed: number;
-  paused: boolean;
-}
+import { parseAdminApiError, type AdminErrorState } from '../../../lib/admin-error';
+import type { QueueMetricsResponse } from '@creatorconnect/contracts';
 
 export default function AdminJobsPage() {
-  const [queues, setQueues] = useState<QueueMetrics[]>([]);
+  const [queues, setQueues] = useState<QueueMetricsResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<AdminErrorState | null>(null);
   const [retryingQueue, setRetryingQueue] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const fetchQueues = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
-      const data: any = await apiClient.get('/api/v1/admin/jobs/queues');
+      const data = await apiClient.get<QueueMetricsResponse[]>('/api/v1/admin/jobs/queues');
       setQueues(Array.isArray(data) ? data : []);
-    } catch {
-      // Fallback
-      setQueues([
-        {
-          name: 'notification-delivery',
-          waiting: 0,
-          active: 1,
-          completed: 14200,
-          failed: 0,
-          delayed: 0,
-          paused: false,
-        },
-        {
-          name: 'media-transcoding',
-          waiting: 2,
-          active: 3,
-          completed: 8940,
-          failed: 1,
-          delayed: 0,
-          paused: false,
-        },
-        {
-          name: 'retention-cleanup',
-          waiting: 0,
-          active: 0,
-          completed: 450,
-          failed: 0,
-          delayed: 0,
-          paused: false,
-        },
-      ]);
+    } catch (err) {
+      setQueues([]);
+      setFetchError(parseAdminApiError(err, 'Failed to fetch BullMQ queue metrics from API.'));
     } finally {
       setIsLoading(false);
     }
@@ -72,12 +40,15 @@ export default function AdminJobsPage() {
   const handleRetryFailed = async (queueName: string) => {
     setRetryingQueue(queueName);
     setMessage(null);
+    setActionError(null);
     try {
-      const res: any = await apiClient.post(`/api/v1/admin/jobs/queues/${queueName}/retry-failed`);
-      setMessage(`Successfully re-queued ${res?.retriedCount || 1} failed jobs in ${queueName}.`);
-      fetchQueues();
-    } catch (err: any) {
-      setMessage(`Failed to retry jobs: ${err.message}`);
+      const res = await apiClient.post<{ retriedCount: number }>(
+        `/api/v1/admin/jobs/queues/${queueName}/retry-failed`,
+      );
+      setMessage(`Successfully re-queued ${res?.retriedCount ?? 0} failed jobs in ${queueName}.`);
+      await fetchQueues();
+    } catch (err: unknown) {
+      setActionError(parseAdminApiError(err, 'Failed to retry failed queue jobs.').detail);
     } finally {
       setRetryingQueue(null);
     }
@@ -107,71 +78,93 @@ export default function AdminJobsPage() {
         </AdminButton>
       </div>
 
+      {fetchError && <AdminErrorBanner error={fetchError} onRetry={fetchQueues} />}
+
+      {actionError && (
+        <div
+          role="alert"
+          className="p-4 rounded-xl bg-[#FBE9E7] border border-[#F5C6CB] text-xs font-bold text-[#D8483C]"
+        >
+          {actionError}
+        </div>
+      )}
+
       {message && (
-        <div className="p-4 rounded-xl bg-[#E6F4EC] border border-[#BEE4D0] text-xs font-bold text-[#1B7339]">
+        <div
+          role="status"
+          className="p-4 rounded-xl bg-[#E6F4EC] border border-[#BEE4D0] text-xs font-bold text-[#1B7339]"
+        >
           {message}
         </div>
       )}
 
       {/* Queue Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {queues.map((q) => (
-          <AdminCard key={q.name} padding="md" className="flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="font-bold text-sm text-[#14110F] font-mono-code">{q.name}</span>
-                <AdminBadge variant={q.failed > 0 ? 'warning' : 'success'} size="sm" dot>
-                  {q.failed > 0 ? `${q.failed} Failed` : 'Healthy'}
-                </AdminBadge>
+      {!fetchError && !isLoading && queues.length === 0 ? (
+        <AdminCard padding="lg" className="text-center text-xs text-[#6F675E]">
+          No BullMQ queues reported by backend worker telemetry.
+        </AdminCard>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {queues.map((q) => (
+            <AdminCard key={q.queueName} padding="md" className="flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-bold text-sm text-[#14110F] font-mono-code">
+                    {q.queueName}
+                  </span>
+                  <AdminBadge variant={q.failed > 0 ? 'warning' : 'success'} size="sm" dot>
+                    {q.failed > 0 ? `${q.failed} Failed` : q.paused ? 'Paused' : 'Active'}
+                  </AdminBadge>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center my-4">
+                  <div className="p-2.5 rounded-xl bg-[#FAF6EF] border border-[#E7E0D5]">
+                    <span className="text-[10px] text-[#6F675E] uppercase font-bold block">
+                      Waiting
+                    </span>
+                    <span className="text-base font-black text-[#14110F] font-mono-code">
+                      {q.waiting}
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-[#FAF6EF] border border-[#E7E0D5]">
+                    <span className="text-[10px] text-[#6F675E] uppercase font-bold block">
+                      Active
+                    </span>
+                    <span className="text-base font-black text-[#2B73C2] font-mono-code">
+                      {q.active}
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-[#FAF6EF] border border-[#E7E0D5]">
+                    <span className="text-[10px] text-[#6F675E] uppercase font-bold block">
+                      Completed
+                    </span>
+                    <span className="text-base font-black text-[#2E9E6B] font-mono-code">
+                      {q.completed}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 text-center my-4">
-                <div className="p-2.5 rounded-xl bg-[#FAF6EF] border border-[#E7E0D5]">
-                  <span className="text-[10px] text-[#6F675E] uppercase font-bold block">
-                    Waiting
-                  </span>
-                  <span className="text-base font-black text-[#14110F] font-mono-code">
-                    {q.waiting}
-                  </span>
-                </div>
-                <div className="p-2.5 rounded-xl bg-[#FAF6EF] border border-[#E7E0D5]">
-                  <span className="text-[10px] text-[#6F675E] uppercase font-bold block">
-                    Active
-                  </span>
-                  <span className="text-base font-black text-[#2B73C2] font-mono-code">
-                    {q.active}
-                  </span>
-                </div>
-                <div className="p-2.5 rounded-xl bg-[#FAF6EF] border border-[#E7E0D5]">
-                  <span className="text-[10px] text-[#6F675E] uppercase font-bold block">
-                    Completed
-                  </span>
-                  <span className="text-base font-black text-[#2E9E6B] font-mono-code">
-                    {q.completed}
-                  </span>
-                </div>
+              <div className="pt-3 border-t border-[#EFE9DF] flex items-center justify-between">
+                <span className="text-xs text-[#6F675E]">Delayed: {q.delayed}</span>
+                <PermissionGate permission="settings.manage">
+                  <AdminButton
+                    variant="outline"
+                    size="sm"
+                    disabled={q.failed === 0}
+                    loading={retryingQueue === q.queueName}
+                    onClick={() => handleRetryFailed(q.queueName)}
+                    icon={<RotateCcw className="w-3.5 h-3.5" />}
+                    className="text-xs"
+                  >
+                    Retry Failed
+                  </AdminButton>
+                </PermissionGate>
               </div>
-            </div>
-
-            <div className="pt-3 border-t border-[#EFE9DF] flex items-center justify-between">
-              <span className="text-xs text-[#6F675E]">Delayed: {q.delayed}</span>
-              <PermissionGate permission="settings.manage">
-                <AdminButton
-                  variant="outline"
-                  size="sm"
-                  disabled={q.failed === 0}
-                  loading={retryingQueue === q.name}
-                  onClick={() => handleRetryFailed(q.name)}
-                  icon={<RotateCcw className="w-3.5 h-3.5" />}
-                  className="text-xs"
-                >
-                  Retry Failed
-                </AdminButton>
-              </PermissionGate>
-            </div>
-          </AdminCard>
-        ))}
-      </div>
+            </AdminCard>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

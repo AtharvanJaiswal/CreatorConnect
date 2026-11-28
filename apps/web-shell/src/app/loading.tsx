@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function Loading() {
   return (
-    <div style={{ padding: '4rem', textAlign: 'center', color: '#9ca3af' }}>
+    <div className="p-16 text-center text-sm text-neutral-500">
       <p>Loading CreatorConnect...</p>
     </div>
   );

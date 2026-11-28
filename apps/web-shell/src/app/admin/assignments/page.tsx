@@ -9,30 +9,23 @@ import { AdminButton } from '../../../components/admin/ui/AdminButton';
 import { AdminInput, AdminSelect } from '../../../components/admin/ui/AdminInput';
 import { AdminModal } from '../../../components/admin/ui/AdminModal';
 import { PermissionGate } from '../../../components/admin/ui/PermissionGate';
+import { AdminErrorBanner } from '../../../components/admin/ui/AdminErrorBanner';
 import { apiClient } from '../../../lib/api-client';
-
-interface AdminProjectItem {
-  id: string;
-  title: string;
-  clientId: string;
-  creatorId: string | null;
-  status: string;
-  budgetMinor: string;
-  escrowStatus: string;
-  createdAt: string;
-}
+import { parseAdminApiError, type AdminErrorState } from '../../../lib/admin-error';
+import type { AdminProjectListItem, AdminProjectListResponse } from '@creatorconnect/contracts';
 
 export default function AdminAssignmentsPage() {
-  const [projects, setProjects] = useState<AdminProjectItem[]>([]);
+  const [projects, setProjects] = useState<AdminProjectListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<AdminErrorState | null>(null);
 
   // Moderation Action State
-  const [selectedProject, setSelectedProject] = useState<AdminProjectItem | null>(null);
+  const [selectedProject, setSelectedProject] = useState<AdminProjectListItem | null>(null);
   const [modAction, setModAction] = useState<
     'SUSPEND' | 'RESTRICT' | 'FLAG_UNDER_REVIEW' | 'RESTORE'
   >('FLAG_UNDER_REVIEW');
@@ -42,51 +35,26 @@ export default function AdminAssignmentsPage() {
 
   const fetchProjects = useCallback(async () => {
     setIsLoading(true);
+    setFetchError(null);
     try {
       const params: Record<string, any> = { page, limit };
       if (search.trim()) params.search = search.trim();
       if (statusFilter !== 'ALL') params.status = statusFilter;
 
-      const data: any = await apiClient.get('/api/v1/admin/projects', { params });
+      const data = await apiClient.get<AdminProjectListResponse>('/api/v1/admin/projects', {
+        params,
+      });
       if (data?.items) {
         setProjects(data.items);
-        setTotal(data.total || data.items.length);
+        setTotal(data.total ?? data.items.length);
+      } else {
+        setProjects([]);
+        setTotal(0);
       }
-    } catch {
-      // Fallback data
-      setProjects([
-        {
-          id: 'proj-01',
-          title: 'Diwali Commercial Film — 4K Color Grading & Sound Mix',
-          clientId: 'client-1',
-          creatorId: 'creator-1',
-          status: 'IN_PROGRESS',
-          budgetMinor: '12500000',
-          escrowStatus: 'FUNDED',
-          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-        },
-        {
-          id: 'proj-02',
-          title: 'Podcast Studio Multi-Cam Cut (12 Episodes)',
-          clientId: 'client-2',
-          creatorId: 'creator-2',
-          status: 'COMPLETED',
-          budgetMinor: '8000000',
-          escrowStatus: 'RELEASED',
-          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 20).toISOString(),
-        },
-        {
-          id: 'proj-03',
-          title: 'Brand Anthem VFX Compositing',
-          clientId: 'client-3',
-          creatorId: null,
-          status: 'PUBLISHED',
-          budgetMinor: '25000000',
-          escrowStatus: 'UNFUNDED',
-          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-        },
-      ]);
-      setTotal(3);
+    } catch (err) {
+      setProjects([]);
+      setTotal(0);
+      setFetchError(parseAdminApiError(err, 'Failed to retrieve marketplace projects from API.'));
     } finally {
       setIsLoading(false);
     }
@@ -96,7 +64,7 @@ export default function AdminAssignmentsPage() {
     fetchProjects();
   }, [fetchProjects]);
 
-  const handleOpenModeration = (p: AdminProjectItem) => {
+  const handleOpenModeration = (p: AdminProjectListItem) => {
     setSelectedProject(p);
     setModAction('FLAG_UNDER_REVIEW');
     setModReason('');
@@ -137,14 +105,16 @@ export default function AdminAssignmentsPage() {
     }).format(val / 100);
   };
 
-  const columns: Column<AdminProjectItem>[] = [
+  const columns: Column<AdminProjectListItem>[] = [
     {
       key: 'title',
       header: 'Brief Title & Scope',
       render: (row) => (
         <div className="flex flex-col max-w-md">
           <span className="font-bold text-[#14110F] line-clamp-1">{row.title}</span>
-          <span className="text-xs text-[#6F675E] font-mono-code">{row.id}</span>
+          <span className="text-xs text-[#6F675E] font-mono-code">
+            {row.clientEmail || row.clientId} · {row.talentEmail || row.talentId}
+          </span>
         </div>
       ),
     },
@@ -153,27 +123,22 @@ export default function AdminAssignmentsPage() {
       header: 'Contract Value',
       render: (row) => (
         <span className="font-bold text-[#14110F] font-mono-code">
-          {formatCurrency(row.budgetMinor)}
+          {formatCurrency(row.totalAmountMinor)}
         </span>
       ),
     },
     {
-      key: 'escrow',
-      header: 'Escrow State',
+      key: 'dispute',
+      header: 'Deliverables & Dispute',
       render: (row) => (
-        <AdminBadge
-          variant={
-            row.escrowStatus === 'FUNDED'
-              ? 'success'
-              : row.escrowStatus === 'RELEASED'
-                ? 'neutral'
-                : 'warning'
-          }
-          size="sm"
-          dot
-        >
-          {row.escrowStatus}
-        </AdminBadge>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-[#6F675E]">{row.deliverablesCount} milestones</span>
+          {row.hasDispute && (
+            <AdminBadge variant="danger" size="sm" dot>
+              DISPUTED
+            </AdminBadge>
+          )}
+        </div>
       ),
     },
     {
@@ -244,6 +209,7 @@ export default function AdminAssignmentsPage() {
       </div>
 
       {/* Filter Bar */}
+      {fetchError && <AdminErrorBanner error={fetchError} onRetry={fetchProjects} />}
       <AdminCard padding="sm">
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
           <div className="sm:col-span-8">

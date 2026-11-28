@@ -27,6 +27,7 @@ The CreatorConnect backend powers an enterprise-grade, multi-sided creator econo
 - **Phase 6 (Increment 2)**: Payments, Ledger & Escrow Foundation (**IMPLEMENTED & LOCALLY VERIFIED** on branch `feature/phase-6-payments-ledger`). Immutable double-entry balanced ledger ($\sum \text{debits} \equiv \sum \text{credits}$), integer minor units (paisa), idempotent payment intent lifecycle with SHA-256 payload hash verification, provider abstraction (Sandbox Mock & Razorpay Orders/Route compliance for Indian market), HMAC SHA-256 signed webhook ingestion with event deduplication, and transactional outbox events (`payment.intent.created.v1`, `payment.intent.succeeded.v1`, `ledger.transaction.posted.v1`, `escrow.released.v1`). Live payouts and real-money nodal escrow remain strictly simulated in sandbox mode pending RBI Payment Aggregator compliance and production nodal onboarding.
 - **Phase 6 (Increment 3)**: Dispute Resolution, Cancellations, Refunds & Financial Recovery (**IMPLEMENTED & LOCALLY VERIFIED** on branch `feature/phase-6-disputes-refunds`). Formal dispute lifecycle (`OPEN`, `UNDER_REVIEW`, `EVIDENCE_REQUESTED`, `RESOLVED_FOR_CLIENT`, `RESOLVED_FOR_CREATOR`, `CLOSED`), anti-conflict-of-interest check (admins cannot arbitrate their own disputes), evidence quarantine scanning verification (`ACTIVE` + `SCANNED_CLEAN`), mutual consent / requester withdrawal project cancellations, integer minor-unit compensating balanced ledger transactions ($\sum \text{debits} \equiv \sum \text{credits}$), idempotent refund execution with SHA-256 payload hash verification, out-of-transaction provider commands, and transactional outbox events (`dispute.opened.v1`, `dispute.status_updated.v1`, `dispute.resolved.v1`, `cancellation.requested.v1`, `cancellation.resolved.v1`, `payment.refund.created.v1`, `payment.refund.processed.v1`).
 - **Phase 6 (Increment 4)**: Reviews, Reputation Scoring & Platform Governance (**IMPLEMENTED & LOCALLY VERIFIED** on branch `feature/phase-6-reviews-governance`). Verified review lifecycle for completed projects (`ProjectStatus.COMPLETED`), bidirectional reciprocal review eligibility, database-enforced unique constraints (`@@unique([projectId, reviewerId])`), 48-hour editing window, deterministic and transparent Bayesian reputation scoring ($m = 4.0, C = 5.0$), cold-start unrated handling, abuse reporting, and administrative governance with immutable audit logging and anti-conflict-of-interest guards.
+- **Phase 4 (Enterprise Upgrade)**: Complete Administration & Platform Management System (**IMPLEMENTED & LOCALLY VERIFIED** on branch `dev`). Authoritative Fastify REST admin control plane (`/api/v1/admin/*`), Migration 0015, 21 permissions, 8 standard roles, PostgreSQL `FOR UPDATE OF u` last super admin lockout guard, 60s Redis-cached analytics dashboard, user directory lifecycle management (suspension/reactivation), creator & client verification, project moderation, dual-approval refunds ($\ge$ ₹50,000) with strict anti-self-approval enforcement (`CONFLICT_OF_INTEREST`), double-entry ledger balance reconciliation ($\sum \text{debits} \equiv \sum \text{credits}$), centralized reports queue, review moderation audits, customer-isolated support tickets, versioned platform settings with rollback, broadcast campaigns, and BullMQ queue monitoring. 65/65 automated tests passing (100%). Detailed documentation in `docs/admin/`.
 
 ### Core Technologies & Runtimes:
 
@@ -53,6 +54,17 @@ f:\CreatorConnect/
 │   │   │   ├── modules/         # Clean Architecture Domain Modules
 │   │   │   │   ├── auth/        # Identity sync & session context (/api/v1/auth)
 │   │   │   │   ├── users/       # User accounts & RBAC management (/api/v1/users)
+│   │   │   │   ├── admin/       # Complete Platform Administration System (/api/v1/admin/*)
+│   │   │   │   │   ├── rbac/    # Admin roles, permissions & last super admin guard
+│   │   │   │   │   ├── dashboard/# Aggregated analytics & 60s Redis caching
+│   │   │   │   │   ├── users/   # Directory search, suspension & reactivation
+│   │   │   │   │   ├── marketplace/# Creator/client verification & project moderation
+│   │   │   │   │   ├── finance/ # Dual-approval refunds, anti-self-approval & reconciliation
+│   │   │   │   │   ├── moderation/# Reports resolution & review moderation
+│   │   │   │   │   ├── support/ # Staff support tickets & customer internal note isolation
+│   │   │   │   │   ├── config/  # Dynamic platform settings, versioning & rollback
+│   │   │   │   │   ├── notifications/# Broadcast campaigns & audience estimation
+│   │   │   │   │   └── jobs/    # BullMQ worker health monitoring & retry
 │   │   │   │   ├── profiles/    # Creator, Pro, Brand, Podcaster rate cards & bio
 │   │   │   │   ├── portfolio/   # Media portfolio CRUD with ACTIVE media validation
 │   │   │   │   ├── media/       # S3/R2 presigned upload pipeline & quarantine lifecycle

@@ -136,6 +136,21 @@ export class RedisCacheService {
   }
 
   /**
+   * Gracefully disconnect the Redis client so tests and shutdown hooks release sockets cleanly.
+   */
+  public async disconnect(): Promise<void> {
+    try {
+      if (this.client && this.client.status !== 'wait' && this.client.status !== 'end') {
+        await this.client.quit();
+      }
+    } catch {
+      this.client?.disconnect();
+    } finally {
+      this.isConnected = false;
+    }
+  }
+
+  /**
    * Test helper to simulate Redis failure.
    */
   public simulateFailure(shouldFail: boolean): void {

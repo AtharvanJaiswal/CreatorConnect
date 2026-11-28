@@ -19,6 +19,10 @@
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$"]
     },
+    "@creatorconnect/realtime#test": {
+      "dependsOn": ["^build", "@creatorconnect/worker#build", "@creatorconnect/worker#test"],
+      "inputs": ["$TURBO_DEFAULT$"]
+    },
     "dev": {
       "cache": false,
       "persistent": true
